@@ -28,6 +28,14 @@ for (const item of ['package.json', 'package-lock.json', 'launcher.js', 'APOLOGE
   if (fs.existsSync(src)) fs.cpSync(src, path.join(APP, item), { recursive: true });
 }
 fs.writeFileSync(path.join(APP, 'APOLOGEA Studio.vbs'), crlf(fs.readFileSync(path.join(ROOT, 'APOLOGEA Studio.vbs'), 'utf8')));
+// Für den Betrieb nicht benötigte Dateien aus node_modules entfernen (Quellkarten, Typdefinitionen, Doku)
+(function prune(dir) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) prune(p);
+    else if (/\.(map|d\.ts|d\.mts|d\.cts|md|markdown)$/i.test(e.name) && !/^license/i.test(e.name)) fs.rmSync(p);
+  }
+})(path.join(APP, 'node_modules'));
 // Entwicklungs-Testdateien nicht ausliefern
 fs.rmSync(path.join(APP, 'public', 'icon-256.png'), { force: true });
 
