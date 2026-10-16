@@ -3,7 +3,7 @@
 > Diese Datei ist der Einstiegspunkt für jede neue Claude-Sitzung.
 > Neue Sitzung: „Weiter laut PROJECT_STATUS.md“.
 
-Stand: 2026-10-16 (Sitzung 2) · Branch: `claude/apologea-shopify-theme-9kvfrj`
+Stand: 2026-10-16 (Sitzung 3) · Branch: `claude/apologea-shopify-theme-9kvfrj`
 
 ## Auftrag (Kurzfassung)
 Eigenes Shopify-Online-Store-2.0-Theme „NOCTURNE“ für APOLOGEA (Luxury Christian Streetwear),
@@ -28,7 +28,7 @@ Dokumentation. Vollständiger Master-Prompt: liegt beim Nutzer; Kernregeln siehe
 | Theme Access App | im Shop installiert; Passwort vom Nutzer erzeugt |
 | Claude-Connectors | nur Gmail. **Kein Shopify-, kein MarketPrint-Connector.** |
 | Netzwerk | Benutzerdefiniert: `*.myshopify.com`, `theme-kit-access.shopifyapps.com` + Paketmanager. Erreichbarkeit getestet ✔ |
-| Theme-Access-Secret | Als Network Secret hinterlegt (Header `X-Shopify-Access-Token`, Host `theme-kit-access.shopifyapps.com`). **Auch in Sitzung 2 weiterhin 401** (siehe unten) |
+| Theme-Access-Secret | Als Network Secret hinterlegt (Header `X-Shopify-Access-Token`, ohne Präfix, Host `theme-kit-access.shopifyapps.com`). **Funktioniert ab Sitzung 3** ✔ |
 | Env-Variable | `SHOPIFY_FLAG_STORE=dfz1mp-1u.myshopify.com` (gilt ab neuer Sitzung) |
 | Setup-Skript | `npm install -g @shopify/cli` |
 | Shopify CLI | 4.9.4 installierbar ✔ |
@@ -72,18 +72,23 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - `docs/POD_DATA_MODEL.md`: Metafeld-Entwurf (Namespace `apologea`) + Import-Workflow.
 - Noch **nicht** in Shopify hochgeladen (wegen 401) und **nicht** im Browser gerendert getestet.
 
-## Nächste Schritte
-1. **Nutzer:** Theme-Access-Passwort neu erzeugen und Network Secret neu eintragen (nur der nackte
-   `shptka_…`-Wert, ohne Leerzeichen/„Bearer“) — dann neue Sitzung, Verbindungstest wiederholen.
-   Alternativ ZIP selbst hochladen (unveröffentlicht).
-2. Erstes unveröffentlichtes Theme „APOLOGEA NOCTURNE (Dev)“ hochladen
-   (`shopify theme push --unpublished`, siehe `shopify-theme/README.md`), Vorschau-Link an Nutzer, visuell prüfen.
-3. Metafeld-Definitionen anlegen (manuell im Admin — kein Admin-API-Zugang vorhanden).
-4. Feinschliff nach Vorschau: Mega-Menü, Ajax-Warenkorb-Drawer, Produkt-Empfehlungen, Lookbook-Sektion.
-5. Echtes Logo einsetzen, sobald geliefert.
+## Sitzung 3 (2026-10-16) — Ergebnis
+- Network Secret vom Nutzer neu angelegt (Header `X-Shopify-Access-Token`, ohne „Bearer“).
+- Verbindungstest `shopify theme list` ✔ — Themes: Horizon [live] #202475110735, Feather [unpublished] #202485956943.
+- `shopify theme check --path shopify-theme`: 57 Dateien, 0 Befunde.
+- `shopify theme push --unpublished --theme "APOLOGEA NOCTURNE (Dev)"` ✔ → neues Theme
+  **#202489921871** [unpublished]. Horizon und Feather unverändert.
+  (Nach „Theme upload complete“ meldete die CLI ein `ECONNRESET` — nur Nachlauf; per `theme pull`
+  geprüft: alle 59 Dateien sind auf dem Server.)
+- Vorschau: https://dfz1mp-1u.myshopify.com?preview_theme_id=202489921871
+- Editor: https://dfz1mp-1u.myshopify.com/admin/themes/202489921871/editor
+- Hinweis: Der Shop leitet auf `apologea.eu` weiter; diese Domain ist in der Sandbox nicht freigegeben →
+  Vorschau konnte hier **nicht** gerendert geprüft werden. Visuelle Prüfung durch Nutzer ausstehend.
+- Künftige Updates ins selbe Dev-Theme: `NODE_USE_ENV_PROXY=1 shopify theme push --path shopify-theme
+  --theme 202489921871 --password shptka_placeholder` (nie `--publish`/`--live`).
 
-## Offen beim Nutzer
-- Logo (SVG + transparentes PNG)
-- MarketPrint-App installiert? Was bietet sie an?
-- Impressum-/Geschäftsdaten, Rechtstext-Anbieter, Social-Links
-- 3–5 Beispielmotive (Druck-PNG + Mockups)
+## Nächste Schritte
+1. **Nutzer:** Vorschau-Link öffnen, Eindruck/Fehler melden.
+2. **Logo** (Nutzer liefert es) → Platzhalter ersetzen, unverändert einbinden, erneut in Dev-Theme #202489921871 pushen.
+3. Optional: `apologea.eu` in die Netzwerk-Allowlist aufnehmen, damit Claude die Vorschau selbst rendern/prüfen kann.
+4. MarketPrint-Status klären (App im Shop installiert?).
