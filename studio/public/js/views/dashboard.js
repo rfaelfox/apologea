@@ -81,8 +81,8 @@ export async function loadConnections(box) {
           shop.themeAccess?.ok ? `Themes: verbunden (${shop.themeAccess.shop})` : 'Themes: über Admin-App',
           shop.canContent ? 'Shop-Inhalte: verbunden (Admin-App)' : 'Shop-Inhalte: nicht verbunden (Admin-App fehlt)',
         ] : [shop.error || shop.themeAccess?.error || shop.adminApp?.error || 'Nicht eingerichtet']),
-      conn('MarketPrint', mpS.ok ? (mpS.simulated ? 'warn' : 'ok') : mpS.mode === 'none' ? 'none' : 'err',
-        mpS.ok ? [modeLabel(mpS.mode), mpS.simulated ? 'SIMULATION – es wird nichts angelegt' : `Konto: ${mpS.account?.email || '–'}`, `Shops: ${(mpS.account?.shopDomains || []).join(', ') || '–'}`] : mpS.mode === 'none' ? ['Nicht eingerichtet'] : [modeLabel(mpS.mode), mpS.error || mpS.message]),
+      Object.entries(s.providers || {}).filter(([pid, p]) => pid === 'marketprint' || p.mode !== 'none').map(([, p]) => conn(p.name, p.ok ? (p.simulated ? 'warn' : 'ok') : p.mode === 'none' ? 'none' : 'err',
+        p.ok ? [modeLabel(p.mode), p.simulated ? 'SIMULATION – es wird nichts angelegt' : `Konto: ${p.account?.email || p.account?.label || '–'}`, `Shops: ${(p.account?.targets || []).map((t) => t.label).join(', ') || '–'}`] : p.mode === 'none' ? ['Nicht eingerichtet'] : [modeLabel(p.mode), p.error || p.message])),
       conn('Claude', aiS.ok ? 'ok' : aiS.engine === 'none' ? 'none' : 'err',
         [aiS.message || '', aiS.engine === 'api' ? 'Nutzungsabhängige Kosten – vor jedem Aufruf mit Kostenschätzung' : aiS.engine === 'claude-code' ? 'Zählt zu deinem Claude-Kontingent' : 'Texte und Website-Vorschläge benötigen Claude']),
     );
@@ -93,7 +93,7 @@ export async function loadConnections(box) {
 }
 
 function modeLabel(m) {
-  return { 'claude-code': 'Weg: über Claude Code', mcp: 'Weg: direkte MCP-Verbindung', simulation: 'Weg: Simulation', none: 'Nicht eingerichtet' }[m] || m;
+  return { 'claude-code': 'Weg: über Claude Code', mcp: 'Weg: direkte MCP-Verbindung', api: 'Weg: offizielle Schnittstelle', simulation: 'Weg: Simulation', none: 'Nicht eingerichtet' }[m] || m;
 }
 
 function conn(name, state, lines) {

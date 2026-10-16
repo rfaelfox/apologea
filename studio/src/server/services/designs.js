@@ -63,12 +63,25 @@ export function updateDesign(id, patch) {
   return store().designs.put(d);
 }
 
-export function linkMarketPrint(id, { imageId, fileName, previewUrl }) {
+/** Verknüpfung eines Designs mit der Datei-/Bild-ID bei einem Anbieter. */
+export function getLink(design, provider) {
+  if (!design) return null;
+  if (provider === 'marketprint') return design.marketprint || design.providerLinks?.marketprint || null;
+  return design.providerLinks?.[provider] || null;
+}
+
+export function linkProvider(id, provider, { imageId, fileName, previewUrl }) {
   const d = store().designs.get(id);
   if (!d) throw new UserError('Design nicht gefunden.', { status: 404 });
-  if (!imageId) throw new UserError('MarketPrint-Bild-ID fehlt.');
-  d.marketprint = { imageId: String(imageId), fileName: fileName || null, previewUrl: previewUrl || null, linkedAt: new Date().toISOString() };
+  if (!imageId) throw new UserError('Bild-/Datei-ID fehlt.');
+  const link = { imageId: String(imageId), fileName: fileName || null, previewUrl: previewUrl || null, linkedAt: new Date().toISOString() };
+  d.providerLinks = { ...(d.providerLinks || {}), [provider]: link };
+  if (provider === 'marketprint') d.marketprint = link; // Kompatibilität mit älteren Daten
   return store().designs.put(d);
+}
+
+export function linkMarketPrint(id, data) {
+  return linkProvider(id, 'marketprint', data);
 }
 
 export function listDesigns({ q, motif, collection } = {}) {

@@ -65,13 +65,20 @@ async function renderDesigns(box, openId) {
   if (openId) openDesign(openId, load);
 }
 
+const PROVIDER_NAMES = { marketprint: 'MarketPrint', printify: 'Printify', printful: 'Printful' };
+function linkedNames(d) {
+  const ids = new Set(Object.entries(d.providerLinks || {}).filter(([, l]) => l?.imageId).map(([k]) => k));
+  if (d.marketprint?.imageId) ids.add('marketprint');
+  return [...ids].map((k) => PROVIDER_NAMES[k] || k);
+}
+
 function designCard(d, onOpen) {
   const card = h('div.card.click',
     h('div.thumb', h('img', { src: `/files/design/${d.id}/thumb`, alt: '', loading: 'lazy' })),
     h('h3', d.name),
     h('div.muted', [d.motif, d.collection].filter(Boolean).join(' · ') || d.originalName),
     h('div.row.between', { style: { marginTop: '6px' } },
-      h('small', { style: { color: d.marketprint?.imageId ? 'var(--ok)' : 'var(--warn)' } }, d.marketprint?.imageId ? 'MarketPrint verknüpft' : 'nicht verknüpft'),
+      h('small', { style: { color: linkedNames(d).length ? 'var(--ok)' : 'var(--warn)' } }, linkedNames(d).length ? `verknüpft: ${linkedNames(d).join(', ')}` : 'nicht verknüpft'),
       h('small.muted', `${d.usedIn?.length || 0} Produkt(e)`)));
   card.addEventListener('click', onOpen);
   return card;
@@ -86,35 +93,44 @@ async function openDesign(id, onChange) {
   const motif = h('input', { type: 'text', value: d.motif, placeholder: 'z. B. Theotokos, Christus Pantokrator, Kreuz' });
   const coll = h('input', { type: 'text', value: d.collection, placeholder: 'z. B. Drop 01 · Light in the Dark' });
   const mpBox = h('div');
-  const mode = state.boot?.settings?.marketprint?.mode;
+  const providers = await get('/api/providers').catch(() => []);
+  let activeProv = (providers.find((p) => p.connected) || providers[0])?.id;
 
   const drawMp = () => {
+    const prov = providers.find((p) => p.id === activeProv);
+    if (!prov) return clear(mpBox, h('p.muted', 'Keine Anbieter verfügbar.'));
+    const link = d.providerLinks?.[prov.id] || (prov.id === 'marketprint' ? d.marketprint : null);
+    const tabs = h('div.tabs', { style: { marginBottom: '12px' } }, providers.map((p) => {
+      const l = d.providerLinks?.[p.id] || (p.id === 'marketprint' ? d.marketprint : null);
+      return h(`button.small${p.id === activeProv ? '.on' : ''}`, { type: 'button', onclick: () => { activeProv = p.id; drawMp(); } }, p.name, l?.imageId ? ' ✓' : '');
+    }));
     const results = h('div.grid.cards');
-    const searchInput = h('input', { type: 'search', value: d.originalName.replace(/\.[^.]+$/, ''), placeholder: 'Dateiname in MarketPrint' });
-    const searchBtn = h('button', { type: 'button' }, 'In MarketPrint suchen');
+    const searchInput = h('input', { type: 'search', value: d.originalName.replace(/\.[^.]+$/, ''), placeholder: `Dateiname bei ${prov.name}` });
+    const searchBtn = h('button', { type: 'button', disabled: !prov.connected }, `Bei ${prov.name} suchen`);
+    const doLink = async (body) => {
+      try { d = await post(`/api/designs/${d.id}/link/${prov.id}`, body); toast('Verknüpft.', 'ok'); drawMp(); onChange?.(); } catch (err) { showError(err); }
+    };
     searchBtn.addEventListener('click', () => busy(searchBtn, async () => {
       try {
-        const r = await get(`/api/marketprint/images?q=${encodeURIComponent(searchInput.value)}`);
-        const imgs = r.images || r.items || [];
-        clear(results, imgs.length ? imgs.map((im) => {
-          const imageId = im.imageId || im.id;
-          return h('div.card', h('div.thumb', im.previewUrl || im.preview || im.url ? h('img', { src: im.previewUrl || im.preview || im.url, alt: '' }) : null), h('small', im.fileName || im.name || imageId),
-            h('button.small.primary', { type: 'button', onclick: async () => { d = await post(`/api/designs/${d.id}/link-marketprint`, { imageId, fileName: im.fileName || im.name, previewUrl: im.previewUrl || im.preview }); toast('Verknüpft.', 'ok'); drawMp(); onChange?.(); } }, 'Verknüpfen'));
-        }) : h('div.empty', r.simulated ? 'Simulation: keine MarketPrint-Designs vorhanden. Nutze „Direkt hochladen“.' : 'Keine Treffer. Ist die Datei in MarketPrint unter „Meine Designs“ hochgeladen?'));
+        const r = await get(`/api/providers/${prov.id}/images?q=${encodeURIComponent(searchInput.value)}`);
+        const imgs = r.images || [];
+        clear(results, imgs.length ? imgs.map((im) => h('div.card', h('div.thumb', im.preview ? h('img', { src: im.preview, alt: '' }) : null), h('small', im.name || im.imageId),
+          h('button.small.primary', { type: 'button', onclick: () => doLink({ imageId: im.imageId, fileName: im.name, previewUrl: im.preview }) }, 'Verknüpfen')))
+          : h('div.empty', r.note || (r.simulated ? 'Simulation: keine Dateien vorhanden. Nutze „Direkt hochladen“.' : `Keine Treffer bei ${prov.name}.`)));
       } catch (err) { showError(err); }
     }));
-    const manual = h('input', { type: 'text', placeholder: 'MarketPrint-Bild-ID' });
-    const canDirect = mode === 'mcp' || mode === 'simulation' || (a.bytes || 0) < 100_000;
-    const direct = h('button', { type: 'button', disabled: !canDirect }, 'Direkt zu MarketPrint hochladen');
-    direct.addEventListener('click', () => busy(direct, async () => { try { d = await post(`/api/designs/${d.id}/upload-marketprint`); toast('Hochgeladen und verknüpft.', 'ok'); drawMp(); onChange?.(); } catch (err) { showError(err); } }));
-    clear(mpBox,
-      d.marketprint?.imageId ? h('div.inline-msg.ok', `Verknüpft mit MarketPrint-Bild ${d.marketprint.imageId}${d.marketprint.fileName ? ' (' + d.marketprint.fileName + ')' : ''} · ${fmtDate(d.marketprint.linkedAt)}`) : h('div.inline-msg.warn', 'Noch nicht mit MarketPrint verknüpft. Für die Produkterstellung braucht MarketPrint die Datei in deinem Konto.'),
-      h('ol.muted', h('li', `Lade „${d.originalName}“ in der MarketPrint-App unter „Meine Designs“ hoch. Das ist bei großen Druckdateien der zuverlässigste Weg.`), h('li', 'Suche sie hier und klicke auf „Verknüpfen“.')),
-      h('div.row', h('div', { style: { flex: '1 1 220px' } }, searchInput), searchBtn),
-      results,
-      h('details.box', h('summary', 'Weitere Möglichkeiten'), h('div.stack',
-        h('div.row', h('div', { style: { flex: '1 1 220px' } }, manual), h('button', { type: 'button', onclick: async () => { if (!manual.value.trim()) return; d = await post(`/api/designs/${d.id}/link-marketprint`, { imageId: manual.value.trim() }).catch((e) => { showError(e); return d; }); drawMp(); onChange?.(); } }, 'ID verknüpfen')),
-        h('div.row', direct, canDirect ? null : h('small.muted', 'Über Claude Code nur für Dateien unter 100 KB möglich.')))));
+    const manual = h('input', { type: 'text', placeholder: `${prov.name}-Bild-/Datei-ID` });
+    const du = prov.capabilities.directUpload;
+    const canDirect = Boolean(du) && prov.connected && (prov.id !== 'marketprint' || prov.mode === 'mcp' || prov.mode === 'simulation' || (a.bytes || 0) < 100_000);
+    const direct = h('button', { type: 'button', disabled: !canDirect }, `Direkt zu ${prov.name} hochladen`);
+    direct.addEventListener('click', () => busy(direct, async () => { try { d = await post(`/api/designs/${d.id}/upload/${prov.id}`); toast('Hochgeladen und verknüpft.', 'ok'); drawMp(); onChange?.(); } catch (err) { showError(err); } }));
+    clear(mpBox, tabs,
+      !prov.connected ? h('div.inline-msg.warn', `${prov.name} ist noch nicht verbunden (Einstellungen → Anbieter).`) : null,
+      link?.imageId ? h('div.inline-msg.ok', `Verknüpft mit ${prov.name}: ${link.imageId}${link.fileName ? ' (' + link.fileName + ')' : ''} · ${fmtDate(link.linkedAt)}`) : h('div.inline-msg.warn', `Noch nicht mit ${prov.name} verknüpft. Für die Produkterstellung braucht ${prov.name} die Datei in deinem Konto.`),
+      h('p.muted', prov.linkHelp),
+      prov.id !== 'printful' ? [h('div.row', h('div', { style: { flex: '1 1 220px' } }, searchInput), searchBtn), results] : null,
+      h('div.row', h('div', { style: { flex: '1 1 220px' } }, manual), h('button', { type: 'button', disabled: !prov.connected, onclick: () => { if (manual.value.trim()) doLink({ imageId: manual.value.trim() }); } }, 'ID verknüpfen')),
+      du ? h('div.row', direct, canDirect || !prov.connected ? null : h('small.muted', 'Über Claude Code nur für Dateien unter 100 KB möglich.')) : null);
   };
   drawMp();
 
@@ -138,7 +154,7 @@ async function openDesign(id, onChange) {
         h('label.field', h('span', 'Motiv'), motif),
         h('label.field', h('span', 'Kollektion'), coll),
         h('div.field-label', 'Verwendet in'), d.usedIn?.length ? h('ul', d.usedIn.map((u) => h('li', h('a', { href: `#/produkte/${u.id}`, onclick: () => document.querySelectorAll('.overlay').forEach((o) => o.remove()) }, u.name), ' · ', u.status))) : h('p.muted', 'Noch in keinem Produkt.'),
-        h('h4', 'MarketPrint'), mpBox)),
+        h('h4', 'Verknüpfung mit Anbietern'), mpBox)),
     actions: [
       { label: 'Löschen', danger: true, onClick: async () => { if (!(await confirmDialog({ title: 'Design aus der Bibliothek entfernen?', text: 'Die Kopie im Datenordner wird gelöscht. Deine ursprüngliche Datei an ihrem alten Ort bleibt unberührt.', danger: true, confirmLabel: 'Entfernen' }))) return false; await del(`/api/designs/${d.id}?confirm=1`); onChange?.(); return true; } },
       { label: 'Neues Produkt mit diesem Design', onClick: async () => { await save(); setTimeout(() => newProductDialog(null, null, d.id), 50); return true; } },

@@ -146,6 +146,15 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - Offen: echte Verbindungsprüfung auf dem PC (Claude Code + MarketPrint-Connector),
   Shopify-Dev-Dashboard-App für Seiten/Kollektionen.
 
+## Sitzung 5, Teil 2 (2026-10-16) — Studio 1.1: mehrere POD-Anbieter
+- Anbieter als Bausteine (`studio/src/server/providers/`): MarketPrint, **Printify**, **Printful** mit gemeinsamem Vertrag;
+  neue Anbieter = eine Datei + Eintrag in der Registry (Anleitung: `docs/STUDIO.md` §2a).
+- Printify: Katalog → Druckdienstleister → Varianten, Upload, Entwurf + echte Mockups, Veröffentlichen an Shopify (asynchron bestätigt).
+- Printful: Katalog/Grundpreise/Druckflächen/echte Mockups; Anlegen nur in „Manual order / API“-Shops (laut Printful-Doku nicht in
+  Shopify-verbundenen Shops) – wird im Programm offen angezeigt.
+- Nutzer hat noch **keine** Printify-/Printful-Konten → nur Simulation/Test-Server. Zielshops neuer Anbieter sind standardmäßig gesperrt.
+- Tests: 26 automatische + 48 Oberflächenprüfungen bestanden.
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“

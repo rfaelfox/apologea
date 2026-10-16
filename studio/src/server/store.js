@@ -161,6 +161,9 @@ export const DEFAULT_SETTINGS = {
     // einem fremden Shop (xgyzvd-1m) verbunden – der ist bewusst NICHT freigegeben.
     allowedShops: ['dfz1mp-1u.myshopify.com'],
   },
+  // Weitere Anbieter (gleiche Struktur). Fremde Zielshops sind nie automatisch freigegeben.
+  printify: { mode: 'none', allowedShops: [], defaultShop: '' },
+  printful: { mode: 'none', allowedShops: [], defaultShop: '' },
   brand: {
     logoFile: '', // Logo Nr. 29, sobald bereitgestellt
     voice: 'Ruhig, würdevoll, hochwertig. Christlich-östliche Bildsprache ohne Kitsch. Keine Übertreibungen, keine erfundenen Fakten.',

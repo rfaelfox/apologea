@@ -57,53 +57,66 @@ export async function renderSettings(main) {
     h('div.row', extLink('Shopify Dev Dashboard', 'https://dev.shopify.com/dashboard'), extLink('Theme Access im Shop', `https://${s.shop.domain}/admin/apps`)));
 
   // ---------- MarketPrint
-  const mpMode = s.marketprint.mode;
-  const mpUrl = h('input', { type: 'url', value: s.marketprint.mcpUrl, placeholder: 'https://… (aus der MarketPrint-Hilfe)' });
-  const mpResult = h('div');
+  // ---------- Print-on-Demand-Anbieter (je Baustein gleich aufgebaut)
   const radio = (name, value, cur, label, desc) => h('label.check', h('input', { type: 'radio', name, value, checked: cur === value }), h('span', h('strong', label), desc ? h('div.muted', desc) : null));
-  const mpRadios = h('div',
-    radio('mpmode', 'claude-code', mpMode, 'Über Claude Code (empfohlen)', 'Nutzt den MarketPrint-Connector deines Claude-Kontos über die lokal installierte, angemeldete Claude-Code-Kommandozeile. Zählt zu deinem Claude-Kontingent.'),
-    radio('mpmode', 'mcp', mpMode, 'Direkte Verbindung (MCP, Anmeldung über MarketPrint)', 'Nur möglich, wenn MarketPrint externe Programme zulässt. Die Adresse findest du in der MarketPrint-Hilfe („MarketPrint mit ChatGPT verbinden“).'),
-    radio('mpmode', 'simulation', mpMode, 'Simulation (Test ohne echte Aktionen)', 'Echte Katalogdaten aus einer Momentaufnahme. Es wird nichts angelegt.'),
-    radio('mpmode', 'none', mpMode, 'Nicht verbunden'));
-  const mpTest = h('button.primary', { type: 'button' }, 'Speichern & Verbindung prüfen');
-  mpTest.addEventListener('click', () => busy(mpTest, async () => {
-    const mode = mpRadios.querySelector('input:checked')?.value || 'none';
-    try {
-      await put('/api/settings', { marketprint: { mode, mcpUrl: mpUrl.value } });
-      if (mode === 'none') { clear(mpResult); return toast('Gespeichert.', 'ok'); }
-      const r = await post('/api/marketprint/test');
-      clear(mpResult, h(`div.inline-msg.${r.ok ? 'ok' : 'error'}`, r.message || (r.ok ? 'Verbunden.' : 'Nicht verbunden.')),
-        r.account ? h('dl.kv', h('dt', 'Konto'), h('dd', r.account.email || '–'), h('dt', 'Verbundene Shops'), h('dd', (r.account.shopDomains || []).join(', '))) : null,
-        r.servers?.length ? h('div.muted', 'Gefunden: ' + r.servers.map((x) => `${x.name} (${x.status})`).join(', ')) : null);
-      await reloadBoot();
-    } catch (err) { clear(mpResult, h('div.inline-msg.error', err.message)); }
-  }));
-  const allowedBox = h('div');
-  const drawAllowed = async () => {
-    const allowed = new Set(s.marketprint.allowedShops || []);
-    let shops = [...allowed];
-    try { const acc = await get('/api/marketprint/account'); shops = [...new Set([...shops, ...(acc.shopDomains || [])])]; } catch { /* Konto nicht erreichbar */ }
-    clear(allowedBox, h('div.field-label', 'Erlaubte Zielshops'), shops.map((shop) => h('label.check',
-      h('input', { type: 'checkbox', checked: allowed.has(shop), onchange: async (e) => {
-        if (e.target.checked && !(await confirmDialog({ title: 'Shop als Ziel freigeben?', text: `${shop} wird als Zielshop für Veröffentlichungen erlaubt. Nur freigeben, wenn dieser Shop zu APOLOGEA gehört.`, confirmLabel: 'Freigeben' }))) { e.target.checked = false; return; }
-        e.target.checked ? allowed.add(shop) : allowed.delete(shop);
-        await saveSettings({ marketprint: { allowedShops: [...allowed] } }, 'Zielshops gespeichert.');
-      } }), h('span', shop))), h('p.hint', 'Dein MarketPrint-Konto ist mit mehreren Shops verbunden. Veröffentlichungen sind nur in freigegebene Shops möglich.'));
+  const providers = await get('/api/providers');
+  const providerBox = (p) => {
+    const ps = s[p.id] || {};
+    const result = h('div');
+    const radios = h('div', p.modes.map((m) => radio(`mode-${p.id}`, m.id, p.mode, m.label, m.desc)));
+    const mcpUrl = p.id === 'marketprint' ? h('input', { type: 'url', value: ps.mcpUrl || '', placeholder: 'https://… (aus der MarketPrint-Hilfe)' }) : null;
+    const test = h('button.primary', { type: 'button' }, 'Speichern & Verbindung prüfen');
+    const allowedBox = h('div');
+    const drawAllowed = async () => {
+      const allowed = new Set(ps.allowedShops || []);
+      let targets = [...allowed].map((x) => ({ id: x, label: x }));
+      if (p.connected) { try { const acc = await get(`/api/providers/${p.id}/account`); for (const t of acc.targets) if (!targets.some((x) => x.id === t.id)) targets.push(t); else targets = targets.map((x) => (x.id === t.id ? t : x)); } catch { /* Konto nicht erreichbar */ } }
+      clear(allowedBox, h('div.field-label', 'Erlaubte Zielshops'), targets.length ? targets.map((t) => h('label.check',
+        h('input', { type: 'checkbox', checked: allowed.has(t.id), onchange: async (e) => {
+          if (e.target.checked && !(await confirmDialog({ title: 'Shop als Ziel freigeben?', text: `${t.label} wird als Zielshop für ${p.name}-Veröffentlichungen erlaubt. Nur freigeben, wenn dieser Shop zu APOLOGEA gehört.`, confirmLabel: 'Freigeben' }))) { e.target.checked = false; return; }
+          e.target.checked ? allowed.add(t.id) : allowed.delete(t.id);
+          ps.allowedShops = [...allowed];
+          await saveSettings({ [p.id]: { allowedShops: [...allowed] } }, 'Zielshops gespeichert.');
+        } }), h('span', t.label, t.note ? h('div.muted', { style: { fontSize: '.8rem' } }, t.note) : null))) : h('p.muted', 'Nach der Verbindung erscheinen hier deine Shops.'),
+        h('p.hint', 'Veröffentlichungen sind nur in freigegebene Shops möglich. Fremde Shops bleiben gesperrt.'));
+    };
+    drawAllowed();
+    test.addEventListener('click', () => busy(test, async () => {
+      const mode = radios.querySelector('input:checked')?.value || 'none';
+      try {
+        await put('/api/settings', { [p.id]: { mode, ...(mcpUrl ? { mcpUrl: mcpUrl.value } : {}) } });
+        p.mode = mode; p.connected = mode !== 'none'; p.simulated = mode === 'simulation';
+        if (mode === 'none') { clear(result); drawAllowed(); return toast('Gespeichert.', 'ok'); }
+        const r = await post(`/api/providers/${p.id}/test`);
+        clear(result, h(`div.inline-msg.${r.ok ? 'ok' : 'error'}`, r.message || (r.ok ? 'Verbunden.' : 'Nicht verbunden.')),
+          r.account ? h('dl.kv', h('dt', 'Konto'), h('dd', r.account.email || r.account.label || '–'), h('dt', 'Verbundene Shops'), h('dd', (r.account.targets || (r.account.shopDomains || []).map((x) => ({ label: x }))).map((t) => t.label).join(', ') || '–')) : null,
+          r.servers?.length ? h('div.muted', 'Gefunden: ' + r.servers.map((x) => `${x.name} (${x.status})`).join(', ')) : null);
+        await reloadBoot();
+        drawAllowed();
+      } catch (err) { clear(result, h('div.inline-msg.error', err.message)); }
+    }));
+    const caps = p.capabilities;
+    const facts = [
+      caps.realMockups ? 'echte Mockups vor dem Veröffentlichen' : null,
+      caps.twoStep ? 'erst Entwurf beim Anbieter, dann Veröffentlichen' : null,
+      caps.directUpload ? 'Druckdateien direkt hochladen' : 'Druckdateien beim Anbieter hochladen und verknüpfen',
+      caps.alternativeDesign ? 'Alternativ-Motiv je Farbe' : null,
+      caps.tags ? 'Tags werden übertragen' : null,
+    ].filter(Boolean);
+    return h('div.frame.stack',
+      h('div.row.between', h('h3', { style: { margin: 0 } }, p.name), extLink('Website', p.website)),
+      h('p.muted', 'Kann: ' + facts.join(' · ') + '. Bestellungen und Zahlungen löst das Programm nie aus.'),
+      p.id === 'printful' ? h('div.inline-msg.info', 'Laut Printful-Dokumentation legt die Printful-Schnittstelle Produkte nur in „Manual order / API“-Shops an, nicht in mit Shopify verbundenen Printful-Shops. Für diese bietet das Studio Katalog, Prüfung und echte Mockups; angelegt wird dann in der Printful-Oberfläche.') : null,
+      radios,
+      p.secrets.map((sec) => secretField(sec.name, sec.label, sec.placeholder, sec.hint)),
+      mcpUrl ? h('label.field', h('span', 'MCP-Adresse (nur für „Direkte Verbindung“)'), mcpUrl) : null,
+      h('div.row', test), result, allowedBox,
+      p.id === 'marketprint' ? h('details.box', h('summary', 'Einrichtung „Über Claude Code“'), h('div', h('ol',
+        h('li', 'Claude Code installieren: ', extLink('code.claude.com', 'https://code.claude.com'), '.'),
+        h('li', 'Eingabeaufforderung öffnen, „claude“ eingeben und mit deinem Claude-Konto anmelden (das Konto, in dem der MarketPrint-Connector verbunden ist).'),
+        h('li', 'Hier „Speichern & Verbindung prüfen“ klicken. Das Programm sucht den MarketPrint-Connector und liest dein Konto.')))) : null);
   };
-  drawAllowed();
-  const mpBox = h('div.frame.stack',
-    h('h3', 'MarketPrint'),
-    h('p.muted', 'MarketPrint bietet die Funktionen: Konto & verbundene Shops lesen, Katalog und Produktdetails lesen, eigene Designs auflisten, Design hochladen, Produkt anlegen und veröffentlichen. Musterbestellungen und Zahlungen sind über diese Schnittstelle nicht möglich – das Programm löst nie Bestellungen aus.'),
-    mpRadios,
-    h('label.field', h('span', 'MCP-Adresse (nur für „Direkte Verbindung“)'), mpUrl),
-    h('div.row', mpTest),
-    mpResult,
-    allowedBox,
-    h('details.box', h('summary', 'Einrichtung „Über Claude Code“'), h('div', h('ol',
-      h('li', 'Claude Code installieren: ', extLink('code.claude.com', 'https://code.claude.com'), '.'),
-      h('li', 'Eingabeaufforderung öffnen, „claude“ eingeben und mit deinem Claude-Konto anmelden (das Konto, in dem der MarketPrint-Connector verbunden ist).'),
-      h('li', 'Hier „Speichern & Verbindung prüfen“ klicken. Das Programm sucht den MarketPrint-Connector und liest dein Konto.')))));
+  const mpBox = h('div.stack', providers.map(providerBox));
 
   // ---------- Claude
   const engine = s.ai.engine;
@@ -166,7 +179,8 @@ export async function renderSettings(main) {
   clear(main,
     h('div.page-head', h('div', h('div.eyebrow', 'Einrichtung'), h('h1', 'Einstellungen'))),
     h('section.section', h('h2', 'Status'), connBox, h('div.row', { style: { marginTop: '12px' } }, h('button.small', { type: 'button', onclick: () => loadConnections(connBox) }, 'Erneut prüfen'))),
-    h('section.section', h('h2', 'Verbindungen'), h('div.grid.cols-2', shopifyBox, h('div.stack', mpBox, aiBox))),
+    h('section.section', h('h2', 'Verbindungen'), h('div.grid.cols-2', shopifyBox, aiBox)),
+    h('section.section', h('h2', 'Print-on-Demand-Anbieter'), h('div.grid.cols-2', mpBox.children.length ? [...mpBox.children] : mpBox)),
     h('section.section', h('h2', 'Marke & Daten'), h('div.grid.cols-2', brandBox, dataBox)));
   loadConnections(connBox);
   drawBackups();

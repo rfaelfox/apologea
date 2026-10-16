@@ -39,10 +39,19 @@ await shot('01-dashboard');
 
 // --- Einstellungen: Simulation
 await page.click('a.item:has-text("Einstellungen")');
-await page.waitForSelector('text=MarketPrint bietet');
-await page.check('input[name=mpmode][value=simulation]');
-await btn('Speichern & Verbindung prüfen').click();
-await page.waitForSelector('text=Simulation aktiv');
+await page.waitForSelector('h2:has-text("Print-on-Demand-Anbieter")');
+const mpFrame = page.locator('.frame:has(h3:text-is("MarketPrint"))');
+await mpFrame.locator('input[name=mode-marketprint][value=simulation]').check();
+await mpFrame.getByRole('button', { name: 'Speichern & Verbindung prüfen' }).click();
+await mpFrame.locator('text=Simulation aktiv').waitFor();
+const pfyFrame = page.locator('.frame:has(h3:text-is("Printify"))');
+await pfyFrame.locator('input[name=mode-printify][value=simulation]').check();
+await pfyFrame.getByRole('button', { name: 'Speichern & Verbindung prüfen' }).click();
+await pfyFrame.locator('text=Simulation aktiv').waitFor();
+await pfyFrame.locator('label.check:has-text("APOLOGEA (Beispiel)") input').check();
+await modalBtn('Freigeben').click();
+await page.waitForSelector('.toast:has-text("Zielshops gespeichert")');
+check('Printify-Simulation verbunden, Zielshop freigegeben', true);
 check('MarketPrint-Simulation verbunden', true);
 // Fehlende Zugänge verständlich
 const shopifyStatus = await page.locator('.card:has(h3:text("Shopify"))').first().innerText();
@@ -70,16 +79,18 @@ await page.locator('.grid.cards .card:has-text("theotokos-gold")').click();
 await page.waitForSelector('.overlay');
 await page.locator('.overlay label.field:has-text("Motiv") input').fill('Theotokos');
 await page.locator('.overlay label.field:has-text("Kollektion") input').fill('Drop 01');
-await page.locator('.overlay summary:has-text("Weitere Möglichkeiten")').click();
 await modalBtn('Direkt zu MarketPrint hochladen').click();
 await page.waitForSelector('.overlay .inline-msg.ok:has-text("Verknüpft")');
 check('Design mit MarketPrint verknüpft (Simulation)', true);
+await page.locator('.overlay .tabs button:has-text("Printify")').click();
+await modalBtn('Direkt zu Printify hochladen').click();
+await page.waitForSelector('.overlay .inline-msg.ok:has-text("Verknüpft mit Printify")');
+check('Design mit Printify verknüpft (Simulation)', true);
 await shot('04-design-detail');
 await modalBtn('Speichern').click();
 await page.waitForTimeout(400);
 // zweites Design (Alternativ) verknüpfen
 await page.locator('.grid.cards .card:has-text("theotokos-hell")').click();
-await page.locator('.overlay summary:has-text("Weitere Möglichkeiten")').click();
 await modalBtn('Direkt zu MarketPrint hochladen').click();
 await page.waitForSelector('.overlay .inline-msg.ok:has-text("Verknüpft")');
 await modalBtn('Speichern').click();
@@ -227,6 +238,41 @@ await page.goto(`${base}/#/produkte`);
 await page.goto(tplUrl);
 await page.waitForSelector('#step-texts');
 check('Entwurf gespeichert und erneut geöffnet', (await page.locator('#step-texts label.field:has-text("Interner Motivname") input').inputValue()) === 'Aus Vorlage 01');
+
+// --- Printify-Durchlauf (Simulation)
+await page.click('a.item:has-text("Produkte")');
+await page.waitForSelector('h1:has-text("Produkte")');
+await btn('+ Neues Produkt').click();
+await modalBtn('Leer beginnen').click();
+await page.waitForSelector('#step-base .swatch');
+await page.locator('#step-base .swatch:has-text("Printify")').click();
+await page.waitForSelector('#step-base .catalog .item:has-text("Oversized")');
+await page.locator('#step-base .catalog .item:has-text("Oversized")').click();
+await page.waitForSelector('text=Druckdienstleister: Beispiel-Druckerei');
+check('Printify: Grundprodukt + Druckdienstleister gewählt', true);
+await page.locator('#step-variants .swatch:has-text("Schwarz")').click();
+await page.waitForTimeout(300);
+check('Printify: kein erfundener Einkaufspreis', (await page.locator('#step-variants table').innerText()).includes('beim Anlegen'));
+await page.locator('#step-print .frame').first().getByRole('button', { name: 'Motiv wählen' }).click();
+await page.locator('.overlay .card:has-text("theotokos-gold")').click();
+await page.waitForTimeout(600);
+check('Printify: keine „Kleines Logo“-Position (nicht unterstützt)', await page.locator('#step-print .frame').first().locator('label.check:has-text("Kleines Logo")').count() === 0);
+await page.locator('#step-texts label.field:has-text("Interner Motivname") input').fill('Printify Test');
+await page.locator('#step-texts label.field:has-text("Öffentlicher Produktname") input').fill('Theotokos – Printify');
+await page.locator('#step-price input[type=number]').fill('42');
+await page.waitForTimeout(1200);
+await btn('Echte Mockups erzeugen').click();
+await modalBtn('Mockups erzeugen').click();
+await page.waitForSelector('.overlay:has-text("Echte Mockups von Printify")');
+check('Printify: echte Mockups (Simulation) angezeigt', await page.locator('.overlay .card img').count() >= 1);
+await modalBtn('Schließen').click();
+await btn('Zur Veröffentlichung prüfen').click();
+await page.waitForSelector('.overlay:has-text("Zusammenfassung vor der Veröffentlichung")');
+check('Printify: Zusammenfassung nennt Anbieter', (await page.locator('.overlay').innerText()).includes('Printify'));
+await modalBtn('Simulation ausführen').click();
+await page.waitForSelector('text=Simulation abgeschlossen');
+check('Printify: Simulation veröffentlicht', true);
+await shot('15-printify');
 
 // --- Website
 await page.click('a.item:has-text("Website")');

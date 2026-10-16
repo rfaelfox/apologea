@@ -10,6 +10,7 @@ import { analyzeImage } from './images.js';
 import { openExternal, revealInExplorer, openFile } from './opener.js';
 import * as shopify from './integrations/shopify.js';
 import * as mp from './integrations/marketprint.js';
+import { getProvider, listProviders, PROVIDER_IDS } from './providers/registry.js';
 import * as ai from './ai/claude.js';
 import { findClaude } from './claudeCli.js';
 import * as designs from './services/designs.js';
@@ -21,7 +22,7 @@ import { listJobs, recoverInterruptedJobs } from './services/jobs.js';
 const VERSION = JSON.parse(fs.readFileSync(path.join(APP_DIR, 'package.json'), 'utf8')).version;
 const RUNTIME_FILE = path.join(DIRS.internal, 'laufzeit.json');
 const PREFERRED_PORT = Number(process.env.APOLOGEA_PORT || 47821);
-const SECRET_NAMES = new Set(['shopify.themeAccessPassword', 'shopify.clientId', 'shopify.clientSecret', 'anthropic.apiKey']);
+const SECRET_NAMES = new Set(['shopify.themeAccessPassword', 'shopify.clientId', 'shopify.clientSecret', 'anthropic.apiKey', 'printify.token', 'printful.token']);
 const MAX_UPLOAD = 300 * 1024 * 1024;
 
 ensureDirs();
@@ -133,14 +134,16 @@ route('GET', '/api/status/connections', async (_req, _p, _b, url) => {
   out.shopify = await shopify.status().catch((err) => ({ ok: false, error: errorMessage(err) }));
   out.ai = await ai.engineStatus().catch((err) => ({ ok: false, error: errorMessage(err) }));
   out.claudeCode = { installed: Boolean(await findClaude().catch(() => null)) };
-  if (s.marketprint.mode === 'none') out.marketprint = { ok: false, mode: 'none', message: 'Nicht eingerichtet' };
-  else if (deep) out.marketprint = await mp.testConnection().catch((err) => ({ ok: false, mode: s.marketprint.mode, error: errorMessage(err) }));
-  else {
+  out.providers = {};
+  for (const meta of listProviders()) {
+    const mode = meta.mode;
+    if (mode === 'none') { out.providers[meta.id] = { name: meta.name, ok: false, mode, message: 'Nicht eingerichtet' }; continue; }
     try {
-      const acc = await mp.accountInfo();
-      out.marketprint = { ok: true, mode: s.marketprint.mode, account: { email: acc.email, shopDomains: acc.shopDomains }, cachedAt: acc.cachedAt, simulated: s.marketprint.mode === 'simulation' };
-    } catch (err) { out.marketprint = { ok: false, mode: s.marketprint.mode, error: errorMessage(err) }; }
+      const acc = deep ? (await getProvider(meta.id).testConnection()).account : await getProvider(meta.id).account();
+      out.providers[meta.id] = { name: meta.name, ok: true, mode, simulated: mode === 'simulation', account: { label: acc.label, email: acc.email, targets: acc.targets }, cachedAt: acc.cachedAt };
+    } catch (err) { out.providers[meta.id] = { name: meta.name, ok: false, mode, error: errorMessage(err) }; }
   }
+  out.marketprint = out.providers.marketprint; // Kompatibilität
   out.checkedAt = new Date().toISOString();
   return out;
 });
@@ -149,17 +152,21 @@ route('PUT', '/api/settings', async (_r, _p, body) => {
   const allowed = {};
   if (body.shop) allowed.shop = { domain: body.shop.domain?.trim().toLowerCase(), publicUrl: body.shop.publicUrl?.trim(), apiVersion: body.shop.apiVersion?.trim() };
   if (body.ai) allowed.ai = { engine: body.ai.engine, model: body.ai.model, confirmEachPaidCall: body.ai.confirmEachPaidCall };
-  if (body.marketprint) {
-    allowed.marketprint = { mode: body.marketprint.mode, mcpUrl: body.marketprint.mcpUrl?.trim(), defaultShop: body.marketprint.defaultShop?.trim() };
-    if (Array.isArray(body.marketprint.allowedShops)) {
-      allowed.marketprint.allowedShops = body.marketprint.allowedShops.map((x) => String(x).trim().toLowerCase()).filter((x) => /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(x));
+  for (const pid of PROVIDER_IDS) {
+    const b = body[pid];
+    if (!b) continue;
+    const modes = getProvider(pid).meta.modes.map((m) => m.id);
+    if (b.mode !== undefined && !modes.includes(b.mode)) throw new UserError('Ungültige Verbindungsart.');
+    allowed[pid] = { mode: b.mode, defaultShop: b.defaultShop?.trim() };
+    if (pid === 'marketprint') allowed[pid].mcpUrl = b.mcpUrl?.trim();
+    if (Array.isArray(b.allowedShops)) {
+      allowed[pid].allowedShops = b.allowedShops.map((x) => String(x).trim()).filter((x) => (pid === 'marketprint' ? /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(x.toLowerCase()) : /^[\w.-]{1,80}$/.test(x)));
     }
   }
   if (body.brand) allowed.brand = { voice: body.brand.voice };
   if (body.ui) allowed.ui = body.ui;
   if (allowed.ai?.engine && !['none', 'api', 'claude-code'].includes(allowed.ai.engine)) throw new UserError('Ungültige KI-Auswahl.');
   if (allowed.ai?.model && !ai.PRICES[allowed.ai.model]) throw new UserError('Unbekanntes Modell.');
-  if (allowed.marketprint?.mode && !['none', 'claude-code', 'mcp', 'simulation'].includes(allowed.marketprint.mode)) throw new UserError('Ungültige MarketPrint-Verbindungsart.');
   if (allowed.marketprint?.mode) mp.resetMcp();
   return sanitizeSettings(saveSettings(JSON.parse(JSON.stringify(allowed))));
 });
@@ -175,7 +182,7 @@ route('POST', '/api/secrets', async (_r, _p, body) => {
 
 route('POST', '/api/open-external', async (_r, _p, body) => {
   const u = String(body.url || '');
-  const allowedHosts = [/\.myshopify\.com$/, /(^|\.)apologea\.eu$/, /(^|\.)shopify\.com$/, /(^|\.)marketprint\.de$/, /(^|\.)anthropic\.com$/, /(^|\.)claude\.(ai|com)$/];
+  const allowedHosts = [/\.myshopify\.com$/, /(^|\.)apologea\.eu$/, /(^|\.)shopify\.com$/, /(^|\.)marketprint\.de$/, /(^|\.)printify\.com$/, /(^|\.)printful\.com$/, /(^|\.)anthropic\.com$/, /(^|\.)claude\.(ai|com)$/];
   let host;
   try { host = new URL(u).hostname; } catch { throw new UserError('Ungültige Adresse.'); }
   if (!/^https:\/\//.test(u) || !allowedHosts.some((r) => r.test(host))) throw new UserError('Diese Adresse wird aus Sicherheitsgründen nicht geöffnet.');
@@ -192,25 +199,32 @@ route('POST', '/api/reveal', async (_r, _p, body) => {
 });
 
 // ---- MarketPrint
-route('POST', '/api/marketprint/test', async () => mp.testConnection());
-route('GET', '/api/marketprint/account', async (_r, _p, _b, url) => mp.accountInfo({ refresh: url.searchParams.get('refresh') === '1' }));
-route('GET', '/api/marketprint/catalog', async (_r, _p, _b, url) => mp.baseProducts({ refresh: url.searchParams.get('refresh') === '1' }));
-route('GET', '/api/marketprint/products/:id', async (_r, p, _b, url) => mp.baseProductDetails(p.id, { refresh: url.searchParams.get('refresh') === '1' }));
-route('GET', '/api/marketprint/images', async (_r, _p, _b, url) => mp.myImages({ search: url.searchParams.get('q') || undefined, limit: 50 }));
+// ---- Print-on-Demand-Anbieter (einheitlich für alle Bausteine)
+route('GET', '/api/providers', async () => listProviders());
+route('POST', '/api/providers/:pid/test', async (_r, p) => getProvider(p.pid).testConnection());
+route('GET', '/api/providers/:pid/account', async (_r, p, _b, url) => getProvider(p.pid).account({ refresh: url.searchParams.get('refresh') === '1' }));
+route('GET', '/api/providers/:pid/catalog', async (_r, p, _b, url) => getProvider(p.pid).catalog({ refresh: url.searchParams.get('refresh') === '1' }));
+route('GET', '/api/providers/:pid/catalog/:id/options', async (_r, p) => getProvider(p.pid).catalogOptions(p.id));
+route('GET', '/api/providers/:pid/products/:id', async (_r, p, _b, url) => getProvider(p.pid).details(p.id, { refresh: url.searchParams.get('refresh') === '1' }));
+route('GET', '/api/providers/:pid/images', async (_r, p, _b, url) => getProvider(p.pid).listImages({ search: url.searchParams.get('q') || undefined }));
 
 // ---- Designs
 route('GET', '/api/designs', async (_r, _p, _b, url) => designs.listDesigns(Object.fromEntries(url.searchParams)));
 route('PUT', '/api/designs/:id', async (_r, p, body) => designs.updateDesign(p.id, body));
 route('DELETE', '/api/designs/:id', async (_r, p, _b, url) => ({ ok: designs.deleteDesign(p.id, { confirm: url.searchParams.get('confirm') === '1' }) }));
-route('POST', '/api/designs/:id/link-marketprint', async (_r, p, body) => designs.linkMarketPrint(p.id, body));
-route('POST', '/api/designs/:id/upload-marketprint', async (_r, p) => {
+route('POST', '/api/designs/:id/link/:pid', async (_r, p, body) => {
+  const prov = getProvider(p.pid);
+  let data = body;
+  if (prov.verifyImage) data = { ...body, ...(await prov.verifyImage(body.imageId)) }; // ID beim Anbieter prüfen
+  return designs.linkProvider(p.id, p.pid, data);
+});
+route('POST', '/api/designs/:id/upload/:pid', async (_r, p) => {
   const d = store().designs.get(p.id);
   if (!d) throw new UserError('Design nicht gefunden.', { status: 404 });
   const buf = fs.readFileSync(designs.designFilePath(d));
-  const r = await mp.uploadImageBase64(d.originalName, buf);
-  const imageId = r.imageId || r.id;
-  if (!imageId) throw new UserError('MarketPrint hat keine Bild-ID zurückgegeben.');
-  return designs.linkMarketPrint(p.id, { imageId, fileName: d.originalName });
+  const r = await getProvider(p.pid).uploadImage({ filename: d.originalName, buffer: buf });
+  if (!r.imageId) throw new UserError('Der Anbieter hat keine Bild-ID zurückgegeben.');
+  return designs.linkProvider(p.id, p.pid, { imageId: r.imageId, fileName: d.originalName });
 });
 route('POST', '/api/designs/:id/reveal', async (_r, p) => { const d = store().designs.get(p.id); revealInExplorer(designs.designFilePath(d)); return { ok: true }; });
 route('POST', '/api/designs/:id/open', async (_r, p) => { const d = store().designs.get(p.id); openFile(designs.designFilePath(d)); return { ok: true }; });
@@ -236,6 +250,7 @@ route('POST', '/api/products/:id/review', async (_r, p) => products.reviewProduc
 route('POST', '/api/products/:id/publish', async (_r, p, body) => products.publishProduct(p.id, body));
 route('POST', '/api/products/:id/reconcile', async (_r, p, body) => products.reconcileProduct(p.id, body));
 route('POST', '/api/products/:id/reopen', async (_r, p) => products.reopenProduct(p.id));
+route('POST', '/api/products/:id/mockups', async (_r, p) => products.createMockups(p.id));
 
 // ---- Vorlagen
 route('GET', '/api/templates', async () => store().templates.list());
@@ -410,7 +425,7 @@ const server = http.createServer(async (req, res) => {
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
-      'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob: https://cdn.marketprint.de https://cdn.shopify.com; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; frame-src 'self' blob:; object-src 'none'; base-uri 'none'",
+      'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob: https://cdn.marketprint.de https://cdn.shopify.com https://images.printify.com https://*.printify.com https://files.cdn.printful.com https://*.printful.com; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; frame-src 'self' blob:; object-src 'none'; base-uri 'none'",
     });
     fs.createReadStream(file).pipe(res);
   } catch (err) {

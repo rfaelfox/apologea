@@ -3,11 +3,6 @@ import { confirmAiCall, issuesList, fileNotes, htmlPreview } from './shared.js';
 import { pickDesign } from './library.js';
 import { setCleanup, state } from '../app.js';
 
-const NAMED = [
-  { v: 'small-left-chest', l: 'Klein, linke Brust' },
-  { v: 'small-center-chest', l: 'Klein, Brustmitte' },
-  { v: 'small-right-chest', l: 'Klein, rechte Brust' },
-];
 const AREA_LABEL = { front: 'Vorderseite', back: 'Rückseite' };
 const STYLE_LABEL = { kurz: 'Kurz', schlicht: 'Schlicht', ausfuehrlich: 'Ausführlich & markengerecht' };
 
@@ -26,7 +21,7 @@ export async function renderProductList(main, query = {}) {
     grid.append(card);
   }
   clear(main,
-    h('div.page-head', h('div', h('div.eyebrow', 'MarketPrint'), h('h1', 'Produkte')),
+    h('div.page-head', h('div', h('div.eyebrow', 'Print on Demand'), h('h1', 'Produkte')),
       h('div.actions', h('button.primary', { type: 'button', onclick: () => newProductDialog(items, templates) }, '+ Neues Produkt'))),
     items.length ? grid : h('div.empty', 'Noch keine Produktentwürfe.'));
   if (query.neu) newProductDialog(items, templates);
@@ -67,6 +62,13 @@ export async function renderProductEditor(main, id) {
   let details = null;
   let account = null;
   let designs = await get('/api/designs');
+  const providers = await get('/api/providers');
+  const pid = () => draft.provider || 'marketprint';
+  const prov = () => providers.find((p) => p.id === pid()) || providers[0];
+  const PN = () => prov().name;
+  const caps = () => prov().capabilities;
+  const linkOf = (d) => (d ? d.providerLinks?.[pid()] || (pid() === 'marketprint' ? d.marketprint : null) : null);
+  const ckey = (v) => v.colorHex || v.color;
   let lastValidation = draft.validation;
   const saved = h('span.saved', 'Gespeichert');
   const saver = autosaver((patch) => put(`/api/products/${id}`, patch).then((d) => { draft = d; renderStatus(); }), saved);
@@ -85,37 +87,70 @@ export async function renderProductEditor(main, id) {
 
   async function loadDetails(refresh = false) {
     if (!draft.baseProduct?.id) { details = null; return; }
-    try { details = await get(`/api/marketprint/products/${draft.baseProduct.id}${refresh ? '?refresh=1' : ''}`); } catch (err) { details = null; showError(err); }
+    try { details = await get(`/api/providers/${pid()}/products/${encodeURIComponent(draft.baseProduct.id)}${refresh ? '?refresh=1' : ''}`); } catch (err) { details = null; showError(err); }
   }
 
-  // ---------- 1 Grundprodukt
+  // ---------- 1 Anbieter & Grundprodukt
+  function providerPicker() {
+    return h('div', { style: { marginBottom: '18px' } },
+      h('div.field-label', 'Print-on-Demand-Anbieter'),
+      h('div.swatches', providers.map((p) => h(`button.swatch${p.id === pid() ? '.on' : ''}`, {
+        type: 'button', disabled: locked() || p.id === pid(), title: p.connected ? '' : 'Noch nicht verbunden',
+        onclick: async () => {
+          if (draft.baseProduct && !window.confirm(`Zu ${p.name} wechseln? Grundprodukt, Varianten und Druckflächen werden zurückgesetzt.`)) return;
+          await saver.flush();
+          draft = await put(`/api/products/${id}`, { provider: p.id });
+          details = null; account = null;
+          renderAll();
+        },
+      }, p.name, p.simulated ? h('small.muted', ' (Simulation)') : !p.connected ? h('small', { style: { color: 'var(--warn)' } }, ' (nicht verbunden)') : null))),
+      !prov().connected ? h('div.inline-msg.warn', `${PN()} ist noch nicht verbunden – `, h('a', { href: '#/einstellungen' }, 'Einstellungen → Anbieter'), '.') : null);
+  }
+
   async function renderBase() {
     if (draft.baseProduct && details) {
-      clear(sec.base, h('div.grid.cols-2',
+      clear(sec.base, providerPicker(), h('div.grid.cols-2',
         h('div.preview-box', h('img.garment', { src: draft.baseProduct.image, alt: draft.baseProduct.title })),
         h('div.stack',
-          h('h3', draft.baseProduct.title),
+          h('h3', draft.baseProduct.title), draft.baseProduct.optionLabel ? h('div.muted', `Druckdienstleister: ${draft.baseProduct.optionLabel}`) : null,
           h('dl.kv',
             h('dt', 'Druckflächen'), h('dd', details.printAreas.map((a) => `${AREA_LABEL[a.name] || a.name}: ${a.width} × ${a.height} px`).join(' · ')),
             h('dt', 'Druckverfahren'), h('dd', (details.supportedPrinterTypes || []).map((t) => t.toUpperCase()).join(', ') || '–'),
             h('dt', 'Nackendruck'), h('dd', details.hasNeckPrint ? 'unterstützt (in dieser Version nicht über APOLOGEA Studio)' : 'nein'),
             h('dt', 'Alternativ-Motiv je Farbe'), h('dd', details.hasAlternativeDesign ? 'unterstützt' : 'nein'),
             h('dt', 'Daten abgerufen'), h('dd', fmtDate(details.cachedAt), ' ', h('button.small.ghost', { type: 'button', onclick: async () => { await loadDetails(true); renderAll(); } }, 'Aktualisieren'))),
-          h('details.box', h('summary', 'Produktangaben laut MarketPrint (Originaltext)'), h('div', htmlPreview(details.description))),
+          h('details.box', h('summary', `Produktangaben laut ${details.descriptionSource || PN()} (Originaltext)`), h('div', htmlPreview(details.description))),
           locked() ? null : h('button.small', { type: 'button', onclick: () => { if (!draft.variantIds.length || window.confirm('Grundprodukt ändern? Varianten und Druckflächen werden zurückgesetzt.')) { set({ baseProduct: null, variantIds: [], placements: [], printerType: '' }); details = null; renderAll(); } } }, 'Anderes Grundprodukt wählen'))));
       return;
     }
     const search = h('input', { type: 'search', placeholder: 'Suchen, z. B. Shirt, Hoodie …' });
-    const grid = h('div.catalog', h('span.muted', 'Katalog wird von MarketPrint geladen …'));
-    clear(sec.base, h('div.row', { style: { marginBottom: '12px' } }, search), grid);
+    const grid = h('div.catalog', h('span.muted', `Katalog wird von ${PN()} geladen …`));
+    clear(sec.base, providerPicker(), h('div.row', { style: { marginBottom: '12px' } }, search), grid);
     let catalog;
-    try { catalog = await get('/api/marketprint/catalog'); } catch (err) { clear(grid, h('div.inline-msg.error', err.message, ' – ', h('a', { href: '#/einstellungen' }, 'MarketPrint einrichten'))); return; }
+    try { catalog = await get(`/api/providers/${pid()}/catalog`); } catch (err) { clear(grid, h('div.inline-msg.error', err.message, ' – ', h('a', { href: '#/einstellungen' }, `${PN()} einrichten`))); return; }
     const draw = () => {
       const q = search.value.toLowerCase();
       clear(grid, catalog.items.filter((c) => !q || c.title.toLowerCase().includes(q)).map((c) => {
-        const it = h('div.item', { tabindex: 0, role: 'button' }, h('img', { src: c.image, alt: '', loading: 'lazy' }), h('div.t', c.title));
+        const it = h('div.item', { tabindex: 0, role: 'button' }, c.image ? h('img', { src: c.image, alt: '', loading: 'lazy' }) : h('div', { style: { aspectRatio: '1', display: 'grid', placeItems: 'center', color: '#8a7046' } }, 'ohne Bild'), h('div.t', c.title));
         const choose = async () => {
-          set({ baseProduct: { id: c.id, title: c.title, image: c.image, hasNeckPrint: c.hasNeckPrint, hasAlternativeDesign: c.hasAlternativeDesign }, variantIds: [], placements: [], printerType: '' });
+          let baseId = c.id;
+          let optionLabel = null;
+          if (caps().catalogOptions) {
+            // z. B. Printify: Druckdienstleister wählen (bestimmt Varianten, Druckflächen, Preise)
+            let opts;
+            try { opts = await get(`/api/providers/${pid()}/catalog/${encodeURIComponent(c.id)}/options`); } catch (err) { return showError(err); }
+            if (!opts.length) return showError(userError('Für dieses Produkt gibt es keinen Druckdienstleister.'));
+            let chosen = opts[0];
+            if (opts.length > 1) {
+              const sel = h('select', opts.map((o) => h('option', { value: o.id }, o.label)));
+              const ok = await modal({ title: 'Druckdienstleister wählen', body: h('div', h('p.muted', `${PN()} lässt „${c.title}“ von verschiedenen Druckereien fertigen. Varianten, Preise und Druckflächen hängen davon ab.`), sel), actions: [{ label: 'Abbrechen', value: false }, { label: 'Übernehmen', value: true, primary: true }] });
+              if (!ok) return;
+              chosen = opts.find((o) => o.id === sel.value);
+            }
+            baseId = `${c.id}:${chosen.id}`;
+            optionLabel = chosen.label;
+          }
+          set({ baseProduct: { id: baseId, title: c.title, image: c.image, optionLabel }, variantIds: [], placements: [], printerType: '' });
           await saver.flush();
           await loadDetails();
           if (details?.supportedPrinterTypes?.length === 1) set({ printerType: details.supportedPrinterTypes[0] });
@@ -128,7 +163,7 @@ export async function renderProductEditor(main, id) {
     };
     search.addEventListener('input', draw);
     draw();
-    if (catalog.stale) grid.before(h('div.inline-msg.warn', 'Gespeicherter Katalog (MarketPrint gerade nicht erreichbar): ' + catalog.error));
+    if (catalog.stale) grid.before(h('div.inline-msg.warn', `Gespeicherter Katalog (${PN()} gerade nicht erreichbar): ` + catalog.error));
   }
 
   // ---------- 2 Varianten
@@ -152,16 +187,16 @@ export async function renderProductEditor(main, id) {
     const dis = locked();
     clear(sec.variants,
       h('div.field-label', 'Farben'),
-      h('div.swatches', colors.map((c) => h(`button.swatch${selColors.has(c.name) ? '.on' : ''}`, { type: 'button', disabled: dis, onclick: () => { const cs = new Set(selColors); cs.has(c.name) ? cs.delete(c.name) : cs.add(c.name); apply(cs, selSizes.size ? selSizes : new Set(sizes)); } }, h('span.c', { style: { background: c.hex } }), c.name))),
+      h('div.swatches', colors.map((c) => h(`button.swatch${selColors.has(c.name) ? '.on' : ''}`, { type: 'button', disabled: dis, onclick: () => { const cs = new Set(selColors); cs.has(c.name) ? cs.delete(c.name) : cs.add(c.name); apply(cs, selSizes.size ? selSizes : new Set(sizes)); } }, h('span.c', { style: { background: c.hex || 'repeating-linear-gradient(45deg,#3a342a 0 4px,#23211e 4px 8px)' } }), c.name))),
       h('div.field-label', { style: { marginTop: '16px' } }, 'Größen'),
       h('div.sizes', sizes.map((s) => h(`button.size${selSizes.has(s) ? '.on' : ''}`, { type: 'button', disabled: dis, onclick: () => { const ss = new Set(selSizes); ss.has(s) ? ss.delete(s) : ss.add(s); apply(selColors, ss); } }, s)),
         h('button.small.ghost', { type: 'button', disabled: dis, onclick: () => apply(selColors, new Set(sizes)) }, 'Alle Größen')),
       h('div', { style: { marginTop: '16px' } },
-        selVariants.length ? h('div.table-wrap', h('table.list', h('thead', h('tr', h('th', 'Farbe'), h('th', 'Größen'), h('th', 'Katalogpreis laut MarketPrint'))),
+        selVariants.length ? h('div.table-wrap', h('table.list', h('thead', h('tr', h('th', 'Farbe'), h('th', 'Größen'), h('th', details.priceLabel || 'Katalogpreis'))),
           h('tbody', [...selColors].map((c) => {
             const vs = selVariants.filter((v) => v.color === c);
-            const prices = [...new Set(vs.map((v) => v.price))];
-            return h('tr', h('td', c), h('td', vs.map((v) => v.size).join(', ')), h('td', prices.map(fmtEuro).join(' / ')));
+            const prices = [...new Set(vs.map((v) => v.price).filter((x) => x !== null && x !== undefined))];
+            return h('tr', h('td', c), h('td', vs.map((v) => v.size).join(', ')), h('td', prices.length ? prices.map(fmtEuro).join(' / ') : 'beim Anlegen'));
           })))) : h('div.inline-msg.warn', 'Noch keine Variante gewählt.'),
         h('p.hint', `${selVariants.length} Varianten ausgewählt. Nicht verfügbare Varianten werden automatisch ausgelassen.`)));
   }
@@ -175,9 +210,9 @@ export async function renderProductEditor(main, id) {
     if (types.length > 1) {
       parts.push(h('label.field', h('span', 'Druckverfahren'),
         h('select', { disabled: dis, onchange: (e) => { set({ printerType: e.target.value }); renderPrint(); } }, h('option', { value: '' }, 'Bitte wählen …'), types.map((t) => h('option', { value: t, selected: draft.printerType === t }, t.toUpperCase()))),
-        h('div.hint', 'Laut MarketPrint werden für DTF Aufschläge berechnet.')));
+        pid() === 'marketprint' ? h('div.hint', 'Laut MarketPrint werden für DTF Aufschläge berechnet.') : null));
     }
-    if (details.hasNeckPrint) parts.push(h('div.inline-msg.info', 'Nackendruck wird von MarketPrint für dieses Produkt unterstützt, in dieser Programmversion aber nicht eingerichtet. Bei Bedarf in der MarketPrint-App ergänzen.'));
+    if (details.hasNeckPrint) parts.push(h('div.inline-msg.info', `Nackendruck wird von ${PN()} für dieses Produkt unterstützt, in dieser Programmversion aber nicht eingerichtet. Bei Bedarf beim Anbieter ergänzen.`));
     const selVariants = details.variants.filter((v) => draft.variantIds.includes(v.id));
     const firstColor = selVariants[0] || details.variants[0];
     for (const area of details.printAreas) {
@@ -205,16 +240,16 @@ export async function renderProductEditor(main, id) {
         return h('label.field', h('span', label, ' ', out), inp);
       };
       const altBox = h('div');
-      if (details.hasAlternativeDesign && pl?.designId) {
+      if (caps().alternativeDesign && details.hasAlternativeDesign !== false && pl?.designId) {
         const alt = pl.alternative?.designId ? designs.find((d) => d.id === pl.alternative.designId) : null;
-        const colorHexes = [...new Map(selVariants.map((v) => [v.colorHex, v.color])).entries()];
+        const colorHexes = [...new Map(selVariants.map((v) => [ckey(v), v.color])).entries()];
         clear(altBox, h('details.box', { open: Boolean(alt) }, h('summary', 'Alternativ-Motiv für bestimmte Farben (z. B. helle Version für dunkle Shirts)'),
           h('div.stack',
             h('div.row', alt ? h('span', alt.name) : h('span.muted', 'Kein Alternativ-Motiv'),
               h('button.small', { type: 'button', disabled: dis, onclick: async () => { const dId = await pickDesign(designs); if (!dId) return; ensure(); pl.alternative = { designId: dId, colors: pl.alternative?.colors || [] }; savePl(); designs = await get('/api/designs'); renderPrint(); } }, alt ? 'Ändern' : 'Wählen'),
               alt ? h('button.small.ghost', { type: 'button', disabled: dis, onclick: () => { pl.alternative = null; savePl(); renderPrint(); } }, 'Entfernen') : null),
             alt ? h('div', colorHexes.map(([hex, name]) => h('label.check', h('input', { type: 'checkbox', checked: pl.alternative.colors.includes(hex), disabled: dis, onchange: (e) => { const s = new Set(pl.alternative.colors); e.target.checked ? s.add(hex) : s.delete(hex); pl.alternative = { ...pl.alternative, colors: [...s] }; savePl(); } }), h('span', name)))) : null,
-            h('p.hint', 'MarketPrint verwendet dabei Position und Größe des Hauptmotivs; die Datei sollte gleiche Pixelmaße haben.'))));
+            h('p.hint', 'Position und Größe des Hauptmotivs werden übernommen; die Datei sollte gleiche Pixelmaße haben.'))));
       }
       parts.push(h('div.frame', { style: { marginBottom: '16px' } },
         h('div.row.between', h('h3', { style: { margin: 0 } }, `${AREA_LABEL[area.name] || area.name}`), h('small.muted', `Druckfläche ${area.width} × ${area.height} px`)),
@@ -222,22 +257,22 @@ export async function renderProductEditor(main, id) {
           h('div.stack',
             h('div.row',
               design ? h('img', { src: `/files/design/${design.id}/thumb`, alt: '', style: { width: '64px', height: '64px', objectFit: 'contain', background: '#fff1' } }) : null,
-              h('div', design ? h('div', h('strong', design.name), h('div.muted', design.marketprint?.imageId ? `MarketPrint verknüpft (${design.marketprint.imageId})` : 'Noch nicht mit MarketPrint verknüpft')) : h('span.muted', 'Kein Motiv auf dieser Fläche')),
+              h('div', design ? h('div', h('strong', design.name), h('div.muted', linkOf(design)?.imageId ? `${PN()} verknüpft (${linkOf(design).imageId})` : `Noch nicht mit ${PN()} verknüpft`)) : h('span.muted', 'Kein Motiv auf dieser Fläche')),
               h('button.small', { type: 'button', disabled: dis, onclick: async () => { const dId = await pickDesign(designs); if (!dId) return; ensure(); pl.designId = dId; savePl(); designs = await get('/api/designs'); renderPrint(); } }, design ? 'Motiv ändern' : 'Motiv wählen'),
               design ? h('button.small.ghost', { type: 'button', disabled: dis, onclick: () => { draft.placements = draft.placements.filter((p) => p.printArea !== area.name); set({ placements: draft.placements }); renderPrint(); } }, 'Fläche leeren') : null,
-              design && !design.marketprint?.imageId ? h('a', { href: `#/bibliothek/${design.id}` }, 'Jetzt verknüpfen') : null),
+              design && !linkOf(design)?.imageId ? h('a', { href: `#/bibliothek/${design.id}` }, 'Jetzt verknüpfen') : null),
             design ? h('div',
               h('div.field-label', 'Platzierung'),
               h('div.row',
-                ['auto', 'named', 'custom'].map((m) => h('label.check', h('input', { type: 'radio', name: `mode-${area.name}`, checked: mode === m, disabled: dis, onchange: () => { ensure(); pl.placement = m === 'named' ? { mode: 'named', named: pl.placement?.named || 'small-left-chest' } : m === 'custom' ? { mode: 'custom', xPercent: 0.5, yPercent: 0.35, widthPercent: 0.6 } : { mode: 'auto' }; savePl(); renderPrint(); } }), h('span', { auto: 'Automatisch einpassen', named: 'Kleines Logo', custom: 'Frei positionieren' }[m])))),
-              mode === 'named' ? h('select', { disabled: dis, onchange: (e) => { pl.placement = { mode: 'named', named: e.target.value }; savePl(); refresh(); } }, NAMED.map((n) => h('option', { value: n.v, selected: pl.placement.named === n.v }, n.l))) : null,
+                ['auto', ...(caps().namedPlacements?.length ? ['named'] : []), 'custom'].map((m) => h('label.check', h('input', { type: 'radio', name: `mode-${area.name}`, checked: mode === m, disabled: dis, onchange: () => { ensure(); pl.placement = m === 'named' ? { mode: 'named', named: pl.placement?.named || caps().namedPlacements[0].v } : m === 'custom' ? { mode: 'custom', xPercent: 0.5, yPercent: 0.35, widthPercent: 0.6 } : { mode: 'auto' }; savePl(); renderPrint(); } }), h('span', { auto: 'Automatisch einpassen', named: 'Kleines Logo', custom: 'Frei positionieren' }[m])))),
+              mode === 'named' ? h('select', { disabled: dis, onchange: (e) => { pl.placement = { mode: 'named', named: e.target.value }; savePl(); refresh(); } }, caps().namedPlacements.map((n) => h('option', { value: n.v, selected: pl.placement.named === n.v }, n.l))) : null,
               mode === 'custom' ? h('div', slider('xPercent', 'Horizontal (Mitte)', 0, 1), slider('yPercent', 'Vertikal (Mitte)', 0, 1), slider('widthPercent', 'Breite', 0.05, 1)) : null,
               mode === 'auto' ? h('p.hint', 'Das Motiv wird so groß wie möglich eingepasst und zentriert, wie bei einem vollflächigen Druck.') : null) : null,
             altBox,
             h('div', h('div.field-label', 'Prüfung der Druckdatei'), notesBox)),
           h('div.grid', { style: { gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px', alignContent: 'start' } },
             h('div', h('div.preview-box', h('span.preview-label', 'Schematisch – nicht verbindlich'), canvas), h('p.hint', 'Druckfläche (gestrichelt) mit Motiv. Annahme: Position bezieht sich auf die Motivmitte.')),
-            garmentImg ? h('div', h('div.preview-box', h('span.preview-label', 'MarketPrint-Produktfoto'), h('img.garment', { src: garmentImg, alt: '' })), h('p.hint', `Leeres Produkt (${firstColor.color}). Echte Mockups mit Motiv erzeugt MarketPrint beim Anlegen.`)) : null))));
+            garmentImg ? h('div', h('div.preview-box', h('span.preview-label', `${PN()}-Produktfoto`), h('img.garment', { src: garmentImg, alt: '' })), h('p.hint', `Leeres Produkt (${firstColor.color}). Echte Mockups mit Motiv erzeugt ${PN()} beim Anlegen.`)) : null))));
       refresh();
     }
     clear(sec.print, parts);
@@ -278,9 +313,9 @@ export async function renderProductEditor(main, id) {
         h('label.field', h('span', 'Notizen & Motivgeschichte (für Claude)'), notes),
         h('div.field-label', 'Textstil'), style,
         h('div', { style: { marginTop: '12px' } }, genBtn),
-        h('p.hint', 'Claude übernimmt Produktdaten ausschließlich aus dem MarketPrint-Text und erfindet nichts hinzu. Das Ergebnis siehst du vor der Übernahme.')),
+        h('p.hint', `Claude übernimmt Produktdaten ausschließlich aus dem ${PN()}-Text und erfindet nichts hinzu. Das Ergebnis siehst du vor der Übernahme.`)),
       h('div',
-        h('label.field', h('span', 'Produktbeschreibung (HTML)'), desc, h('div.hint', 'Leer lassen = MarketPrint-Standardtext wird verwendet.')),
+        h('label.field', h('span', 'Produktbeschreibung (HTML)'), desc, h('div.hint', `Leer lassen = ${PN()}-Standardtext wird verwendet.`)),
         h('div.field-label', 'Vorschau'), prev)));
   }
 
@@ -288,7 +323,7 @@ export async function renderProductEditor(main, id) {
   async function renderPrice() {
     const dis = locked();
     const selVariants = details ? details.variants.filter((v) => draft.variantIds.includes(v.id)) : [];
-    const cat = selVariants.map((v) => Number(v.price));
+    const cat = selVariants.map((v) => v.price).filter((x) => x !== null && x !== undefined).map(Number);
     const max = cat.length ? Math.max(...cat) : null;
     const min = cat.length ? Math.min(...cat) : null;
     const marginBox = h('div');
@@ -308,24 +343,27 @@ export async function renderProductEditor(main, id) {
     drawTags();
     clear(sec.price, h('div.grid.cols-2',
       h('div',
-        h('label.field', h('span', 'Verkaufspreis (€, für alle Varianten)'), price, h('div.hint', max !== null ? `Katalogpreise laut MarketPrint: ${fmtEuro(min)} – ${fmtEuro(max)}` : 'Katalogpreis erscheint nach Variantenwahl.')),
+        h('label.field', h('span', 'Verkaufspreis (€, für alle Varianten)'), price, h('div.hint', max !== null ? `${details?.priceLabel || 'Katalogpreis'}: ${fmtEuro(min)} – ${fmtEuro(max)}` : details && selVariants.length ? `${PN()} nennt den Einkaufspreis erst beim Anlegen.` : 'Katalogpreis erscheint nach Variantenwahl.')),
         marginBox,
-        h('div.field-label', 'Produktbilder (Mockups)'),
-        h('label.check', h('input', { type: 'radio', name: 'mockups', checked: draft.mockups === 'withDesign', disabled: dis, onchange: () => set({ mockups: 'withDesign' }) }), h('span', 'Nur Mockups, die das Motiv zeigen (Empfehlung von MarketPrint)')),
-        h('label.check', h('input', { type: 'radio', name: 'mockups', checked: draft.mockups === 'all', disabled: dis, onchange: () => set({ mockups: 'all' }) }), h('span', 'Alle Mockups (auch Ansichten ohne Motiv)'))),
+        caps().mockupChoice ? [
+          h('div.field-label', 'Produktbilder (Mockups)'),
+          h('label.check', h('input', { type: 'radio', name: 'mockups', checked: draft.mockups === 'withDesign', disabled: dis, onchange: () => set({ mockups: 'withDesign' }) }), h('span', `Nur Mockups, die das Motiv zeigen (Empfehlung von ${PN()})`)),
+          h('label.check', h('input', { type: 'radio', name: 'mockups', checked: draft.mockups === 'all', disabled: dis, onchange: () => set({ mockups: 'all' }) }), h('span', 'Alle Mockups (auch Ansichten ohne Motiv)'))]
+          : h('p.hint', `Produktbilder (Mockups) erzeugt ${PN()} selbst.${caps().realMockups ? ' Mit „Echte Mockups erzeugen“ siehst du sie schon vor dem Veröffentlichen.' : ''}`)),
       h('div',
         h('div.field-label', 'Zielshop'), shopsBox,
         h('div.field-label', { style: { marginTop: '16px' } }, 'Kollektionen (Shopify)'), colBox,
         h('div.field-label', { style: { marginTop: '16px' } }, 'Tags (Shopify)'), tagInput, tagChips,
-        h('p.hint', 'Kollektionen und Tags setzt APOLOGEA Studio nach dem Anlegen über die Shopify-Admin-App. MarketPrint selbst unterstützt sie nicht.'))));
+        h('p.hint', caps().tags ? `Tags überträgt ${PN()} selbst. Kollektionen setzt APOLOGEA Studio nach dem Anlegen über die Shopify-Admin-App.` : `Kollektionen und Tags setzt APOLOGEA Studio nach dem Anlegen über die Shopify-Admin-App. ${PN()} selbst unterstützt sie nicht.`))));
     try {
-      account ||= await get('/api/marketprint/account');
-      const allowedShops = state.boot?.settings?.marketprint?.allowedShops || [];
-      clear(shopsBox, (account.shopDomains || []).map((s) => {
-        const ok = allowedShops.includes(s);
-        return h('label.check', h('input', { type: 'checkbox', checked: ok && draft.targetShops.includes(s), disabled: dis || !ok, onchange: (e) => { const set2 = new Set(draft.targetShops); e.target.checked ? set2.add(s) : set2.delete(s); set({ targetShops: [...set2] }); } }),
-          h('span', s, ok ? h('small.muted', ' (freigegeben)') : h('small', { style: { color: 'var(--warn)' } }, ' – nicht als Zielshop freigegeben')));
-      }));
+      account ||= await get(`/api/providers/${pid()}/account`);
+      const allowedShops = prov().allowedShops || [];
+      const single = pid() !== 'marketprint';
+      clear(shopsBox, account.targets.length ? account.targets.map((t) => {
+        const ok = allowedShops.includes(t.id);
+        return h('label.check', h('input', { type: single ? 'radio' : 'checkbox', name: 'target', checked: ok && draft.targetShops.includes(t.id), disabled: dis || !ok, onchange: (e) => { if (single) return set({ targetShops: [t.id] }); const set2 = new Set(draft.targetShops); e.target.checked ? set2.add(t.id) : set2.delete(t.id); set({ targetShops: [...set2] }); } }),
+          h('span', t.label, ok ? h('small.muted', ' (freigegeben)') : h('small', { style: { color: 'var(--warn)' } }, ' – nicht als Zielshop freigegeben'), t.note ? h('div.muted', { style: { fontSize: '.8rem' } }, t.note) : null));
+      }) : h('div.inline-msg.warn', `In deinem ${PN()}-Konto ist kein Shop verbunden.`));
     } catch (err) { clear(shopsBox, h('div.inline-msg.error', err.message)); }
     try {
       const cols = await get('/api/shopify/collections');
@@ -346,12 +384,13 @@ export async function renderProductEditor(main, id) {
       const r = pub.result || {};
       clear(sec.result, h('div.frame.stack',
         h('div.eyebrow', r.simulated ? 'Simulation – nichts wurde angelegt' : 'Veröffentlicht'),
-        h('h2', r.simulated ? 'Simulation abgeschlossen' : 'Produkt wurde von MarketPrint angelegt'),
+        h('h2', r.simulated ? 'Simulation abgeschlossen' : draft.status === 'Erfolgreich' ? `Produkt wurde von ${PN()} angelegt` : 'Ergebnis prüfen'),
         h('p', `Abgeschlossen am ${fmtDate(pub.finishedAt || pub.reconciledAt)}.`),
-        r.marketprint?.draftId ? h('p', `MarketPrint-Entwurf: ${r.marketprint.draftId}`) : null,
+        r.remoteId || r.marketprint?.draftId ? h('p', `${PN()}-ID: ${r.remoteId || r.marketprint.draftId}`) : null,
+        r.message ? h('p.muted', r.message) : null,
         r.postSteps ? h(`div.inline-msg.${r.postSteps.ok ? 'ok' : 'warn'}`, r.postSteps.message) : null,
         h('div.row', (r.links || []).map((l) => extLink(l.label, l.url))),
-        (r.marketprint?.listingImages || []).length ? h('div.grid.cards', r.marketprint.listingImages.slice(0, 8).map((u) => h('div.card', h('div.thumb', h('img', { src: typeof u === 'string' ? u : u.url, alt: 'Mockup' }))))) : null,
+        (r.listingImages || r.marketprint?.listingImages || []).length ? h('div.grid.cards', (r.listingImages || r.marketprint.listingImages).slice(0, 8).map((u) => h('div.card', h('div.thumb', h('img', { src: typeof u === 'string' ? u : u.url, alt: 'Mockup' }))))) : null,
         h('div.row', h('button', { type: 'button', onclick: duplicate }, 'Als neuen Entwurf duplizieren'))));
     } else if (pub.state === 'unknown' || pub.state === 'running') {
       const auto = h('button.primary', { type: 'button' }, 'In Shopify nachsehen');
@@ -363,8 +402,8 @@ export async function renderProductEditor(main, id) {
         pub.error ? h('div.inline-msg.warn', pub.error) : null,
         h('div.row', auto, extLink('Shopify-Produkte öffnen', `https://${draft.targetShops[0] || 'dfz1mp-1u.myshopify.com'}/admin/products?query=${encodeURIComponent(draft.publicTitle)}`)),
         h('div.row',
-          h('button', { type: 'button', onclick: async () => { if (await confirmDialog({ title: 'Produkt ist vorhanden?', text: 'Du hast das Produkt in Shopify/MarketPrint gefunden.' })) { await post(`/api/products/${id}/reconcile`, { action: 'confirm-exists' }).catch(showError); reload(); } } }, 'Produkt ist vorhanden'),
-          h('button.danger', { type: 'button', onclick: async () => { if (await confirmDialog({ title: 'Produkt fehlt sicher?', text: 'Nur bestätigen, wenn du in Shopify UND MarketPrint nachgesehen hast. Danach ist ein erneuter Versuch möglich.', danger: true })) { await post(`/api/products/${id}/reconcile`, { action: 'confirm-missing' }).catch(showError); reload(); } } }, 'Produkt fehlt – erneuten Versuch erlauben'))));
+          h('button', { type: 'button', onclick: async () => { if (await confirmDialog({ title: 'Produkt ist vorhanden?', text: `Du hast das Produkt in Shopify bzw. bei ${PN()} gefunden.` })) { await post(`/api/products/${id}/reconcile`, { action: 'confirm-exists' }).catch(showError); reload(); } } }, 'Produkt ist vorhanden'),
+          h('button.danger', { type: 'button', onclick: async () => { if (await confirmDialog({ title: 'Produkt fehlt sicher?', text: `Nur bestätigen, wenn du in Shopify UND bei ${PN()} nachgesehen hast. Danach ist ein erneuter Versuch möglich.`, danger: true })) { await post(`/api/products/${id}/reconcile`, { action: 'confirm-missing' }).catch(showError); reload(); } } }, 'Produkt fehlt – erneuten Versuch erlauben'))));
     } else if (pub.state === 'failed') {
       clear(sec.result, h('div.frame.stack', h('div.eyebrow', 'Fehlgeschlagen'), h('h2', 'Veröffentlichung fehlgeschlagen'), h('div.inline-msg.error', pub.error || 'Unbekannter Fehler'), h('p', 'Es wurde nichts angelegt bzw. du hast das bestätigt. Du kannst den Entwurf wieder bearbeiten und erneut prüfen.'),
         h('button.primary', { type: 'button', onclick: async () => { await post(`/api/products/${id}/reopen`).catch(showError); reload(); } }, 'Entwurf wieder bearbeiten')));
@@ -384,9 +423,10 @@ export async function renderProductEditor(main, id) {
 
   function renderAll() {
     renderStatus();
-    clear(simBanner, draft.publish?.result?.simulated ? h('div.sim-banner', 'Dieser Entwurf wurde nur im Simulationsmodus „veröffentlicht“. Bei MarketPrint wurde nichts angelegt.') : null);
+    clear(simBanner, draft.publish?.result?.simulated ? h('div.sim-banner', `Dieser Entwurf wurde nur im Simulationsmodus „veröffentlicht“. Bei ${PN()} wurde nichts angelegt.`) : null);
     renderResult(); renderBase(); renderVariants(); renderPrint(); renderTexts(); renderPrice(); renderCheck();
     for (const b of actionButtons) b.disabled = locked() && !b.dataset.always;
+    mockupBtn.classList.toggle('hidden', !caps().realMockups);
   }
 
   // ---------- Aktionen
@@ -410,8 +450,25 @@ export async function renderProductEditor(main, id) {
   }, { always: true });
   const dupBtn = btn('Produkt duplizieren', duplicate, { always: true });
   const previewBtn = btn('Vorschau anzeigen', async () => { await saver.flush(); await showPreview(); }, { always: true });
+  const mockupBtn = btn('Echte Mockups erzeugen', async () => {
+    await saver.flush();
+    const ok = await confirmDialog({ title: `Echte Mockups bei ${PN()} erzeugen?`, text: pid() === 'printify'
+      ? ['Dafür wird das Produkt als ENTWURF in deinem Printify-Konto angelegt bzw. aktualisiert. Im Shop ist es dadurch noch NICHT sichtbar.', 'Veröffentlicht wird erst mit „Jetzt veröffentlichen“.']
+      : [`${PN()} erzeugt Mockup-Bilder. Im Shop wird dadurch nichts angelegt.`], confirmLabel: 'Mockups erzeugen' });
+    if (!ok) return;
+    try {
+      const r = await post(`/api/products/${id}/mockups`);
+      draft = await get(`/api/products/${id}`);
+      await showMockups(r.images);
+    } catch (err) { showError(err); }
+  });
+  async function showMockups(images) {
+    await modal({ eyebrow: `Echte Mockups von ${PN()}`, title: draft.publicTitle || 'Mockups', wide: true,
+      body: images?.length ? h('div.grid.cards', images.map((m) => h('div.card', h('div.thumb', h('img', { src: m.url, alt: 'Mockup' })), m.position ? h('small.muted', m.position) : null))) : h('div.empty', 'Keine Mockups erhalten.'),
+      actions: [{ label: 'Schließen', value: true }] });
+  }
   const reviewBtn = btn('Zur Veröffentlichung prüfen', async () => { await saver.flush(); await reviewAndPublish(); }, { primary: true });
-  const actionButtons = [validateBtn, saveBtn, templateBtn, dupBtn, previewBtn, reviewBtn];
+  const actionButtons = [validateBtn, saveBtn, templateBtn, dupBtn, previewBtn, mockupBtn, reviewBtn];
 
   async function showPreview() {
     if (!details) return showError(userError('Zuerst ein Grundprodukt wählen.'));
@@ -426,10 +483,11 @@ export async function renderProductEditor(main, id) {
     await modal({
       eyebrow: 'Vorschau – nicht verbindlich', title: draft.publicTitle || 'Produktvorschau', wide: true,
       body: h('div.stack',
-        h('div.inline-msg.info', 'Diese Vorschau ist von APOLOGEA Studio erzeugt und zeigt nur die ungefähre Lage auf der Druckfläche. Verbindliche Mockups erzeugt MarketPrint beim Anlegen des Produkts.'),
+        h('div.inline-msg.info', `Diese Vorschau ist von APOLOGEA Studio erzeugt und zeigt nur die ungefähre Lage auf der Druckfläche. Verbindliche Mockups erzeugt ${PN()}${caps().realMockups ? ' (Schaltfläche „Echte Mockups erzeugen“)' : ' beim Anlegen des Produkts'}.`),
         h('div.grid.cols-3', canvases),
         h('dl.kv', h('dt', 'Grundprodukt'), h('dd', draft.baseProduct?.title || '–'), h('dt', 'Varianten'), h('dd', `${selVariants.length}`), h('dt', 'Preis'), h('dd', fmtEuro(draft.price))),
-        h('div.field-label', 'Beschreibung'), htmlPreview(draft.description || '<p><em>(MarketPrint-Standardtext)</em></p>')),
+        draft.mockupImages?.images?.length ? [h('div.field-label', `Echte Mockups von ${PN()} (${fmtDate(draft.mockupImages.at)})`), h('div.grid.cards', draft.mockupImages.images.slice(0, 8).map((m) => h('div.card', h('div.thumb', h('img', { src: m.url, alt: 'Mockup' })))))] : null,
+        h('div.field-label', 'Beschreibung'), htmlPreview(draft.description || `<p><em>(${PN()}-Standardtext)</em></p>`)),
       actions: [{ label: 'Schließen', value: true }],
     });
   }
@@ -450,15 +508,17 @@ export async function renderProductEditor(main, id) {
     const ok = await modal({
       eyebrow: s.simulated ? 'Freigabe erforderlich · SIMULATION' : 'Freigabe erforderlich', title: 'Zusammenfassung vor der Veröffentlichung', wide: true,
       body: h('div.stack',
-        s.simulated ? h('div.sim-banner', 'Simulationsmodus: Es wird nichts bei MarketPrint oder Shopify angelegt.') : null,
+        s.simulated ? h('div.sim-banner', `Simulationsmodus: Es wird nichts bei ${s.provider} oder Shopify angelegt.`) : null,
         h('dl.kv',
           h('dt', 'Zielshop'), h('dd', h('strong', s.shops.join(', '))),
           h('dt', 'Produkt'), h('dd', h('strong', s.title), h('div.muted', `intern: ${s.internalName}`)),
           h('dt', 'Grundprodukt'), h('dd', `${s.baseProduct} · Druck: ${String(s.printerType).toUpperCase()}`),
           h('dt', 'Varianten'), h('dd', `${s.variantCount} Varianten`, s.variants.map((v) => h('div', h('span', { style: { display: 'inline-block', width: '12px', height: '12px', background: v.hex, border: '1px solid #fff4', marginRight: '6px' } }), `${v.color}: ${v.sizes.join(', ')}`))),
-          h('dt', 'Verkaufspreis'), h('dd', h('strong', fmtEuro(s.price)), h('div.muted', `Katalogpreis laut MarketPrint: ${fmtEuro(s.catalogueMin)} – ${fmtEuro(s.catalogueMax)}`)),
+          h('dt', 'Verkaufspreis'), h('dd', h('strong', fmtEuro(s.price)), h('div.muted', s.catalogueMin !== null ? `${s.priceLabel || 'Katalogpreis'}: ${fmtEuro(s.catalogueMin)} – ${fmtEuro(s.catalogueMax)}` : (s.priceLabel || ''))),
           h('dt', 'Dateien'), h('dd', s.files.map((f) => h('div', `${f.printArea}: ${f.design} (${f.file}) · ${f.placement}`, f.alternative ? h('div.muted', `Alternativ: ${f.alternative.design} für ${f.alternative.colors.length} Farbe(n)`) : null))),
+          h('dt', 'Anbieter'), h('dd', s.provider),
           h('dt', 'Produktbilder'), h('dd', s.mockups),
+          s.tags?.length ? [h('dt', 'Tags'), h('dd', s.tags.join(', '))] : null,
           h('dt', 'Beschreibung'), h('dd', s.description.replace(/<[^>]+>/g, ' ').slice(0, 300) + (s.description.length > 300 ? ' …' : '')),
           s.post.collections.length || s.post.tags.length ? [h('dt', 'Danach in Shopify'), h('dd', [s.post.collections.length ? `Kollektionen: ${s.post.collections.map((c) => c.title).join(', ')}` : null, s.post.tags.length ? `Tags: ${s.post.tags.join(', ')}` : null].filter(Boolean).join(' · '))] : null),
         h('h4', 'Erwartete Auswirkung'), s.effect.map((e) => h('div.inline-msg.info', e)),
@@ -471,7 +531,7 @@ export async function renderProductEditor(main, id) {
     for (const b of actionButtons) b.disabled = true;
     try {
       const res = await post(`/api/products/${id}/publish`, { approvalHash: r.approvalHash });
-      toast(res.result.simulated ? 'Simulation abgeschlossen – nichts wurde angelegt.' : 'MarketPrint hat das Anlegen bestätigt.', 'ok', 9000);
+      toast(res.result.simulated ? 'Simulation abgeschlossen – nichts wurde angelegt.' : (res.status === 'Erfolgreich' ? `${PN()} hat das Anlegen bestätigt.` : (res.result.message || 'Bitte Ergebnis prüfen.')), 'ok', 9000);
     } catch (err) { showError(err); }
     await reload();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -521,7 +581,7 @@ function drawSchema(canvas, area, pl, design) {
   if (!design?.analysis?.width || !design?.analysis?.height) {
     ctx.fillStyle = '#9a907f';
     ctx.font = '14px Segoe UI, sans-serif';
-    ctx.fillText(design ? 'Vektordatei – Größe bestimmt MarketPrint' : 'Kein Motiv', 14, 26);
+    ctx.fillText(design ? 'Vektordatei – Größe bestimmt der Anbieter' : 'Kein Motiv', 14, 26);
     return;
   }
   const iw = design.analysis.width;
