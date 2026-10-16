@@ -93,8 +93,8 @@ select.input { padding-right: 34px; background-image: url("data:image/svg+xml,%3
 @media (min-width: 900px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .card { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .card:active { border-color: var(--gold-dim); }
-.card-img { position: relative; aspect-ratio: 4 / 5; background: #1b1916; }
-.card-img img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .3s; }
+.card-img { position: relative; aspect-ratio: 2 / 3; background: #1b1916; }
+.card-img img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 0; transition: opacity .3s; }
 .card-img img.on { opacity: 1; }
 .card-img.design img { object-fit: contain; padding: 8%; }
 .card-body { padding: 8px 10px 10px; }
@@ -130,7 +130,7 @@ select.input { padding-right: 34px; background-image: url("data:image/svg+xml,%3
 .carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; scrollbar-width: none; }
 .carousel::-webkit-scrollbar { display: none; }
 .slide { flex: none; width: 100%; scroll-snap-align: center; padding: 14px 16px 0; }
-.slide-stage { position: relative; aspect-ratio: 4 / 5; background: #1b1916; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.slide-stage { position: relative; aspect-ratio: 2 / 3; background: #1b1916; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .slide-stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .slide-label { display: flex; justify-content: space-between; align-items: center; padding: 8px 2px 0; font-size: 13px; color: var(--muted); gap: 8px; }
 .slide-label .role { font-family: var(--serif); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); font-size: 12px; }
@@ -160,7 +160,7 @@ select.input { padding-right: 34px; background-image: url("data:image/svg+xml,%3
 .slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .slot { display: flex; flex-direction: column; min-width: 0; }
 .slot-label { font-family: var(--serif); letter-spacing: .1em; text-transform: uppercase; color: var(--gold); font-size: 10.5px; text-align: center; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.slot-box { position: relative; aspect-ratio: 4 / 5; border: 1.5px dashed var(--line-2); border-radius: 8px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--muted); font-size: 12px; overflow: hidden; background: var(--panel); padding: 0; }
+.slot-box { position: relative; aspect-ratio: 2 / 3; border: 1.5px dashed var(--line-2); border-radius: 8px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--muted); font-size: 12px; overflow: hidden; background: var(--panel); padding: 0; }
 .slot-box.filled { border-style: solid; border-color: var(--line); }
 .slot-box img { width: 100%; height: 100%; object-fit: contain; }
 .slot-box svg { width: 26px; height: 26px; color: var(--gold-dim); display: block; margin: 0 auto 4px; }
