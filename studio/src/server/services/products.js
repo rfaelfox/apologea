@@ -21,6 +21,8 @@ const EMPTY = {
   baseProduct: null, // { id, title, image, optionId?, optionLabel? }
   printerType: '',
   variantIds: [],
+  printSides: '', // 'front' | 'back' | 'both' – Ansicht im Platzier-Editor
+  neckPrint: null, // { lightDesignId, darkDesignId, neckPrintId, uploadedFor, uploadedAt } – nur Anbieter mit Nackendruck
   placements: [], // { printArea, designId, placement: { mode:'auto'|'named'|'custom', named, xPercent, yPercent, widthPercent }, alternative: { designId, colors: [] } | null }
   description: '',
   descriptionStyle: 'schlicht',
@@ -84,16 +86,60 @@ export function saveProduct(id, patch) {
   }
   const next = { ...cur };
   for (const k of Object.keys(EMPTY)) if (patch[k] !== undefined) next[k] = clone(patch[k]);
+  if (patch.neckPrint !== undefined) next.neckPrint = mergeNeckPrint(cur.neckPrint, patch.neckPrint);
+  // Anderes Grundprodukt → Nackendruck gilt nicht mehr (nicht jedes Produkt bietet ihn an)
+  if (patch.baseProduct !== undefined && patch.baseProduct?.id !== cur.baseProduct?.id) next.neckPrint = null;
   if (patch.provider !== undefined && patch.provider !== cur.provider) {
     getProvider(patch.provider);
     // Anbieterwechsel: anbieterspezifische Angaben zurücksetzen
-    Object.assign(next, { baseProduct: null, variantIds: [], placements: [], printerType: '', mockups: '', targetShops: defaultTargets(patch.provider) });
+    Object.assign(next, { baseProduct: null, variantIds: [], placements: [], printerType: '', mockups: '', neckPrint: null, printSides: '', targetShops: defaultTargets(patch.provider) });
     next.remote = null;
   }
   // Jede Änderung hebt eine bereits erteilte Prüfung auf.
   if (cur.status === STATUS.APPROVAL || cur.status === STATUS.READY) next.status = STATUS.DRAFT;
   next.review = null;
   return store().products.put(next);
+}
+
+const neckKey = (n) => `${n?.lightDesignId || ''}:${n?.darkDesignId || ''}`;
+
+/** Die Kennung des hochgeladenen Nackendrucks setzt nur der Server; bei geänderten Motiven verfällt sie. */
+function mergeNeckPrint(cur, patch) {
+  if (!patch || !patch.lightDesignId) return patch?.darkDesignId ? { lightDesignId: null, darkDesignId: patch.darkDesignId, neckPrintId: null } : null;
+  const n = { lightDesignId: patch.lightDesignId, darkDesignId: patch.darkDesignId || null, neckPrintId: null, uploadedFor: null, uploadedAt: null };
+  if (cur?.neckPrintId && cur.uploadedFor === neckKey(n)) Object.assign(n, { neckPrintId: cur.neckPrintId, uploadedFor: cur.uploadedFor, uploadedAt: cur.uploadedAt, simulated: cur.simulated });
+  return n;
+}
+
+/** Nackendruck zum Anbieter hochladen (legt nichts im Shop an). */
+export async function uploadNeckPrint(id) {
+  const draft = store().products.get(id);
+  if (!draft) throw new UserError('Produktentwurf nicht gefunden.', { status: 404 });
+  const prov = providerOf(draft);
+  if (!prov.meta.capabilities.neckPrint || !prov.uploadNeckPrint) throw new UserError(`${prov.meta.name} bietet über die Schnittstelle keinen Nackendruck.`);
+  if (['running', 'unknown', 'done'].includes(draft.publish?.state)) throw new UserError('Der Entwurf ist gesperrt.', { status: 409 });
+  const n = draft.neckPrint;
+  if (!n?.lightDesignId) throw new UserError('Bitte zuerst ein Motiv für den Nackendruck wählen (helle Textilien).');
+  const file = (designId) => {
+    const d = store().designs.get(designId);
+    if (!d) throw new UserError('Motiv für den Nackendruck nicht gefunden.');
+    return { filename: d.originalName || `${d.name}.png`, buffer: fs.readFileSync(designFilePath(d)), dpi: d.analysis?.dpi || undefined };
+  };
+  const job = createJob({ type: 'product.neckprint', title: `Nackendruck hochladen (${prov.meta.name}): ${draft.publicTitle || draft.internalName || id}`, refType: 'product', refId: id, simulated: prov.isSimulation() });
+  try {
+    const r = await prov.uploadNeckPrint({ light: file(n.lightDesignId), dark: n.darkDesignId ? file(n.darkDesignId) : null });
+    const updated = store().products.update(id, (d) => {
+      d.neckPrint = { ...d.neckPrint, neckPrintId: r.neckPrintId, uploadedFor: neckKey(d.neckPrint), uploadedAt: nowIso(), simulated: r.simulated };
+      if (d.status === STATUS.APPROVAL || d.status === STATUS.READY) d.status = STATUS.DRAFT;
+      d.review = null;
+      return d;
+    });
+    finishJob(job.id, STATUS.SUCCESS, { result: { neckPrintId: r.neckPrintId, simulated: r.simulated }, msg: 'Nackendruck hochgeladen (noch nichts im Shop angelegt)' });
+    return updated;
+  } catch (err) {
+    finishJob(job.id, STATUS.FAILED, { error: errorMessage(err) });
+    throw err;
+  }
 }
 
 export function deleteProduct(id, { confirm } = {}) {
@@ -205,6 +251,13 @@ export async function validateProduct(id) {
     }
   }
 
+  if (draft.neckPrint?.lightDesignId) {
+    if (!caps.neckPrint) add('neckPrint', 'error', `${name} unterstützt keinen Nackendruck über die Schnittstelle.`);
+    else if (details && !details.hasNeckPrint) add('neckPrint', 'error', `Für dieses Grundprodukt bietet ${name} keinen Nackendruck an. Bitte den Nackendruck entfernen.`);
+    else if (!draft.neckPrint.neckPrintId) add('neckPrint', 'error', `Nackendruck ist gewählt, aber noch nicht zu ${name} hochgeladen (Schaltfläche „Nackendruck hochladen“).`);
+    else if (draft.provider === 'marketprint') add('neckPrint', 'warn', 'Nackendruck: MarketPrint berechnet laut Schnittstelle einen Aufschlag pro Bestellung.');
+  } else if (draft.neckPrint?.darkDesignId) add('neckPrint', 'error', 'Für den Nackendruck fehlt das Motiv für helle Textilien (Pflicht).');
+
   if (caps.mockupChoice && !draft.mockups) add('mockups', 'error', 'Bitte festlegen, welche Mockups als Produktbilder verwendet werden.');
   if (!draft.targetShops?.length) add('targetShops', 'error', 'Zielshop wählen.');
   else {
@@ -287,6 +340,11 @@ export async function reviewProduct(id) {
     catalogueMax: catalogueAll.length ? Math.max(...catalogueAll) : null,
     priceLabel: details.priceLabel,
     files,
+    neckPrint: draft.neckPrint?.neckPrintId ? {
+      light: store().designs.get(draft.neckPrint.lightDesignId)?.name || '–',
+      dark: draft.neckPrint.darkDesignId ? store().designs.get(draft.neckPrint.darkDesignId)?.name || '–' : null,
+      id: draft.neckPrint.neckPrintId,
+    } : null,
     mockups: prov.meta.capabilities.mockupChoice ? (draft.mockups === 'all' ? 'Alle Mockups' : 'Nur Mockups mit Motiv') : `Erzeugt ${prov.meta.name}`,
     description: draft.description?.trim() ? draft.description.trim().slice(0, 600) : `(${prov.meta.name}-Standardtext)`,
     post,

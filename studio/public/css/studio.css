@@ -273,3 +273,42 @@ iframe.html-preview { width: 100%; min-height: 260px; border: 1px solid var(--li
 .tabs button { border: 0; border-bottom: 2px solid transparent; }
 .tabs button.on { color: var(--gold-2); border-bottom-color: var(--gold); }
 .hidden { display: none !important; }
+
+/* ---------- Platzier-Editor (Produkt) */
+.side-switch { display: inline-flex; border: 1px solid var(--gold-dim); margin: 4px 0 12px; }
+.side-switch button { border: 0; border-right: 1px solid var(--gold-dim); background: transparent; padding: 10px 22px; min-height: 42px; }
+.side-switch button:last-child { border-right: 0; }
+.side-switch button.on { background: var(--gold); color: var(--night); }
+.swatches.mini { gap: 6px; }
+.swatches.mini .swatch { padding: 3px; min-height: 0; }
+.swatches.mini .swatch .c { width: 20px; height: 20px; }
+.designer { display: grid; gap: 16px; align-items: start; }
+.designer.cols-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.area-panel { min-width: 0; }
+.stage { position: relative; width: 100%; max-width: 560px; margin: 0 auto; background: #ece7df; border: 1px solid var(--line); overflow: hidden; user-select: none; touch-action: none; }
+.stage .stage-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.stage .stage-label { position: absolute; left: 8px; top: 6px; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: #5b4a2c; background: #ffffffb0; padding: 2px 6px; }
+.print-frame { position: absolute; outline: 1.5px dashed #8a7046; outline-offset: 0; }
+.stage.calibrating .print-frame { outline: 2px solid var(--gold); background: rgba(184,149,90,.12); cursor: move; }
+.motif { position: absolute; cursor: grab; outline: 1px solid transparent; }
+.motif img { width: 100%; height: 100%; display: block; object-fit: fill; pointer-events: none; }
+.motif:hover, .motif:focus { outline: 1px solid var(--gold-2); }
+.stage.dragging .motif { cursor: grabbing; outline: 1px solid var(--gold-2); }
+.motif.out { outline: 2px solid var(--err) !important; }
+.motif.named { outline: 1px dashed var(--gold-2); }
+.motif .handle, .frame-handle { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; background: var(--gold-2); border: 2px solid #fff; cursor: nwse-resize; }
+.frame-handle { display: none; }
+.stage.calibrating .frame-handle { display: block; }
+.stage.calibrating .motif { pointer-events: none; opacity: .5; }
+.guide { position: absolute; display: none; background: #d9467a; pointer-events: none; }
+.guide.on { display: block; }
+.guide.v { left: 50%; top: 0; bottom: 0; width: 1px; }
+.guide.h { top: 50%; left: 0; right: 0; height: 1px; }
+.tools { flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.readout { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; }
+.readout .mini { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; }
+.readout .mini input { width: 72px; padding: 4px 6px; }
+.neck-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.neck-slot { border: 1px solid var(--line-soft); padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.neck-slot img, .neck-empty { width: 96px; height: 96px; object-fit: contain; background: #fff1; display: flex; align-items: center; justify-content: center; font-size: .75rem; color: var(--muted); }
+.catalog .item .badge-neck { display: block; margin: 0 8px 8px; font-size: .7rem; color: var(--gold-2); letter-spacing: .04em; }

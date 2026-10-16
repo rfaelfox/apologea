@@ -169,6 +169,7 @@ export const DEFAULT_SETTINGS = {
     voice: 'Ruhig, würdevoll, hochwertig. Christlich-östliche Bildsprache ohne Kitsch. Keine Übertreibungen, keine erfundenen Fakten.',
   },
   ui: { onboardingDone: false },
+  designerFrames: {},
 };
 
 export function getSettings() {

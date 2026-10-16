@@ -2,6 +2,7 @@ import { h, clear, get, post, put, del, badge, fmtDate, fmtEuro, fmtUsd, showErr
 import { confirmAiCall, issuesList, fileNotes, htmlPreview } from './shared.js';
 import { pickDesign } from './library.js';
 import { setCleanup, state } from '../app.js';
+import { placementStage, quickTools, placementReadout } from './designer.js';
 
 const AREA_LABEL = { front: 'Vorderseite', back: 'Rückseite' };
 const STYLE_LABEL = { kurz: 'Kurz', schlicht: 'Schlicht', ausfuehrlich: 'Ausführlich & markengerecht' };
@@ -116,11 +117,11 @@ export async function renderProductEditor(main, id) {
           h('dl.kv',
             h('dt', 'Druckflächen'), h('dd', details.printAreas.map((a) => `${AREA_LABEL[a.name] || a.name}: ${a.width} × ${a.height} px`).join(' · ')),
             h('dt', 'Druckverfahren'), h('dd', (details.supportedPrinterTypes || []).map((t) => t.toUpperCase()).join(', ') || '–'),
-            h('dt', 'Nackendruck'), h('dd', details.hasNeckPrint ? 'unterstützt (in dieser Version nicht über APOLOGEA Studio)' : 'nein'),
+            h('dt', 'Nackendruck'), h('dd', details.hasNeckPrint ? (caps().neckPrint ? 'möglich – siehe „Druck & Motive“' : `vom Produkt unterstützt, über ${PN()} nicht verfügbar`) : 'bei diesem Produkt nicht möglich'),
             h('dt', 'Alternativ-Motiv je Farbe'), h('dd', details.hasAlternativeDesign ? 'unterstützt' : 'nein'),
             h('dt', 'Daten abgerufen'), h('dd', fmtDate(details.cachedAt), ' ', h('button.small.ghost', { type: 'button', onclick: async () => { await loadDetails(true); renderAll(); } }, 'Aktualisieren'))),
           h('details.box', h('summary', `Produktangaben laut ${details.descriptionSource || PN()} (Originaltext)`), h('div', htmlPreview(details.description))),
-          locked() ? null : h('button.small', { type: 'button', onclick: () => { if (!draft.variantIds.length || window.confirm('Grundprodukt ändern? Varianten und Druckflächen werden zurückgesetzt.')) { set({ baseProduct: null, variantIds: [], placements: [], printerType: '' }); details = null; renderAll(); } } }, 'Anderes Grundprodukt wählen'))));
+          locked() ? null : h('button.small', { type: 'button', onclick: () => { if (!draft.variantIds.length || window.confirm('Grundprodukt ändern? Varianten und Druckflächen werden zurückgesetzt.')) { set({ baseProduct: null, variantIds: [], placements: [], printerType: '', printSides: '', neckPrint: null }); details = null; renderAll(); } } }, 'Anderes Grundprodukt wählen'))));
       return;
     }
     const search = h('input', { type: 'search', placeholder: 'Suchen, z. B. Shirt, Hoodie …' });
@@ -131,7 +132,7 @@ export async function renderProductEditor(main, id) {
     const draw = () => {
       const q = search.value.toLowerCase();
       clear(grid, catalog.items.filter((c) => !q || c.title.toLowerCase().includes(q)).map((c) => {
-        const it = h('div.item', { tabindex: 0, role: 'button' }, c.image ? h('img', { src: c.image, alt: '', loading: 'lazy' }) : h('div', { style: { aspectRatio: '1', display: 'grid', placeItems: 'center', color: '#8a7046' } }, 'ohne Bild'), h('div.t', c.title));
+        const it = h('div.item', { tabindex: 0, role: 'button' }, c.image ? h('img', { src: c.image, alt: '', loading: 'lazy' }) : h('div', { style: { aspectRatio: '1', display: 'grid', placeItems: 'center', color: '#8a7046' } }, 'ohne Bild'), h('div.t', c.title), caps().neckPrint && c.hasNeckPrint ? h('small.badge-neck', 'Nackendruck möglich') : null);
         const choose = async () => {
           let baseId = c.id;
           let optionLabel = null;
@@ -150,7 +151,7 @@ export async function renderProductEditor(main, id) {
             baseId = `${c.id}:${chosen.id}`;
             optionLabel = chosen.label;
           }
-          set({ baseProduct: { id: baseId, title: c.title, image: c.image, optionLabel }, variantIds: [], placements: [], printerType: '' });
+          set({ baseProduct: { id: baseId, title: c.title, image: c.image, optionLabel }, variantIds: [], placements: [], printerType: '', printSides: '', neckPrint: null });
           await saver.flush();
           await loadDetails();
           if (details?.supportedPrinterTypes?.length === 1) set({ printerType: details.supportedPrinterTypes[0] });
@@ -201,7 +202,21 @@ export async function renderProductEditor(main, id) {
         h('p.hint', `${selVariants.length} Varianten ausgewählt. Nicht verfügbare Varianten werden automatisch ausgelassen.`)));
   }
 
-  // ---------- 3 Druck & Motive
+  // ---------- 3 Druck & Motive (Platzier-Editor)
+  let previewColor = null; // Farbe des Produktfotos im Editor
+  let calibrateArea = null; // Druckfläche, deren Lage auf dem Foto gerade ausgerichtet wird
+  const frameKey = (area) => `${pid()}:${draft.baseProduct?.id}:${area.name}`;
+  const frames = () => state.boot?.settings?.designerFrames || {};
+  const saveFrame = async (area, frame) => {
+    try { await put('/api/settings', { designerFrames: { [frameKey(area)]: frame } }); if (state.boot?.settings) state.boot.settings.designerFrames = { ...frames(), [frameKey(area)]: frame }; } catch (err) { showError(err); }
+  };
+
+  function inferSides() {
+    if (draft.printSides) return draft.printSides;
+    const used = new Set(draft.placements.filter((p) => p.designId).map((p) => p.printArea));
+    return used.has('front') && used.has('back') ? 'both' : used.has('back') ? 'back' : 'front';
+  }
+
   function renderPrint() {
     if (!details) { clear(sec.print, h('p.muted', 'Zuerst ein Grundprodukt wählen.')); return; }
     const dis = locked();
@@ -212,70 +227,138 @@ export async function renderProductEditor(main, id) {
         h('select', { disabled: dis, onchange: (e) => { set({ printerType: e.target.value }); renderPrint(); } }, h('option', { value: '' }, 'Bitte wählen …'), types.map((t) => h('option', { value: t, selected: draft.printerType === t }, t.toUpperCase()))),
         pid() === 'marketprint' ? h('div.hint', 'Laut MarketPrint werden für DTF Aufschläge berechnet.') : null));
     }
-    if (details.hasNeckPrint) parts.push(h('div.inline-msg.info', `Nackendruck wird von ${PN()} für dieses Produkt unterstützt, in dieser Programmversion aber nicht eingerichtet. Bei Bedarf beim Anbieter ergänzen.`));
     const selVariants = details.variants.filter((v) => draft.variantIds.includes(v.id));
-    const firstColor = selVariants[0] || details.variants[0];
-    for (const area of details.printAreas) {
-      let pl = draft.placements.find((p) => p.printArea === area.name);
-      const ensure = () => { if (!pl) { pl = { printArea: area.name, designId: null, placement: { mode: 'auto' }, alternative: null }; draft.placements = [...draft.placements, pl]; } return pl; };
-      const savePl = () => set({ placements: draft.placements.map((p) => (p.printArea === area.name ? pl : p)) });
-      const design = pl?.designId ? designs.find((d) => d.id === pl.designId) : null;
-      const notesBox = h('div');
-      const canvas = h('canvas.schema', { width: 420, height: Math.round(420 * area.height / area.width) });
-      const garmentImg = (firstColor?.images || []).find((i) => i.printArea === area.name)?.image;
-      const refresh = async () => {
-        drawSchema(canvas, area, pl, design);
-        if (design) {
-          try {
-            const notes = await post(`/api/designs/${design.id}/check`, { printArea: area, placement: placementArg(pl), printerType: draft.printerType || types[0] });
-            clear(notesBox, fileNotes(notes));
-          } catch (err) { clear(notesBox, h('div.inline-msg.error', err.message)); }
-        } else clear(notesBox);
+    const colorList = [...new Map((selVariants.length ? selVariants : details.variants).map((v) => [ckey(v), v])).values()];
+    if (!previewColor || !colorList.some((v) => ckey(v) === previewColor)) previewColor = colorList[0] ? ckey(colorList[0]) : null;
+    const colorVariant = colorList.find((v) => ckey(v) === previewColor);
+
+    const front = details.printAreas.find((a) => a.name === 'front');
+    const back = details.printAreas.find((a) => a.name === 'back');
+    const others = details.printAreas.filter((a) => a !== front && a !== back);
+    const sides = inferSides();
+    let shown = sides === 'both' ? [front, back] : sides === 'back' ? [back] : [front];
+    shown = shown.filter(Boolean);
+    if (!shown.length) shown = [front || back].filter(Boolean);
+
+    // Ansicht: Vorderseite / Rückseite / Beidseitig
+    if (front && back) {
+      const choose = async (v) => {
+        if (v === sides) return;
+        const hide = v === 'front' ? ['back'] : v === 'back' ? ['front'] : [];
+        const lose = draft.placements.filter((p) => hide.includes(p.printArea) && p.designId);
+        if (lose.length && !(await confirmDialog({ title: 'Seite wechseln?', text: [`Das Motiv auf der ${lose.map((p) => AREA_LABEL[p.printArea]).join(' und ')} wird dabei entfernt – sonst würde es mitgedruckt.`], confirmLabel: 'Wechseln', danger: true }))) return;
+        set({ printSides: v, placements: draft.placements.filter((p) => !hide.includes(p.printArea)) });
+        renderPrint();
       };
-      const mode = pl?.placement?.mode || 'auto';
-      const slider = (key, label, min, max) => {
-        const val = pl?.placement?.[key] ?? (key === 'widthPercent' ? 0.6 : 0.5);
-        const out = h('span.muted', `${Math.round(val * 100)} %`);
-        const inp = h('input', { type: 'range', min, max, step: 0.01, value: val, disabled: dis, oninput: () => { ensure(); pl.placement = { ...pl.placement, mode: 'custom', [key]: Number(inp.value) }; out.textContent = `${Math.round(inp.value * 100)} %`; drawSchema(canvas, area, pl, design); savePl(); }, onchange: refresh });
-        return h('label.field', h('span', label, ' ', out), inp);
-      };
-      const altBox = h('div');
-      if (caps().alternativeDesign && details.hasAlternativeDesign !== false && pl?.designId) {
-        const alt = pl.alternative?.designId ? designs.find((d) => d.id === pl.alternative.designId) : null;
-        const colorHexes = [...new Map(selVariants.map((v) => [ckey(v), v.color])).entries()];
-        clear(altBox, h('details.box', { open: Boolean(alt) }, h('summary', 'Alternativ-Motiv für bestimmte Farben (z. B. helle Version für dunkle Shirts)'),
-          h('div.stack',
-            h('div.row', alt ? h('span', alt.name) : h('span.muted', 'Kein Alternativ-Motiv'),
-              h('button.small', { type: 'button', disabled: dis, onclick: async () => { const dId = await pickDesign(designs); if (!dId) return; ensure(); pl.alternative = { designId: dId, colors: pl.alternative?.colors || [] }; savePl(); designs = await get('/api/designs'); renderPrint(); } }, alt ? 'Ändern' : 'Wählen'),
-              alt ? h('button.small.ghost', { type: 'button', disabled: dis, onclick: () => { pl.alternative = null; savePl(); renderPrint(); } }, 'Entfernen') : null),
-            alt ? h('div', colorHexes.map(([hex, name]) => h('label.check', h('input', { type: 'checkbox', checked: pl.alternative.colors.includes(hex), disabled: dis, onchange: (e) => { const s = new Set(pl.alternative.colors); e.target.checked ? s.add(hex) : s.delete(hex); pl.alternative = { ...pl.alternative, colors: [...s] }; savePl(); } }), h('span', name)))) : null,
-            h('p.hint', 'Position und Größe des Hauptmotivs werden übernommen; die Datei sollte gleiche Pixelmaße haben.'))));
-      }
-      parts.push(h('div.frame', { style: { marginBottom: '16px' } },
-        h('div.row.between', h('h3', { style: { margin: 0 } }, `${AREA_LABEL[area.name] || area.name}`), h('small.muted', `Druckfläche ${area.width} × ${area.height} px`)),
-        h('div.placement', { style: { marginTop: '12px' } },
-          h('div.stack',
-            h('div.row',
-              design ? h('img', { src: `/files/design/${design.id}/thumb`, alt: '', style: { width: '64px', height: '64px', objectFit: 'contain', background: '#fff1' } }) : null,
-              h('div', design ? h('div', h('strong', design.name), h('div.muted', linkOf(design)?.imageId ? `${PN()} verknüpft (${linkOf(design).imageId})` : `Noch nicht mit ${PN()} verknüpft`)) : h('span.muted', 'Kein Motiv auf dieser Fläche')),
-              h('button.small', { type: 'button', disabled: dis, onclick: async () => { const dId = await pickDesign(designs); if (!dId) return; ensure(); pl.designId = dId; savePl(); designs = await get('/api/designs'); renderPrint(); } }, design ? 'Motiv ändern' : 'Motiv wählen'),
-              design ? h('button.small.ghost', { type: 'button', disabled: dis, onclick: () => { draft.placements = draft.placements.filter((p) => p.printArea !== area.name); set({ placements: draft.placements }); renderPrint(); } }, 'Fläche leeren') : null,
-              design && !linkOf(design)?.imageId ? h('a', { href: `#/bibliothek/${design.id}` }, 'Jetzt verknüpfen') : null),
-            design ? h('div',
-              h('div.field-label', 'Platzierung'),
-              h('div.row',
-                ['auto', ...(caps().namedPlacements?.length ? ['named'] : []), 'custom'].map((m) => h('label.check', h('input', { type: 'radio', name: `mode-${area.name}`, checked: mode === m, disabled: dis, onchange: () => { ensure(); pl.placement = m === 'named' ? { mode: 'named', named: pl.placement?.named || caps().namedPlacements[0].v } : m === 'custom' ? { mode: 'custom', xPercent: 0.5, yPercent: 0.35, widthPercent: 0.6 } : { mode: 'auto' }; savePl(); renderPrint(); } }), h('span', { auto: 'Automatisch einpassen', named: 'Kleines Logo', custom: 'Frei positionieren' }[m])))),
-              mode === 'named' ? h('select', { disabled: dis, onchange: (e) => { pl.placement = { mode: 'named', named: e.target.value }; savePl(); refresh(); } }, caps().namedPlacements.map((n) => h('option', { value: n.v, selected: pl.placement.named === n.v }, n.l))) : null,
-              mode === 'custom' ? h('div', slider('xPercent', 'Horizontal (Mitte)', 0, 1), slider('yPercent', 'Vertikal (Mitte)', 0, 1), slider('widthPercent', 'Breite', 0.05, 1)) : null,
-              mode === 'auto' ? h('p.hint', 'Das Motiv wird so groß wie möglich eingepasst und zentriert, wie bei einem vollflächigen Druck.') : null) : null,
-            altBox,
-            h('div', h('div.field-label', 'Prüfung der Druckdatei'), notesBox)),
-          h('div.grid', { style: { gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px', alignContent: 'start' } },
-            h('div', h('div.preview-box', h('span.preview-label', 'Schematisch – nicht verbindlich'), canvas), h('p.hint', 'Druckfläche (gestrichelt) mit Motiv. Annahme: Position bezieht sich auf die Motivmitte.')),
-            garmentImg ? h('div', h('div.preview-box', h('span.preview-label', `${PN()}-Produktfoto`), h('img.garment', { src: garmentImg, alt: '' })), h('p.hint', `Leeres Produkt (${firstColor.color}). Echte Mockups mit Motiv erzeugt ${PN()} beim Anlegen.`)) : null))));
-      refresh();
+      parts.push(h('div.side-switch', [['front', 'Vorderseite'], ['back', 'Rückseite'], ['both', 'Beidseitig']].map(([v, l]) => h(`button${sides === v ? '.on' : ''}`, { type: 'button', disabled: dis, onclick: () => choose(v) }, l))));
     }
+    // Farbe des Produktfotos
+    if (colorList.length > 1) {
+      parts.push(h('div.row', { style: { margin: '6px 0 14px', alignItems: 'center' } }, h('small.muted', 'Ansicht in Farbe:'),
+        h('div.swatches.mini', colorList.map((v) => h(`button.swatch${ckey(v) === previewColor ? '.on' : ''}`, { type: 'button', title: v.color, onclick: () => { previewColor = ckey(v); renderPrint(); } }, h('span.c', { style: { background: v.colorHex || '#888' } }))))));
+    }
+    parts.push(h(`div.designer.cols-${shown.length}`, shown.map((area) => areaPanel(area, { dis, types, selVariants, colorVariant }))));
+    if (others.length) {
+      parts.push(h('details.box', { open: others.some((a) => draft.placements.some((p) => p.printArea === a.name && p.designId)) },
+        h('summary', `Weitere Druckflächen (${others.map((a) => AREA_LABEL[a.name] || a.name).join(', ')})`),
+        h('div.designer.cols-2', others.map((area) => areaPanel(area, { dis, types, selVariants, colorVariant })))));
+    }
+    const neck = neckPrintBox(dis);
+    if (neck) parts.push(neck);
     clear(sec.print, parts);
+  }
+
+  function areaPanel(area, { dis, types, selVariants, colorVariant }) {
+    let pl = draft.placements.find((p) => p.printArea === area.name);
+    const ensure = () => { if (!pl) { pl = { printArea: area.name, designId: null, placement: { mode: 'auto' }, alternative: null }; draft.placements = [...draft.placements, pl]; } return pl; };
+    const savePl = () => set({ placements: draft.placements.map((p) => (p.printArea === area.name ? pl : p)) });
+    const design = pl?.designId ? designs.find((d) => d.id === pl.designId) : null;
+    const alt = pl?.alternative?.designId ? designs.find((d) => d.id === pl.alternative.designId) : null;
+    const garmentImg = (colorVariant?.images || []).find((i) => i.printArea === area.name)?.image
+      || (details.variants[0]?.images || []).find((i) => i.printArea === area.name)?.image || null;
+    const notesBox = h('div');
+    const checkFile = async () => {
+      if (!design) return clear(notesBox);
+      try { clear(notesBox, fileNotes(await post(`/api/designs/${design.id}/check`, { printArea: area, placement: placementArg(pl), printerType: draft.printerType || types[0] }))); } catch (err) { clear(notesBox, h('div.inline-msg.error', err.message)); }
+    };
+    let ro = null;
+    const commit = (p) => { ensure(); pl.placement = p; savePl(); ro?.show(p); checkFile(); };
+    const stage = placementStage({
+      area: { ...area, label: AREA_LABEL[area.name] || area.name },
+      garmentUrl: garmentImg, frame: frames()[frameKey(area)] || null, design, altDesign: alt,
+      showAlt: Boolean(alt && pl.alternative.colors.includes(previewColor)),
+      placement: pl?.placement, disabled: dis || !design,
+      onChange: (p) => ro?.show(p), onCommit: commit,
+      onFrameCommit: (f) => saveFrame(area, f),
+    });
+    ro = placementReadout({ stageApi: stage, disabled: dis || !design, onCommit: commit });
+    ro.show(pl?.placement || { mode: 'auto' });
+    const calibrating = calibrateArea === area.name;
+    stage.setCalibrating(calibrating);
+
+    const altBox = h('div');
+    if (caps().alternativeDesign && details.hasAlternativeDesign !== false && pl?.designId) {
+      const colorHexes = [...new Map(selVariants.map((v) => [ckey(v), v.color])).entries()];
+      clear(altBox, h('details.box', { open: Boolean(alt) }, h('summary', 'Alternativ-Motiv für bestimmte Farben (z. B. helle Version für dunkle Shirts)'),
+        h('div.stack',
+          h('div.row', alt ? h('span', alt.name) : h('span.muted', 'Kein Alternativ-Motiv'),
+            h('button.small', { type: 'button', disabled: dis, onclick: async () => { const dId = await pickDesign(designs); if (!dId) return; ensure(); pl.alternative = { designId: dId, colors: pl.alternative?.colors || [] }; savePl(); designs = await get('/api/designs'); renderPrint(); } }, alt ? 'Ändern' : 'Wählen'),
+            alt ? h('button.small.ghost', { type: 'button', disabled: dis, onclick: () => { pl.alternative = null; savePl(); renderPrint(); } }, 'Entfernen') : null),
+          alt ? h('div', colorHexes.map(([hex, name]) => h('label.check', h('input', { type: 'checkbox', checked: pl.alternative.colors.includes(hex), disabled: dis, onchange: (e) => { const st = new Set(pl.alternative.colors); e.target.checked ? st.add(hex) : st.delete(hex); pl.alternative = { ...pl.alternative, colors: [...st] }; savePl(); stage.setAlt(st.has(previewColor)); } }), h('span', name)))) : null,
+          h('p.hint', 'Position und Größe des Hauptmotivs werden übernommen; die Datei sollte gleiche Pixelmaße haben. In der Ansicht oben erscheint es, wenn eine dieser Farben gewählt ist.'))));
+    }
+    checkFile();
+    return h('div.frame.area-panel',
+      h('div.row.between', h('h3', { style: { margin: 0 } }, AREA_LABEL[area.name] || area.name), h('small.muted', `Druckfläche ${area.width} × ${area.height} px`)),
+      h('div.row', { style: { margin: '10px 0' } },
+        design ? h('img', { src: `/files/design/${design.id}/thumb`, alt: '', style: { width: '44px', height: '44px', objectFit: 'contain', background: '#fff1' } }) : null,
+        h('div', { style: { flex: '1 1 140px' } }, design ? h('div', h('strong', design.name), h('div.muted', linkOf(design)?.imageId ? `${PN()} verknüpft` : `Noch nicht mit ${PN()} verknüpft`)) : h('span.muted', 'Kein Motiv auf dieser Seite')),
+        h(`button.small${design ? '' : '.primary'}`, { type: 'button', disabled: dis, onclick: async () => { const dId = await pickDesign(designs); if (!dId) return; ensure(); pl.designId = dId; savePl(); designs = await get('/api/designs'); renderPrint(); } }, design ? 'Motiv ändern' : 'Motiv wählen'),
+        design ? h('button.small.ghost', { type: 'button', disabled: dis, onclick: () => { draft.placements = draft.placements.filter((p) => p.printArea !== area.name); set({ placements: draft.placements }); renderPrint(); } }, 'Entfernen') : null,
+        design && !linkOf(design)?.imageId ? h('a', { href: `#/bibliothek/${design.id}` }, 'Jetzt verknüpfen') : null),
+      stage.el,
+      design && !calibrating ? quickTools({ area, stageApi: stage, namedPlacements: caps().namedPlacements, disabled: dis, onCommit: commit }) : null,
+      design && !calibrating ? ro.el : null,
+      h('div.row', { style: { justifyContent: 'space-between', marginTop: '6px' } },
+        h('small.muted', calibrating ? 'Rahmen ziehen bzw. an der Ecke skalieren, bis er auf dem Foto auf der Druckfläche liegt.' : garmentImg ? `Foto: ${PN()} (${colorVariant?.color || ''}). Gestrichelt: Druckfläche (ungefähre Lage).` : 'Kein Produktfoto vorhanden – gezeigt wird nur die Druckfläche.'),
+        garmentImg ? h('span.row',
+          h('button.small.ghost', { type: 'button', onclick: () => { calibrateArea = calibrating ? null : area.name; renderPrint(); } }, calibrating ? 'Fertig' : 'Druckfläche auf dem Foto anpassen'),
+          calibrating ? h('button.small.ghost', { type: 'button', onclick: () => stage.resetFrame() }, 'Zurücksetzen') : null) : null),
+      altBox,
+      design ? h('div', h('div.field-label', 'Prüfung der Druckdatei'), notesBox) : null);
+  }
+
+  function neckPrintBox(dis) {
+    if (!details.hasNeckPrint) return null;
+    if (!caps().neckPrint) return h('div.inline-msg.info', `Dieses Produkt hätte einen Nackendruck, ${PN()} bietet ihn über die Schnittstelle aber nicht an.`);
+    const n = draft.neckPrint || {};
+    const light = n.lightDesignId ? designs.find((d) => d.id === n.lightDesignId) : null;
+    const dark = n.darkDesignId ? designs.find((d) => d.id === n.darkDesignId) : null;
+    const saveNeck = async (patch) => {
+      await saver.flush();
+      const next = { lightDesignId: n.lightDesignId || null, darkDesignId: n.darkDesignId || null, ...patch };
+      draft = await put(`/api/products/${id}`, { neckPrint: next.lightDesignId || next.darkDesignId ? next : null });
+      designs = await get('/api/designs');
+      renderStatus(); renderPrint();
+    };
+    const slot = (label, d, key, hint) => h('div.neck-slot',
+      h('div.field-label', label),
+      d ? h('img', { src: `/files/design/${d.id}/thumb`, alt: '' }) : h('div.neck-empty', 'Kein Motiv'),
+      d ? h('small', d.name) : h('small.muted', hint),
+      h('div.row',
+        h('button.small', { type: 'button', disabled: dis, onclick: async () => { const dId = await pickDesign(designs); if (dId) saveNeck({ [key]: dId }).catch(showError); } }, d ? 'Ändern' : 'Wählen'),
+        d ? h('button.small.ghost', { type: 'button', disabled: dis, onclick: () => saveNeck({ [key]: null }).catch(showError) }, 'Entfernen') : null));
+    const uploadBtn = h('button.small.primary', { type: 'button', disabled: dis || !light }, n.neckPrintId ? 'Erneut hochladen' : 'Nackendruck hochladen');
+    uploadBtn.addEventListener('click', () => busy(uploadBtn, async () => {
+      await saver.flush();
+      try { draft = await post(`/api/products/${id}/neckprint`); toast('Nackendruck hochgeladen. Im Shop wurde noch nichts angelegt.', 'ok'); renderStatus(); renderPrint(); } catch (err) { showError(err); }
+    }));
+    return h('div.frame', { style: { marginTop: '16px' } },
+      h('div.row.between', h('h3', { style: { margin: 0 } }, 'Nackendruck (Innenkragen)'), n.neckPrintId ? h('small', { style: { color: 'var(--ok)' } }, `hochgeladen${n.simulated ? ' (Simulation)' : ''} · ${fmtDate(n.uploadedAt)}`) : light ? h('small', { style: { color: 'var(--warn)' } }, 'noch nicht hochgeladen') : h('small.muted', 'optional')),
+      h('p.muted', `Ein eigenes Etikett innen im Nacken, z. B. Logo und Größe. ${PN()} berechnet dafür laut Schnittstelle einen Aufschlag pro Bestellung. Lage und Größe legt ${PN()} fest.`),
+      h('div.neck-grid', slot('Für helle Textilien (Pflicht)', light, 'lightDesignId', 'z. B. dunkles Logo'), slot('Für dunkle Textilien (optional)', dark, 'darkDesignId', 'z. B. helles Logo')),
+      h('div.row', { style: { marginTop: '10px' } }, uploadBtn,
+        h('small.muted', pid() === 'marketprint' ? 'Hochladen legt nichts im Shop an. Über Claude Code sind nur kleine Dateien möglich (zusammen unter ca. 100 KB).' : '')));
   }
 
   // ---------- 4 Texte
@@ -473,12 +556,13 @@ export async function renderProductEditor(main, id) {
   async function showPreview() {
     if (!details) return showError(userError('Zuerst ein Grundprodukt wählen.'));
     const selVariants = details.variants.filter((v) => draft.variantIds.includes(v.id));
+    const colorVariant = selVariants.find((v) => ckey(v) === previewColor) || selVariants[0] || details.variants[0];
     const canvases = (draft.placements || []).filter((p) => p.designId).map((pl) => {
       const area = details.printAreas.find((a) => a.name === pl.printArea);
       const d = designs.find((x) => x.id === pl.designId);
-      const c = h('canvas.schema', { width: 360, height: Math.round(360 * area.height / area.width) });
-      drawSchema(c, area, pl, d);
-      return h('div', h('div.field-label', AREA_LABEL[area.name] || area.name), h('div.preview-box', h('span.preview-label', 'Schematisch'), c));
+      const alt = pl.alternative?.designId ? designs.find((x) => x.id === pl.alternative.designId) : null;
+      const st = placementStage({ area: { ...area, label: AREA_LABEL[area.name] || area.name }, garmentUrl: (colorVariant?.images || []).find((i) => i.printArea === area.name)?.image, frame: frames()[frameKey(area)] || null, design: d, altDesign: alt, showAlt: Boolean(alt && pl.alternative.colors.includes(ckey(colorVariant))), placement: pl.placement, disabled: true });
+      return h('div', h('div.field-label', AREA_LABEL[area.name] || area.name), st.el);
     });
     await modal({
       eyebrow: 'Vorschau – nicht verbindlich', title: draft.publicTitle || 'Produktvorschau', wide: true,
@@ -516,6 +600,7 @@ export async function renderProductEditor(main, id) {
           h('dt', 'Varianten'), h('dd', `${s.variantCount} Varianten`, s.variants.map((v) => h('div', h('span', { style: { display: 'inline-block', width: '12px', height: '12px', background: v.hex, border: '1px solid #fff4', marginRight: '6px' } }), `${v.color}: ${v.sizes.join(', ')}`))),
           h('dt', 'Verkaufspreis'), h('dd', h('strong', fmtEuro(s.price)), h('div.muted', s.catalogueMin !== null ? `${s.priceLabel || 'Katalogpreis'}: ${fmtEuro(s.catalogueMin)} – ${fmtEuro(s.catalogueMax)}` : (s.priceLabel || ''))),
           h('dt', 'Dateien'), h('dd', s.files.map((f) => h('div', `${f.printArea}: ${f.design} (${f.file}) · ${f.placement}`, f.alternative ? h('div.muted', `Alternativ: ${f.alternative.design} für ${f.alternative.colors.length} Farbe(n)`) : null))),
+          s.neckPrint ? [h('dt', 'Nackendruck'), h('dd', `${s.neckPrint.light}${s.neckPrint.dark ? ` (dunkle Textilien: ${s.neckPrint.dark})` : ''}`)] : null,
           h('dt', 'Anbieter'), h('dd', s.provider),
           h('dt', 'Produktbilder'), h('dd', s.mockups),
           s.tags?.length ? [h('dt', 'Tags'), h('dd', s.tags.join(', '))] : null,
@@ -566,42 +651,4 @@ function placementArg(pl) {
   if (pl.placement?.mode === 'named') return pl.placement.named;
   if (pl.placement?.mode === 'custom') return pl.placement;
   return 'auto';
-}
-
-/** Schematische Darstellung: Druckfläche + Motiv. Ausdrücklich nicht verbindlich. */
-function drawSchema(canvas, area, pl, design) {
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width;
-  const H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-  ctx.strokeStyle = '#8a7046';
-  ctx.setLineDash([6, 5]);
-  ctx.strokeRect(1, 1, W - 2, H - 2);
-  ctx.setLineDash([]);
-  if (!design?.analysis?.width || !design?.analysis?.height) {
-    ctx.fillStyle = '#9a907f';
-    ctx.font = '14px Segoe UI, sans-serif';
-    ctx.fillText(design ? 'Vektordatei – Größe bestimmt der Anbieter' : 'Kein Motiv', 14, 26);
-    return;
-  }
-  const iw = design.analysis.width;
-  const ih = design.analysis.height;
-  let w; let hh; let cx; let cy;
-  const mode = pl?.placement?.mode || 'auto';
-  if (mode === 'custom') {
-    w = W * pl.placement.widthPercent; hh = w * ih / iw; cx = W * pl.placement.xPercent; cy = H * pl.placement.yPercent;
-  } else if (mode === 'named') {
-    w = W * 0.22; hh = w * ih / iw; cy = H * 0.18;
-    cx = pl.placement.named === 'small-left-chest' ? W * 0.7 : pl.placement.named === 'small-right-chest' ? W * 0.3 : W * 0.5;
-  } else {
-    const s = Math.min(W / iw, H / ih); w = iw * s; hh = ih * s; cx = W / 2; cy = H / 2;
-  }
-  const img = new Image();
-  img.onload = () => {
-    ctx.drawImage(img, cx - w / 2, cy - hh / 2, w, hh);
-    ctx.strokeStyle = '#cfae72';
-    ctx.strokeRect(cx - w / 2, cy - hh / 2, w, hh);
-    if (mode === 'named') { ctx.fillStyle = '#cfae72'; ctx.font = '12px Segoe UI, sans-serif'; ctx.fillText('ungefähre Lage', 8, H - 10); }
-  };
-  img.src = `/files/design/${design.id}/thumb`;
 }

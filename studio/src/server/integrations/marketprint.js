@@ -199,6 +199,7 @@ async function callSimulation(tool, args) {
     }
     case 'list_my_images': return { images: [], simulated: true };
     case 'upload_image': return { imageId: 'sim-' + Math.random().toString(16).slice(2, 10), simulated: true };
+    case 'upload_neckprint': return { neckPrintId: 'sim-neck-' + Math.random().toString(16).slice(2, 10), simulated: true };
     case 'create_shop_product':
       // Nur für automatische Tests: Verbindungsabbruch bzw. Ablehnung nachstellen.
       if (process.env.APOLOGEA_TEST === '1' && process.env.APOLOGEA_SIM_FAIL === 'network') throw new UserError('Verbindung während der Übertragung unterbrochen (Test).', { status: 502, code: 'network' });
@@ -272,6 +273,22 @@ export async function uploadImageBase64(filename, buffer) {
     throw new UserError('Über Claude Code können nur sehr kleine Dateien (unter ca. 100 KB) direkt übertragen werden. Bitte die Druckdatei in MarketPrint unter „Meine Designs“ hochladen und hier verknüpfen.', { code: 'mp_upload_too_large' });
   }
   return call('upload_image', { filename, imageBase64: buffer.toString('base64') });
+}
+
+/** Nackendruck (Innenkragen) hochladen. Legt nichts im Shop an; liefert die Kennung für create_shop_product. */
+export async function uploadNeckprint({ light, dark }) {
+  const total = light.buffer.length + (dark?.buffer.length || 0);
+  if (mode() === 'claude-code' && total > 100_000) {
+    throw new UserError(`Über Claude Code können nur kleine Nackendruck-Dateien übertragen werden (zusammen unter ca. 100 KB, jetzt ${Math.round(total / 1024)} KB). Bitte die Datei verkleinern (z. B. als PNG mit weniger Pixeln, ein Nackenetikett braucht selten mehr als 1000 px).`, { code: 'mp_upload_too_large' });
+  }
+  const args = { lightImageBase64: light.buffer.toString('base64'), lightFilename: light.filename };
+  if (light.dpi) args.lightDpi = light.dpi;
+  if (dark) {
+    args.darkImageBase64 = dark.buffer.toString('base64');
+    args.darkFilename = dark.filename;
+    if (dark.dpi) args.darkDpi = dark.dpi;
+  }
+  return call('upload_neckprint', args);
 }
 
 export async function createShopProduct(args) {

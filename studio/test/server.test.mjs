@@ -141,6 +141,32 @@ test('Produkt: Druckdatei-Prüfung und Freigabe', async () => {
   await assert.rejects(() => S.products.publishProduct(id, { approvalHash: r.approvalHash }), /zuerst „Zur Veröffentlichung prüfen“|verändert/);
 });
 
+test('Produkt: Nackendruck – Pflicht zum Hochladen, Kennung verfällt bei Motivwechsel, wird mitgesendet', async () => {
+  const id = await readyProduct();
+  const { PNG } = await import('pngjs');
+  const mk = (n) => { const img = new PNG({ width: 400, height: 200 }); img.data.fill(0); const f = path.join(tmp, '.studio', 'tmp', `neck-${n}-${Date.now()}`); fs.writeFileSync(f, PNG.sync.write(img)); return S.designs.importDesign({ tmpPath: f, originalName: `nacken-${n}.png` }).design; };
+  const light = mk('hell');
+  const dark = mk('dunkel');
+  S.products.saveProduct(id, { neckPrint: { lightDesignId: light.id, darkDesignId: dark.id, neckPrintId: 'vom-client-erfunden' } });
+  assert.equal(S.store.store().products.get(id).neckPrint.neckPrintId, null, 'Kennung setzt nur der Server');
+  let v = await S.products.validateProduct(id);
+  assert.ok(v.issues.some((i) => /noch nicht zu MarketPrint hochgeladen/.test(i.text)));
+  const up = await S.products.uploadNeckPrint(id);
+  assert.match(up.neckPrint.neckPrintId, /^sim-neck-/);
+  v = await S.products.validateProduct(id);
+  assert.equal(v.status, STATUS.READY, JSON.stringify(v.issues));
+  const r = await S.products.reviewProduct(id);
+  assert.equal(r.summary.neckPrint.light, light.name);
+  const req = await S.products.buildRequest(S.store.store().products.get(id));
+  assert.equal(req.neckPrintId, up.neckPrint.neckPrintId);
+  // gleiche Motive erneut speichern → Kennung bleibt; anderes Motiv → Kennung verfällt
+  S.products.saveProduct(id, { neckPrint: { lightDesignId: light.id, darkDesignId: dark.id } });
+  assert.equal(S.store.store().products.get(id).neckPrint.neckPrintId, up.neckPrint.neckPrintId);
+  S.products.saveProduct(id, { neckPrint: { lightDesignId: dark.id, darkDesignId: null } });
+  assert.equal(S.store.store().products.get(id).neckPrint.neckPrintId, null);
+  assert.equal((await S.products.buildRequest(S.store.store().products.get(id))).neckPrintId, undefined);
+});
+
 test('Produkt: Verbindungsabbruch → „Ergebnis muss geprüft werden“, kein zweiter Versuch ohne Klärung', async () => {
   const id = await readyProduct();
   const r = await S.products.reviewProduct(id);

@@ -171,6 +171,16 @@ route('PUT', '/api/settings', async (_r, _p, body) => {
   }
   if (body.brand) allowed.brand = { voice: body.brand.voice };
   if (body.ui) allowed.ui = body.ui;
+  // Lage der Druckfläche auf dem Produktfoto (Platzier-Editor), je Anbieter/Grundprodukt/Fläche
+  if (body.designerFrames && typeof body.designerFrames === 'object') {
+    allowed.designerFrames = {};
+    for (const [k, f] of Object.entries(body.designerFrames)) {
+      if (!/^[\w:.-]{1,120}$/.test(k)) continue;
+      if (f === null) { allowed.designerFrames[k] = null; continue; }
+      const ok = ['x', 'y', 'w', 'h'].every((n) => Number.isFinite(f?.[n]) && f[n] >= -0.5 && f[n] <= 1.5);
+      if (ok) allowed.designerFrames[k] = { x: f.x, y: f.y, w: f.w, h: f.h };
+    }
+  }
   if (allowed.ai?.engine && !['none', 'api', 'claude-code'].includes(allowed.ai.engine)) throw new UserError('Ungültige KI-Auswahl.');
   if (allowed.ai?.model && !ai.PRICES[allowed.ai.model]) throw new UserError('Unbekanntes Modell.');
   if (allowed.marketprint?.mode) mp.resetMcp();
@@ -257,6 +267,7 @@ route('POST', '/api/products/:id/publish', async (_r, p, body) => products.publi
 route('POST', '/api/products/:id/reconcile', async (_r, p, body) => products.reconcileProduct(p.id, body));
 route('POST', '/api/products/:id/reopen', async (_r, p) => products.reopenProduct(p.id));
 route('POST', '/api/products/:id/mockups', async (_r, p) => products.createMockups(p.id));
+route('POST', '/api/products/:id/neckprint', async (_r, p) => products.uploadNeckPrint(p.id));
 
 // ---- Vorlagen
 route('GET', '/api/templates', async () => store().templates.list());

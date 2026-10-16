@@ -64,6 +64,14 @@ export async function uploadImage({ filename, buffer }) {
   return { imageId: r.imageId || r.id };
 }
 
+/** Nackendruck hochladen → Kennung für das Produkt. */
+export async function uploadNeckPrint({ light, dark }) {
+  const r = await mp.uploadNeckprint({ light, dark });
+  const neckPrintId = r.neckPrintId || r.neckprintId || r.id;
+  if (!neckPrintId) throw new Error('MarketPrint hat keine Nackendruck-Kennung zurückgegeben.');
+  return { neckPrintId: String(neckPrintId), simulated: Boolean(r.simulated) };
+}
+
 export function canDirectUpload(bytes) {
   const mode = getSettings().marketprint.mode;
   return mode === 'mcp' || mode === 'simulation' || bytes < 100_000;
@@ -91,6 +99,7 @@ export function buildRequest(draft, { link }) {
   };
   if (draft.description?.trim()) args.description = draft.description.trim();
   if (draft.printerType) args.selectedPrinterType = draft.printerType;
+  if (draft.neckPrint?.lightDesignId && draft.neckPrint.neckPrintId) args.neckPrintId = draft.neckPrint.neckPrintId;
   return args;
 }
 
