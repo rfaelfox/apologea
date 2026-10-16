@@ -77,6 +77,39 @@ Die Oberfläche blendet Funktionen anhand von `meta.capabilities` ein oder aus (
 - Sicherheitshinweis: Wer auf diesen Zweig schreiben kann, kann über die Aktualisierung Programmcode auf den PC
   bringen. Darum nur nach ausdrücklichem Klick, und das GitHub-Konto sollte mit Zwei-Faktor-Anmeldung geschützt sein.
 
+## 2c. Platzier-Editor, Nackendruck, Website-Editor (ab 1.3.0)
+**Platzier-Editor (Produkte, `public/js/views/designer.js`)**
+- Nach Wahl des Grundprodukts: Ansicht „Vorderseite“, „Rückseite“ oder „Beidseitig“. Beim Wechsel auf eine Seite
+  wird ein Motiv der ausgeblendeten Seite nach Rückfrage entfernt (sonst würde es mitgedruckt).
+- Motiv auf dem Produktfoto des Anbieters (Farbe wählbar) ziehen, an der Ecke skalieren, Pfeiltasten/+/−,
+  Einrasten auf die Mitte, Schnellknöpfe (Ganze Fläche, Mittig, Oben, feste Logo-Positionen von MarketPrint).
+- Gespeichert/übertragen wird exakt das Format von `create_shop_product`: `xPercent`/`yPercent` (Motivmitte)
+  und `widthPercent` relativ zur Druckfläche. Das Motiv bleibt immer vollständig in der Druckfläche (Breite und
+  Lage werden begrenzt); die Prüfung vor dem Veröffentlichen blockiert zusätzlich jeden Überstand.
+- Wo die Druckfläche auf dem Produktfoto liegt, liefert MarketPrint nicht. Der gestrichelte Rahmen ist eine
+  Annahme und kann je Produkt über „Druckfläche auf dem Foto anpassen“ ausgerichtet werden (Einstellung
+  `designerFrames`). Die Werte für den Druck hängen davon nicht ab. Annahme „Anker = Motivmitte“ wie bisher.
+**Nackendruck (MarketPrint)**
+- Nur bei Grundprodukten mit `hasNeckPrint: true` (Stand 2026-10-16 live geprüft: 7 von 97 – VACANCY Oversized
+  Shirt, HigherBlanks Premium T-Shirt, Regular Fit T-Shirt, Ladies Cropped Tee, Basic Shirt Unisex,
+  Premium Organic Shirt, Premium Organic Shirt Women). Im Katalog markiert.
+- Motiv für helle (Pflicht) und dunkle Textilien (optional) → „Nackendruck hochladen“ (`upload_neckprint`, legt
+  nichts im Shop an) → Kennung wird als `neckPrintId` mitgesendet. Kennung setzt nur der Server; sie verfällt bei
+  Motiv- oder Grundproduktwechsel. Über Claude Code: zusammen unter ca. 100 KB.
+**Website-Editor (`#/website`, `services/themeEditor.js`, `services/storefront.js`)**
+- Oben der Auftrag an Claude (Schwerpunkt; ausgewählter Abschnitt wird als Kontext mitgegeben, Vorschlag startet
+  direkt mit Kostenhinweis). Links Seiten/Abschnitte/Blöcke des veröffentlichten Themes, Mitte Live-Ansicht,
+  rechts die Einstellungen laut Schema des Themes (Übersetzungen aus `locales/*.schema.json`).
+- Live-Ansicht: Der lokale Dienst lädt die Shop-Seiten (nur GET, nur Shop-Hosts) und liefert sie unter
+  `/vorschau/<schlüssel>/<theme>/…` aus – abgeschottet (CSP `sandbox allow-scripts`, iframe-sandbox), daher ohne
+  Zugriff auf Programm und Schnittstellen. Passwortgeschützter Shop: Shop-Passwort in den Einstellungen
+  (verschlüsselt, nicht im Repository). Abschnitt im Shop anklicken = auswählen; „Durchklicken“ zum Navigieren.
+- Eigene Änderungen (Texte, Auswahl, Farben, Schalter, Bilder ersetzen) werden in einem Entwurf gesammelt und laufen
+  durch denselben Weg wie Claudes Vorschläge (Vorschau-Theme, Prüfen, Freigabe, Sicherung, Wiederherstellen).
+  Bilder ersetzen braucht die Shopify-Admin-App (Shopify nimmt Bilder nur über „Dateien“ an).
+- Nicht im Editor: Abschnitte hinzufügen/verschieben/löschen und Einstellungsarten wie Kollektion/Produkt-Auswahl –
+  dafür Claude beauftragen oder den Shopify-Theme-Editor nutzen.
+
 ## 3. Einschränkungen (ehrlich)
 * **Installation auf deinem PC**: konnte aus der Cloud-Umgebung nicht durchgeführt werden. Installer bis zum Anlegen der Verknüpfungen in PowerShell 7 (Linux) erprobt; Verknüpfungen (COM) und Edge-App-Fenster nur unter Windows prüfbar.
 * **MarketPrint über Claude Code**: Ablauf mit Ersatz-CLI getestet. Ob die lokale Claude-Code-Installation den claude.ai-Connector im Druckmodus lädt, zeigt erst „Verbindung prüfen“ auf deinem PC.

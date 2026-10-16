@@ -75,7 +75,7 @@ export function createMockShopify() {
   });
   return {
     state,
-    start: () => new Promise((r) => server.listen(0, '127.0.0.1', () => r(`http://127.0.0.1:${server.address().port}`))),
+    start: () => new Promise((r) => { server.keepAliveTimeout = 60_000; server.listen(0, '127.0.0.1', () => r(`http://127.0.0.1:${server.address().port}`)); }),
     stop: () => new Promise((r) => server.close(r)),
     live: () => state.themes.get('gid://shopify/OnlineStoreTheme/1'),
   };

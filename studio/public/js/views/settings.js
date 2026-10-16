@@ -48,6 +48,8 @@ export async function renderSettings(main) {
     ornament(),
     h('h4', 'A · Theme Access (nur Theme-Dateien)'),
     secretField('shopify.themeAccessPassword', 'Theme-Access-Passwort', 'shptka_…', 'Shopify-Admin → Apps → Theme Access → Passwort erstellen. Erlaubt nur Änderungen an Themes (Texte, Bilder, Farben, Vorlagen), keine Seiten oder Produkte.'),
+    h('h4', 'Shop-Passwort für die Live-Ansicht'),
+    secretField('shopify.storefrontPassword', 'Shop-Passwort (Vorschau)', 'Passwort der Passwortseite', 'Nur nötig, solange dein Shop mit einer Passwortseite geschützt ist (Onlineshop → Einstellungen → Passwortschutz). Damit zeigt die Website-Ansicht im Programm deinen Shop. Wird verschlüsselt nur auf diesem PC gespeichert.'),
     h('h4', 'B · Eigene Shopify-App (Theme + Shop-Inhalte)'),
     h('div.inline-msg.info',
       'Für Seiten, Kollektionen, Tags und Bild-Uploads: Im Shopify Dev Dashboard (dev.shopify.com) eine App für deinen Shop anlegen, nur diese Berechtigungen auswählen: ',

@@ -169,6 +169,14 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - Ab jetzt nach jeder Studio-Änderung: `node tools/manifest.mjs`, Tests, committen, pushen → Nutzer klickt „Jetzt aktualisieren“.
 - Tests: `npm test` 36/36 (neu: update.test.mjs), Neustart-Ablauf manuell geprüft (gleicher Port und Schlüssel).
 
+## Sitzung 5, Teil 5 (2026-10-16) — Studio 1.3.0: Platzier-Editor, Nackendruck, Website-Editor
+- Produkt: Vorder-/Rück-/Beidseitig-Ansicht, Motiv auf dem Produktfoto ziehen/skalieren, Motiv bleibt immer in der
+  MarketPrint-Druckfläche. Nackendruck nur für die 7 Grundprodukte mit `hasNeckPrint` (Live-Katalog nur lesend geprüft).
+- Website: Editor wie bei Shopify (Abschnitte, Einstellungen, Live-Ansicht des Shops im Programm), Claude-Auftrag oben.
+  Neues Geheimnis `shopify.storefrontPassword` (nur verschlüsselt auf dem PC).
+- Tests: `npm test` grün, Oberflächen-Durchlauf 52/52, Website-Editor zusätzlich gegen simulierten Shop durchgeklickt.
+- Verteilung über die Aktualisierung im Programm (kein neues Paket nötig, keine neuen Bibliotheken).
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“

@@ -13,8 +13,8 @@ const EXAMPLES = [
 export async function renderWebsiteList(main) {
   const drafts = await get('/api/website/drafts');
   clear(main,
-    h('div.page-head', h('div', h('div.eyebrow', 'Website bearbeiten'), h('h1', 'Website')),
-      h('div.actions', h('button.primary', { type: 'button', onclick: create }, '+ Neue Änderung'))),
+    h('div.page-head', h('div', h('div.eyebrow', 'Website bearbeiten'), h('h1', 'Änderungen & Verlauf')),
+      h('div.actions', h('a.btn', { href: '#/website' }, 'Zum Website-Editor'), h('button.primary', { type: 'button', onclick: create }, '+ Neue Änderung'))),
     h('p.muted', 'Hier beschreibst du Änderungen an deinem bestehenden Shop. Claude erstellt daraus einen konkreten Vorschlag. Du siehst Vorschau und Änderungsübersicht und gibst ausdrücklich frei. Erst dann wird etwas im Shop geändert.'),
     drafts.length ? h('div.table-wrap', h('table.list',
       h('thead', h('tr', h('th', 'Titel'), h('th', 'Status'), h('th', 'Zuletzt geändert'))),
@@ -29,7 +29,7 @@ async function create() {
   try { const d = await post('/api/website/drafts', {}); location.hash = `#/website/${d.id}`; } catch (err) { showError(err); }
 }
 
-export async function renderWebsiteDraft(main, id) {
+export async function renderWebsiteDraft(main, id, query = {}) {
   let draft = await get(`/api/website/drafts/${id}`);
   const saved = h('span.saved', 'Gespeichert');
   const saver = autosaver((data) => put(`/api/website/drafts/${id}`, data).then((d) => { draft = d; renderProposal(); renderStatus(); }), saved);
@@ -93,8 +93,8 @@ export async function renderWebsiteDraft(main, id) {
     if (p.stale) parts.push(h('div.inline-msg.warn', 'Du hast den Auftrag nach diesem Vorschlag geändert. Bitte einen neuen Vorschlag erstellen.'));
     parts.push(h('div.frame.stack',
       h('div.eyebrow', `Vorschlag vom ${fmtDate(p.at)}${p.cost?.usd != null ? ' · Kosten ' + fmtUsd(p.cost.usd) : p.cost?.engine === 'claude-code' ? ' · über Claude Code' : ''}`),
-      h('h3', 'So hat Claude deinen Wunsch verstanden'), h('p', p.understood),
-      h('h3', 'Geplante Änderung'), h('p', p.summary),
+      p.manual ? null : [h('h3', 'So hat Claude deinen Wunsch verstanden'), h('p', p.understood)],
+      h('h3', 'Geplante Änderung'), h('p', { style: { whiteSpace: 'pre-line' } }, p.summary),
       p.blocking.length ? h('div', p.blocking.map((b) => h('div.inline-msg.error', b))) : null,
       p.warnings.length ? h('div', p.warnings.map((b) => h('div.inline-msg.warn', b))) : null,
       p.questions.length ? h('div', h('h4', 'Rückfragen von Claude'), p.questions.map((q) => h('div.inline-msg.info', q)), h('p.hint', 'Ergänze die Antworten im Auftragstext und erstelle einen neuen Vorschlag.')) : null));
@@ -126,6 +126,7 @@ export async function renderWebsiteDraft(main, id) {
         try { const r = await post(`/api/website/drafts/${id}/preview`); draft = await get(`/api/website/drafts/${id}`); toast(r.note || 'Vorschau ist bereit (unveröffentlichtes Theme).', 'ok'); renderProposal(); } catch (err) { showError(err); }
       }));
       previewRow.append(prevBtn);
+      if (prev?.themeId) previewRow.append(h('a.btn.small', { href: `#/website?theme=${String(prev.themeId).replace(/\D/g, '')}` }, 'Im Programm ansehen'));
       if (prev?.url) previewRow.append(extLink('Vorschau im Browser öffnen', prev.url), extLink('Im Theme-Editor öffnen', prev.editorUrl));
       if (prev?.url && prev.proposalAt !== p.at) previewRow.append(h('small.muted', 'Vorschau gehört zu einem älteren Vorschlag.'));
       if (prev?.themeId) previewRow.append(h('button.small.danger', { type: 'button', onclick: removePreview }, 'Vorschau-Theme löschen'));
@@ -215,14 +216,22 @@ export async function renderWebsiteDraft(main, id) {
   async function deleteDraft() {
     const ok = await confirmDialog({ title: 'Entwurf löschen?', text: 'Der Entwurf wird aus APOLOGEA Studio entfernt. Im Shop wird dadurch nichts geändert.', confirmLabel: 'Löschen', danger: true });
     if (!ok) return;
-    try { await del(`/api/website/drafts/${id}?confirm=1`); location.hash = '#/website'; } catch (err) { showError(err); }
+    try { await del(`/api/website/drafts/${id}?confirm=1`); location.hash = draft.manual ? '#/website' : '#/website/liste'; } catch (err) { showError(err); }
   }
 
+  const manualEdits = Object.values(draft.manual?.edits || {});
+  const formPart = draft.manual
+    ? h('div.frame.stack',
+      h('h3', 'Deine Änderungen aus dem Website-Editor'),
+      manualEdits.length ? h('ul', manualEdits.map((e) => h('li', e.label || e.setting))) : h('p.muted', 'Keine Änderungen vorgemerkt.'),
+      h('div.row', h('a.btn.small', { href: '#/website' }, 'Weiter im Website-Editor bearbeiten')),
+      h('p.hint', 'Im Shop ist noch nichts geändert. Unten: Vorschau erzeugen, prüfen und freigeben.'))
+    : null;
   clear(main,
     h('div.page-head',
       h('div', h('div.eyebrow', 'Website bearbeiten'), h('h1', draft.title || 'Website-Änderung')),
       h('div.actions', statusBox, saved, h('button.small.danger', { type: 'button', onclick: deleteDraft }, 'Entwurf löschen'))),
-    h('div.grid.cols-2',
+    formPart || h('div.grid.cols-2',
       h('div',
         h('label.field', h('span', 'Titel'), titleInput),
         h('label.field', h('span', 'Betroffene Seite bzw. Bereich'), areaSelect, areaMsg),
@@ -247,4 +256,9 @@ export async function renderWebsiteDraft(main, id) {
     clear(areaMsg, a.themeError ? h('div.inline-msg.warn', 'Theme: ' + a.themeError) : null, a.contentError ? h('div.inline-msg.info', a.contentError) : null);
   } catch (err) { clear(areaMsg, h('div.inline-msg.error', err.message)); }
   areaSelect.addEventListener('change', () => saver.schedule({ areaKey: areaSelect.value }));
+  // Aus dem Website-Editor kommend: Vorschlag direkt anstoßen (Kostenhinweis erscheint wie gewohnt)
+  if (query.start === '1' && !draft.proposal && draft.request?.trim()) {
+    history.replaceState(null, '', `#/website/${id}`);
+    proposeBtn.click();
+  }
 }

@@ -31,6 +31,8 @@ before(async () => {
     jobs: await import('../src/server/services/jobs.js'),
     images: await import('../src/server/images.js'),
     util: await import('../src/server/util.js'),
+    themeEditor: await import('../src/server/services/themeEditor.js'),
+    storefront: await import('../src/server/services/storefront.js'),
   };
   store.saveSettings({ marketprint: { mode: 'simulation' } });
   await S.secrets.setSecret('shopify.clientId', 'test-id');
@@ -257,4 +259,73 @@ test('Zielshop-Schutz: fremder Shop wird nie als Ziel verwendet', async () => {
   assert.ok(v.issues.some((i) => /Nicht als Zielshop freigegeben/.test(i.text)));
   const r = await S.products.reviewProduct(id);
   assert.equal(r.ok, false);
+});
+
+test('Website-Editor: Abschnitte mit Einstellungen, eigene Änderung → Vorschlag im gewohnten Freigabeweg', async () => {
+  mock.state.themes.get('gid://shopify/OnlineStoreTheme/1').files.set('templates/index.json', '/* Automatisch erzeugt */\n{"sections":{"hero":{"type":"hero","settings":{"heading":"Willkommen"}}},"order":["hero"]}');
+  const st = await S.themeEditor.structure({ template: 'templates/index.json' });
+  const main = st.groups.find((g) => g.main);
+  const hero = main.sections.find((x) => x.id === 'hero');
+  assert.equal(hero.name, 'Hero');
+  const f = hero.settings.find((x) => x.id === 'heading');
+  assert.equal(f.label, 'Überschrift');
+  assert.equal(f.editable, true);
+  const before = mock.state.themes.get('gid://shopify/OnlineStoreTheme/1').files.get('templates/index.json');
+  const d = await S.themeEditor.setEdit({ file: 'templates/index.json', sectionId: 'hero', setting: 'heading', value: 'Licht in der Dunkelheit', label: 'Hero › Überschrift' });
+  assert.equal(d.proposal.blocking.length, 0, d.proposal.blocking.join(' '));
+  assert.match(d.proposal.themeFiles[0].newContent, /Licht in der Dunkelheit/);
+  assert.match(d.proposal.themeFiles[0].newContent, /^\/\* Automatisch erzeugt \*\//, 'Kopfkommentar bleibt erhalten');
+  assert.equal(mock.state.themes.get('gid://shopify/OnlineStoreTheme/1').files.get('templates/index.json'), before, 'im Shop noch nichts geändert');
+  const r = await S.website.reviewDraft(d.id);
+  assert.ok(r.approvalHash);
+  // Zurücknehmen → kein Vorschlag mehr
+  const d2 = await S.themeEditor.setEdit({ file: 'templates/index.json', sectionId: 'hero', setting: 'heading', remove: true });
+  assert.equal(d2.proposal, null);
+  await assert.rejects(() => S.themeEditor.setEdit({ file: 'layout/theme.liquid', sectionId: 'x', setting: 'y', value: 1 }), /nicht bearbeitet/);
+  await assert.rejects(() => S.themeEditor.setEdit({ file: 'templates/index.json', sectionId: '../x', setting: 'y', value: 1 }), /Ungültige/);
+});
+
+test('Shop-Vorschau: Anmeldung mit Shop-Passwort, Links umgeschrieben, Einbettungssperre entfernt, abgeschottet', async () => {
+  const http = await import('node:http');
+  let shopHost;
+  const shop = http.createServer((req, res) => {
+    const cookie = req.headers.cookie || '';
+    if (req.method === 'POST' && req.url === '/password') {
+      let b = ''; req.on('data', (c) => { b += c; }); req.on('end', () => {
+        if (new URLSearchParams(b).get('password') === 'geheim') { res.writeHead(302, { 'Set-Cookie': 'storefront_digest=ok; path=/', Location: '/' }); } else res.writeHead(302, { Location: '/password' });
+        res.end();
+      });
+      return;
+    }
+    if (req.url === '/password') { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end('<form>Passwort</form>'); }
+    if (!cookie.includes('storefront_digest=ok')) { res.writeHead(302, { Location: '/password' }); return res.end(); }
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "frame-ancestors 'none'" });
+    res.end(`<html><head><link rel="stylesheet" href="/cdn/shop/t/1/assets/base.css"></head><body><a href="/products/kreuz">Kreuz</a><img src="//${shopHost}/cdn/shop/files/a.png"><div id="shopify-section-template--1__hero"><h2>Hallo</h2></div><p>${req.url}</p></body></html>`);
+  });
+  await new Promise((r) => shop.listen(0, '127.0.0.1', r));
+  shopHost = `127.0.0.1:${shop.address().port}`;
+  process.env.APOLOGEA_STOREFRONT_URL = `http://${shopHost}`;
+  const proxy = http.createServer((req, res) => S.storefront.handle(req, res, new URL(req.url, 'http://127.0.0.1')));
+  await new Promise((r) => proxy.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${proxy.address().port}`;
+  try {
+    let res = await fetch(`${base}/vorschau/falsch/live/`);
+    assert.equal(res.status, 403);
+    res = await fetch(`${base}${S.storefront.previewBase()}/`);
+    assert.match(await res.text(), /passwortgeschützt/);
+    await S.secrets.setSecret('shopify.storefrontPassword', 'geheim');
+    res = await fetch(`${base}${S.storefront.previewBase()}/?x=1`);
+    const html = await res.text();
+    assert.equal(res.headers.get('x-frame-options'), null);
+    assert.equal(res.headers.get('content-security-policy'), 'sandbox allow-scripts');
+    const P = S.storefront.previewBase();
+    assert.ok(html.includes(`href="${P}/products/kreuz"`), html);
+    assert.ok(html.includes(`href="${P}/cdn/shop/t/1/assets/base.css"`));
+    assert.ok(html.includes(`src="${P}/cdn/shop/files/a.png"`));
+    assert.ok(html.includes('__studio-tag'));
+    res = await fetch(`${base}${S.storefront.previewBase('gid://shopify/OnlineStoreTheme/555')}/pages/a`);
+    assert.match(await res.text(), /preview_theme_id=555/);
+    res = await fetch(`${base}${P}/`, { method: 'POST' });
+    assert.equal(res.status, 405);
+  } finally { shop.close(); proxy.close(); delete process.env.APOLOGEA_STOREFRONT_URL; }
 });

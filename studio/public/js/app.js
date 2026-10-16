@@ -1,6 +1,7 @@
 import { h, clear, svg, ICONS, get, post, showError, toast, confirmDialog } from './core.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderWebsiteList, renderWebsiteDraft } from './views/website.js';
+import { renderSiteEditor } from './views/siteEditor.js';
 import { renderProductList, renderProductEditor } from './views/products.js';
 import { renderLibrary } from './views/library.js';
 import { renderHistory } from './views/history.js';
@@ -64,8 +65,9 @@ async function route() {
   clear(main, h('div.muted', 'Lädt …'));
   try {
     if (!parts.length) await renderDashboard(main);
-    else if (parts[0] === 'website' && parts[1]) await renderWebsiteDraft(main, parts[1]);
-    else if (parts[0] === 'website') await renderWebsiteList(main);
+    else if (parts[0] === 'website' && parts[1] === 'liste') await renderWebsiteList(main);
+    else if (parts[0] === 'website' && parts[1]) await renderWebsiteDraft(main, parts[1], query);
+    else if (parts[0] === 'website') await renderSiteEditor(main, query);
     else if (parts[0] === 'produkte' && parts[1]) await renderProductEditor(main, parts[1]);
     else if (parts[0] === 'produkte') await renderProductList(main, query);
     else if (parts[0] === 'bibliothek') await renderLibrary(main, parts[1]);

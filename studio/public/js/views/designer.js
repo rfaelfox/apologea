@@ -33,6 +33,26 @@ export function effectiveGeometry(placement, area, design) {
   return { x, y, w, h: hFrac, ratio };
 }
 
+/**
+ * Hält ein frei platziertes Motiv vollständig innerhalb der Druckfläche, so wie der Anbieter sie vorgibt:
+ * Breite höchstens so groß, dass auch die Höhe passt; Mitte so, dass kein Rand übersteht.
+ */
+export function fitToArea(p, area, design) {
+  if (p?.mode !== 'custom') return p;
+  const iw = design?.analysis?.width;
+  const ih = design?.analysis?.height;
+  const ratio = iw && ih ? ih / iw : 1;
+  const maxW = Math.min(1, (area.height / area.width) / ratio);
+  const w = clamp(p.widthPercent, Math.min(0.03, maxW), maxW);
+  const hFrac = w * (area.width / area.height) * ratio;
+  return {
+    mode: 'custom',
+    xPercent: r4(clamp(p.xPercent, w / 2, 1 - w / 2)),
+    yPercent: r4(clamp(p.yPercent, hFrac / 2, 1 - hFrac / 2)),
+    widthPercent: r4(w),
+  };
+}
+
 /** Standardlage der Druckfläche auf einem Produktfoto (Anteile des Fotos). */
 export function defaultFrame(area, imgW, imgH) {
   const w = 0.42;
@@ -91,11 +111,11 @@ export function placementStage(opts) {
 
   function toCustom() {
     const g = effectiveGeometry(placement, area, design());
-    return { mode: 'custom', xPercent: r4(g.x), yPercent: r4(g.y), widthPercent: r4(g.w) };
+    return fitToArea({ mode: 'custom', xPercent: r4(g.x), yPercent: r4(g.y), widthPercent: r4(g.w) }, area, design());
   }
 
   function update(p, commit) {
-    placement = p;
+    placement = fitToArea(p, area, design());
     layoutMotif();
     opts.onChange?.(placement);
     if (commit) opts.onCommit?.(placement);
@@ -233,7 +253,7 @@ export function placementReadout({ stageApi, disabled, onCommit }) {
       for (const f of [fx, fy, fw]) f.inp.disabled = disabled || named;
       if (p.mode === 'custom') { fx.inp.value = (p.xPercent * 100).toFixed(1); fy.inp.value = (p.yPercent * 100).toFixed(1); fw.inp.value = (p.widthPercent * 100).toFixed(1); }
       else { fx.inp.value = ''; fy.inp.value = ''; fw.inp.value = ''; }
-      mode.textContent = named ? 'Feste Logo-Position: Größe und Lage bestimmt der Anbieter.' : auto ? 'Ganze Fläche: automatisch eingepasst und zentriert.' : 'Frei platziert – genau diese Werte werden übertragen.';
+      mode.textContent = named ? 'Feste Logo-Position: Größe und Lage bestimmt der Anbieter.' : auto ? 'Ganze Fläche: automatisch eingepasst und zentriert.' : 'Frei platziert – das Motiv bleibt immer innerhalb der Druckfläche des Anbieters; genau diese Werte werden übertragen.';
     },
   };
 }

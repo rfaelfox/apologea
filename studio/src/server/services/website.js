@@ -16,7 +16,7 @@ import { createJob, finishJob, logJob } from './jobs.js';
  * Vor jeder Übernahme werden die betroffenen Originale gesichert; Wiederherstellung ist möglich.
  */
 
-const TEMPLATE_LABELS = {
+export const TEMPLATE_LABELS = {
   'templates/index.json': 'Startseite',
   'templates/product.json': 'Produktseite',
   'templates/collection.json': 'Kollektionsseite',
@@ -233,7 +233,7 @@ async function buildContext(draft) {
   return { parts, live, fileData, pageData, caps };
 }
 
-async function capabilities() {
+export async function capabilities() {
   const kinds = shopify.connectionKinds();
   return { themes: kinds.themeAccess || kinds.adminApp, content: kinds.adminApp };
 }
@@ -268,12 +268,12 @@ export async function createProposal(id, { confirmPaid } = {}) {
   }
 }
 
-function stripJsonComment(s) {
+export function stripJsonComment(s) {
   return String(s).replace(/^﻿?\s*\/\*[\s\S]*?\*\/\s*/, '');
 }
 
 /** Prüft und vereinheitlicht den Vorschlag; berechnet Vorher-nachher-Unterschiede. */
-async function normalizeProposal(draft, data, ctx) {
+export async function normalizeProposal(draft, data, ctx) {
   const blocking = [];
   const warnings = [...(data.limitations || [])];
   const liveNames = new Set();

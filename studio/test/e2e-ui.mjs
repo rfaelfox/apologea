@@ -109,7 +109,11 @@ await page.waitForSelector('#step-base .catalog .item');
 await shot('05-produkt-katalog');
 await page.locator('#step-base .catalog .item:has-text("VACANCY Oversized Shirt")').click();
 await page.waitForSelector('#step-variants .swatch');
-check('Felder richten sich nach Artikel (Druckflächen geladen)', await page.locator('#step-print .frame').count() === 2);
+check('Platzier-Editor: Ansicht Vorder-/Rück-/Beidseitig', await page.locator('#step-print .side-switch button').count() === 3 && await page.locator('#step-print .area-panel').count() === 1);
+await page.locator('#step-print .side-switch button:has-text("Beidseitig")').click();
+await page.waitForTimeout(300);
+check('Felder richten sich nach Artikel (beide Druckflächen)', await page.locator('#step-print .area-panel').count() === 2);
+check('Nackendruck nur bei Produkten mit Nackendruck angeboten', await page.locator('#step-print h3:has-text("Nackendruck")').count() === 1);
 await page.locator('#step-variants .swatch:has-text("Washed Black")').click();
 await page.locator('#step-variants .swatch:has-text("Natural Raw")').click();
 await page.waitForTimeout(300);
@@ -118,28 +122,31 @@ check('Varianten gewählt', /16 Varianten/.test(varText), varText);
 // Druckverfahren
 await page.locator('#step-print select').first().selectOption('dtg');
 // Motiv vorne
-await page.locator('#step-print .frame').first().getByRole('button', { name: 'Motiv wählen' }).click();
+await page.locator('#step-print .area-panel').first().getByRole('button', { name: 'Motiv wählen' }).click();
 await page.locator('.overlay .card:has-text("theotokos-gold")').click();
-await page.waitForSelector('#step-print .frame >> nth=0 >> text=Prüfung der Druckdatei');
+await page.waitForSelector('#step-print .area-panel >> nth=0 >> text=Prüfung der Druckdatei');
 await page.waitForTimeout(800);
-const notes = await page.locator('#step-print .frame').first().locator('.inline-msg').allInnerTexts();
+const notes = await page.locator('#step-print .area-panel').first().locator('.inline-msg').allInnerTexts();
 check('Druckdatei geprüft', notes.some((n) => /Transparenter Hintergrund/.test(n)) && notes.some((n) => /Druckfläche/.test(n)), notes.length + ' Hinweise');
-// Frei positionieren → über den Rand
-await page.locator('#step-print .frame').first().locator('label.check:has-text("Frei positionieren") input').check();
-await page.waitForTimeout(400);
-await page.locator('#step-print .frame').first().locator('input[type=range]').nth(2).fill('1');
-await page.locator('#step-print .frame').first().locator('input[type=range]').nth(2).dispatchEvent('change');
-await page.waitForTimeout(800);
-const notes2 = await page.locator('#step-print .frame').first().locator('.inline-msg.error').allInnerTexts();
-check('Warnung: Motiv ragt über Druckfläche', notes2.some((n) => /ragt über/.test(n)));
-await page.locator('#step-print .frame').first().locator('label.check:has-text("Automatisch einpassen") input').check();
+// Frei platzieren: Motiv ziehen und zu groß machen → bleibt in der Druckfläche
+const panel0 = page.locator('#step-print .area-panel').first();
+const mb = await panel0.locator('.motif').boundingBox();
+await page.mouse.move(mb.x + mb.width / 2, mb.y + mb.height / 2); await page.mouse.down();
+await page.mouse.move(mb.x + mb.width / 2 + 400, mb.y + mb.height / 2 + 400, { steps: 6 }); await page.mouse.up();
+await panel0.locator('.readout label:has-text("Breite") input').fill('100');
+await panel0.locator('.readout label:has-text("Breite") input').dispatchEvent('change');
+await page.waitForTimeout(900);
+const notes2 = await panel0.locator('.inline-msg.error').allInnerTexts();
+check('Editor hält das Motiv innerhalb der Druckfläche', !notes2.some((n) => /ragt über/.test(n)) && await panel0.locator('.motif.out').count() === 0, notes2.join(' | ').slice(0, 100));
+await shot('05b-platzier-editor');
+await panel0.getByRole('button', { name: 'Ganze Fläche' }).click();
 await page.waitForTimeout(300);
 // Alternativ-Motiv
 await page.locator('#step-print summary:has-text("Alternativ-Motiv")').first().click();
-await page.locator('#step-print .frame').first().getByRole('button', { name: 'Wählen' }).click();
+await page.locator('#step-print .area-panel').first().getByRole('button', { name: 'Wählen' }).click();
 await page.locator('.overlay .card:has-text("theotokos-hell")').click();
 await page.waitForTimeout(500);
-await page.locator('#step-print .frame').first().locator('label.check:has-text("Washed Black") input').check();
+await page.locator('#step-print .area-panel').first().locator('label.check:has-text("Washed Black") input').check();
 await shot('06-produkt-druck');
 
 // Prüfen ohne Namen/Preis → Angaben fehlen
@@ -180,7 +187,7 @@ check('Vorlage gespeichert', true);
 
 // Vorschau
 await btn('Vorschau anzeigen').click();
-await page.waitForSelector('.overlay canvas.schema');
+await page.waitForSelector('.overlay .stage');
 check('Vorschau (gekennzeichnet) angezeigt', await page.locator('.overlay:has-text("nicht verbindlich")').count() === 1);
 await shot('08-produkt-vorschau');
 await modalBtn('Schließen').click();
@@ -253,10 +260,10 @@ check('Printify: Grundprodukt + Druckdienstleister gewählt', true);
 await page.locator('#step-variants .swatch:has-text("Schwarz")').click();
 await page.waitForTimeout(300);
 check('Printify: kein erfundener Einkaufspreis', (await page.locator('#step-variants table').innerText()).includes('beim Anlegen'));
-await page.locator('#step-print .frame').first().getByRole('button', { name: 'Motiv wählen' }).click();
+await page.locator('#step-print .area-panel').first().getByRole('button', { name: 'Motiv wählen' }).click();
 await page.locator('.overlay .card:has-text("theotokos-gold")').click();
 await page.waitForTimeout(600);
-check('Printify: keine „Kleines Logo“-Position (nicht unterstützt)', await page.locator('#step-print .frame').first().locator('label.check:has-text("Kleines Logo")').count() === 0);
+check('Printify: keine festen Logo-Positionen (nicht unterstützt)', await page.locator('#step-print .area-panel').first().getByRole('button', { name: 'Klein, linke Brust' }).count() === 0);
 await page.locator('#step-texts label.field:has-text("Interner Motivname") input').fill('Printify Test');
 await page.locator('#step-texts label.field:has-text("Öffentlicher Produktname") input').fill('Theotokos – Printify');
 await page.locator('#step-price input[type=number]').fill('42');
@@ -277,6 +284,12 @@ await shot('15-printify');
 // --- Website
 await page.click('a.item:has-text("Website")');
 await page.waitForSelector('h1:has-text("Website")');
+await page.waitForSelector('.tree .inline-msg.error');
+check('Website-Editor: ohne Shopify-Zugang verständliche Meldung', /Shopify-Zugang/.test(await page.locator('.tree').innerText()));
+check('Website-Editor: Auftrag an Claude steht oben', await page.locator('.ask-claude textarea').count() === 1);
+await shot('10-website-editor');
+await page.click('a.btn:has-text("Änderungen & Verlauf")');
+await page.waitForSelector('h1:has-text("Änderungen & Verlauf")');
 await btn('+ Neue Änderung').click();
 await page.waitForSelector('textarea.big');
 await page.waitForSelector('select optgroup', { state: 'attached' });

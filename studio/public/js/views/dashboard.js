@@ -9,10 +9,10 @@ export async function renderDashboard(main) {
     updBox,
     h('div.page-head', h('div', h('div.eyebrow', 'Arbeitsoberfläche'), h('h1', 'Willkommen im Atelier')), h('img', { src: '/brand/emblem-29.svg', alt: '', style: { width: '64px', opacity: '.9' } })),
     h('div.hero-actions',
-      h('a.hero-btn', { href: '#/website?neu' , onclick: (e) => { e.preventDefault(); newWebsiteDraft(); } },
+      h('a.hero-btn', { href: '#/website' },
         glyph(ICONS.web),
         h('span.title', 'Website bearbeiten'),
-        h('span.sub', 'Texte, Bilder, Farben oder Seiten deines bestehenden Shops ändern – mit Vorschau und Freigabe.')),
+        h('span.sub', 'Deinen Shop wie im Shopify-Editor sehen, Änderungen Claude beschreiben oder selbst vornehmen – mit Vorschau und Freigabe.')),
       h('a.hero-btn', { href: '#/produkte', onclick: (e) => { e.preventDefault(); newProduct(); } },
         glyph(ICONS.shirt),
         h('span.title', 'Neues Produkt erstellen'),
@@ -65,9 +65,6 @@ function table(rows) {
     }))));
 }
 
-async function newWebsiteDraft() {
-  try { const d = await post('/api/website/drafts', {}); location.hash = `#/website/${d.id}`; } catch (err) { showError(err); }
-}
 
 async function newProduct() {
   location.hash = '#/produkte?neu=1';

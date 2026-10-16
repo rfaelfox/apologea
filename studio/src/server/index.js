@@ -19,11 +19,13 @@ import * as website from './services/website.js';
 import * as backup from './services/backup.js';
 import { listJobs, recoverInterruptedJobs } from './services/jobs.js';
 import * as updater from './services/updater.js';
+import * as storefront from './services/storefront.js';
+import * as themeEditor from './services/themeEditor.js';
 
 const VERSION = JSON.parse(fs.readFileSync(path.join(APP_DIR, 'package.json'), 'utf8')).version;
 const RUNTIME_FILE = path.join(DIRS.internal, 'laufzeit.json');
 const PREFERRED_PORT = Number(process.env.APOLOGEA_PORT || 47821);
-const SECRET_NAMES = new Set(['shopify.themeAccessPassword', 'shopify.clientId', 'shopify.clientSecret', 'anthropic.apiKey', 'printify.token', 'printful.token']);
+const SECRET_NAMES = new Set(['shopify.themeAccessPassword', 'shopify.storefrontPassword', 'shopify.clientId', 'shopify.clientSecret', 'anthropic.apiKey', 'printify.token', 'printful.token']);
 const MAX_UPLOAD = 300 * 1024 * 1024;
 
 ensureDirs();
@@ -193,6 +195,7 @@ route('POST', '/api/secrets', async (_r, _p, body) => {
   if (body.name === 'shopify.themeAccessPassword' && v && !/^shptka_/.test(v)) throw new UserError('Ein Theme-Access-Passwort beginnt mit „shptka_“.');
   if (body.name === 'anthropic.apiKey' && v && !/^sk-ant-/.test(v)) throw new UserError('Ein Anthropic-API-Schlüssel beginnt mit „sk-ant-“.');
   await setSecret(body.name, v || null);
+  if (body.name === 'shopify.storefrontPassword') storefront.resetSession();
   return { ok: true, info: secretInfo(body.name) };
 });
 
@@ -276,6 +279,12 @@ route('DELETE', '/api/templates/:id', async (_r, p, _b, url) => { if (url.search
 
 // ---- Website
 route('GET', '/api/website/areas', async () => website.listAreas());
+route('GET', '/api/website/editor', async (_r, _p, _b, url) => themeEditor.structure({ template: url.searchParams.get('template') || undefined }));
+route('GET', '/api/website/editor/session', async () => ({ previewLive: storefront.previewBase(), draft: themeEditor.manualDraft() }));
+route('POST', '/api/website/editor/draft', async () => themeEditor.manualDraft({ create: true }));
+route('POST', '/api/website/editor/edit', async (_r, _p, body) => themeEditor.setEdit(body || {}));
+route('POST', '/api/website/editor/rebuild', async () => { const d = themeEditor.manualDraft(); return d ? themeEditor.rebuild(d.id) : null; });
+route('GET', '/api/website/editor/preview-url', async (_r, _p, _b, url) => ({ base: storefront.previewBase(url.searchParams.get('theme') || null) }));
 route('GET', '/api/website/drafts', async () => store().websiteDrafts.list());
 route('POST', '/api/website/drafts', async (_r, _p, body) => website.createDraft(body));
 route('GET', '/api/website/drafts/:id', async (_r, p) => { const d = store().websiteDrafts.get(p.id); if (!d) throw new UserError('Nicht gefunden.', { status: 404 }); return d; });
@@ -412,6 +421,9 @@ const server = http.createServer(async (req, res) => {
       try { await mp.finishOAuth(code); return send(res, 200, '<!doctype html><meta charset="utf-8"><title>Angemeldet</title><body style="background:#0b0a09;color:#efe6d4;font-family:sans-serif;padding:40px">MarketPrint-Anmeldung abgeschlossen. Du kannst dieses Fenster schließen.</body>', { 'Content-Type': 'text/html; charset=utf-8' }); } catch (err) { return send(res, 400, 'Anmeldung fehlgeschlagen: ' + errorMessage(err)); }
     }
     if (url.pathname === '/api/ping') return send(res, 200, { ok: true, app: 'APOLOGEA Studio', version: VERSION });
+
+    // Live-Ansicht des Shops: eigener Vorschau-Schlüssel, abgeschottet (siehe services/storefront.js)
+    if (url.pathname.startsWith('/vorschau/')) return await storefront.handle(req, res, url);
 
     if (!authed(req)) {
       if (url.pathname === '/' || url.pathname === '/index.html') return send(res, 401, 'Bitte APOLOGEA Studio über die Desktop-Verknüpfung starten.');
