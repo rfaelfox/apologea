@@ -353,7 +353,7 @@ async function flushThumbs() {
   if (!imgs.length) return;
   const ids = [...new Set(imgs.map(i => i.dataset.thumb))];
   try {
-    const urls = await Store.drive.thumbUrls(ids, 'medium');
+    const urls = await Store.drive.thumbUrls(ids, 'large');
     imgs.forEach(img => {
       const u = urls[img.dataset.thumb];
       if (!u) { img.replaceWith(Object.assign(document.createElement('div'), { className: 'missing-img', innerHTML: icon('image') + 'Keine Vorschau' })); return; }
@@ -498,15 +498,10 @@ function slideHtml(p, r) {
 
 async function loadSlideImages(p, v) {
   const imgs = $$('img[data-slide]', v);
-  const designs = imgs.filter(i => i.dataset.role === 'design');
-  const others = imgs.filter(i => i.dataset.role !== 'design');
   const done = img => { img.onload = () => { const sp = img.parentElement.querySelector('.spinner'); if (sp) sp.remove(); }; img.onerror = img.onload; };
+  // Originalbilder laden: gestochen scharf auf dem iPhone, Transparenz bleibt erhalten
   try {
-    if (others.length) {
-      const urls = await Store.drive.thumbUrls(others.map(i => i.dataset.slide), 'large');
-      others.forEach(i => { done(i); if (urls[i.dataset.slide]) i.src = urls[i.dataset.slide]; else i.onload(); });
-    }
-    for (const i of designs) { done(i); const u = await Store.drive.fileUrl(i.dataset.slide); if (u) i.src = u; else i.onload(); }
+    await Promise.all(imgs.map(async i => { done(i); const u = await Store.drive.fileUrl(i.dataset.slide); if (u) i.src = u; else i.onload(); }));
   } catch (e) { fail(e, 'Bilder konnten nicht geladen werden'); }
 }
 
@@ -713,7 +708,7 @@ function renderSlots() {
     const s = f.slots[r], img = $(`img[data-preview="${r}"]`, box);
     if (!s || !img) return;
     if (s.url) img.src = s.url;
-    else if (s.item) Store.drive.thumbUrls([s.item.id], 'medium').then(u => { if (u[s.item.id]) { s.url = u[s.item.id]; img.src = s.url; } }).catch(() => {});
+    else if (s.item) Store.drive.thumbUrls([s.item.id], 'large').then(u => { if (u[s.item.id]) { s.url = u[s.item.id]; img.src = s.url; } }).catch(() => {});
   });
   $$('[data-pick]', box).forEach(inp => inp.onchange = () => { const fl = inp.files && inp.files[0]; if (fl) setSlotFile(inp.dataset.pick, fl); inp.value = ''; });
   $$('[data-del]', box).forEach(b => b.onclick = () => { f.slots[b.dataset.del] = null; f.dirty = true; renderSlots(); summary(); });
