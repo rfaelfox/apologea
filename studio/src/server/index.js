@@ -24,6 +24,8 @@ import * as aSync from './analytics/sync.js';
 import * as aMetrics from './analytics/metrics.js';
 import * as aCosts from './analytics/costs.js';
 import * as aLive from './analytics/live.js';
+import * as aSetup from './analytics/setup.js';
+import * as aCloudflare from './analytics/cloudflare.js';
 import * as aReports from './analytics/reports.js';
 import * as aNotify from './analytics/notify.js';
 import { buildInsights } from './analytics/insights.js';
@@ -33,7 +35,7 @@ import * as themeEditor from './services/themeEditor.js';
 const VERSION = JSON.parse(fs.readFileSync(path.join(APP_DIR, 'package.json'), 'utf8')).version;
 const RUNTIME_FILE = path.join(DIRS.internal, 'laufzeit.json');
 const PREFERRED_PORT = Number(process.env.APOLOGEA_PORT || 47821);
-const SECRET_NAMES = new Set(['shopify.themeAccessPassword', 'shopify.storefrontPassword', 'analytics.collectorToken', 'gelato.apiKey', 'shopify.clientId', 'shopify.clientSecret', 'anthropic.apiKey', 'printify.token', 'printful.token']);
+const SECRET_NAMES = new Set(['shopify.themeAccessPassword', 'shopify.storefrontPassword', 'analytics.collectorToken', 'gelato.apiKey', 'cloudflare.apiToken', 'shopify.clientId', 'shopify.clientSecret', 'anthropic.apiKey', 'printify.token', 'printful.token']);
 const MAX_UPLOAD = 300 * 1024 * 1024;
 
 ensureDirs();
@@ -214,7 +216,7 @@ route('POST', '/api/secrets', async (_r, _p, body) => {
 route('GET', '/api/marketprint/website-catalog', async () => mp.websiteCatalog());
 route('POST', '/api/open-external', async (_r, _p, body) => {
   const u = String(body.url || '');
-  const allowedHosts = [/\.myshopify\.com$/, /(^|\.)apologea\.eu$/, /(^|\.)shopify\.com$/, /(^|\.)marketprint\.de$/, /(^|\.)printify\.com$/, /(^|\.)printful\.com$/, /(^|\.)anthropic\.com$/, /(^|\.)claude\.(ai|com)$/];
+  const allowedHosts = [/\.myshopify\.com$/, /(^|\.)apologea\.eu$/, /(^|\.)shopify\.com$/, /(^|\.)marketprint\.de$/, /(^|\.)printify\.com$/, /(^|\.)printful\.com$/, /(^|\.)anthropic\.com$/, /(^|\.)claude\.(ai|com)$/, /(^|\.)cloudflare\.com$/];
   let host;
   try { host = new URL(u).hostname; } catch { throw new UserError('Ungültige Adresse.'); }
   if (!/^https:\/\//.test(u) || !allowedHosts.some((r) => r.test(host))) throw new UserError('Diese Adresse wird aus Sicherheitsgründen nicht geöffnet.');
@@ -347,6 +349,9 @@ route('GET', '/api/analytics/reports', async () => aReports.listReports());
 route('POST', '/api/analytics/reports/open', async (_r, _p, body) => { const f = aReports.reportFile(String(body?.name || '')); if (!fs.existsSync(f)) throw new UserError('Bericht nicht gefunden.', { status: 404 }); openFile(f); return { ok: true }; });
 route('POST', '/api/analytics/reports/reveal', async (_r, _p, body) => { const f = aReports.reportFile(String(body?.name || '')); revealInExplorer(f); return { ok: true }; });
 route('POST', '/api/analytics/collector/test', async () => aLive.testCollector());
+route('GET', '/api/analytics/setup', async () => aSetup.setupStatus());
+route('POST', '/api/analytics/live-setup', async (_r, _p, body) => aCloudflare.deployCollector({ apiToken: body?.apiToken === undefined ? undefined : String(body.apiToken) }));
+route('GET', '/api/analytics/pixel-code', async () => ({ code: aCloudflare.pixelCode() }));
 
 route('GET', '/api/website/areas', async () => website.listAreas());
 route('GET', '/api/website/editor', async (_r, _p, _b, url) => themeEditor.structure({ template: url.searchParams.get('template') || undefined }));

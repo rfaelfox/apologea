@@ -213,7 +213,7 @@ export async function renderSettings(main, sub) {
     } }, 'Analytics-Einstellungen gespeichert.') }, 'Speichern'),
     ornament(),
     h('h4', 'Live View (Besucher in Echtzeit)'),
-    h('div.inline-msg.info', 'Shopify bietet seine Live View nicht über eine Schnittstelle an. Dafür gibt es einen kleinen eigenen Dienst (kostenlos bei Cloudflare) plus ein Web Pixel im Shop – nur mit Einwilligung der Besucher, ohne IP-Adressen. Schritt-für-Schritt-Anleitung: Ordner analytics-collector im Projekt bzw. docs/ANALYTICS.md.'),
+    h('div.inline-msg.info', 'Shopify bietet seine Live View nicht über eine Schnittstelle an. Dafür gibt es einen kleinen eigenen Dienst (kostenlos bei Cloudflare) plus ein Web Pixel im Shop – nur mit Einwilligung der Besucher, ohne IP-Adressen. Am einfachsten über Analytics → Einrichtung: dort richtet das Studio den Dienst mit einem Klick ein.'),
     h('label.field', h('span', 'Adresse des Live-View-Dienstes'), collectorUrl),
     h('div.row', h('button.small', { type: 'button', onclick: () => saveSettings({ analytics: { collectorUrl: collectorUrl.value } }, 'Adresse gespeichert.') }, 'Adresse speichern'), testCollector),
     secretField('analytics.collectorToken', 'Lese-Schlüssel des Dienstes (READ_TOKEN)', 'langer Zufallswert', 'Derselbe Wert wie beim Einrichten des Dienstes (wrangler secret put READ_TOKEN). Bleibt verschlüsselt auf diesem PC.'),

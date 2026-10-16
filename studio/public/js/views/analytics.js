@@ -1,6 +1,7 @@
 import { h, clear, get, post, del, fmtDate, showError, toast, busy, confirmDialog } from '../core.js';
 import { setCleanup } from '../app.js';
 import { lineChart, columnChart, barList, SERIES } from './charts.js';
+import { viewSetup } from './analyticsSetup.js';
 
 /**
  * Analytics & Business Intelligence – Bereiche:
@@ -11,7 +12,7 @@ import { lineChart, columnChart, barList, SERIES } from './charts.js';
 
 const TABS = [
   ['uebersicht', 'Übersicht'], ['live', 'Live View'], ['umsatz', 'Verkäufe & Umsatz'], ['kunden', 'Kunden & Besucher'],
-  ['produkte', 'Produktperformance'], ['gewinn', 'Gewinn & POD-Kosten'], ['berichte', 'Berichte'],
+  ['produkte', 'Produktperformance'], ['gewinn', 'Gewinn & POD-Kosten'], ['berichte', 'Berichte'], ['einrichtung', 'Einrichtung'],
 ];
 const PRESETS = [['today', 'Heute'], ['yesterday', 'Gestern'], ['7d', '7 Tage'], ['30d', '30 Tage'], ['90d', '90 Tage'], ['ytd', 'Dieses Jahr'], ['custom', 'Zeitraum …']];
 
@@ -66,7 +67,7 @@ export async function renderAnalytics(main, sub = 'uebersicht', query = {}) {
   const tabs = h('nav.a-tabs', TABS.map(([k, l]) => h(`a${k === sub || (sub === 'produkt' && k === 'produkte') ? '.on' : ''}`, { href: `#/analytics/${k}` }, l)));
   clear(main,
     h('div.page-head', h('div', h('div.eyebrow', 'Business Intelligence'), h('h1', 'Analytics')), statusLine),
-    tabs, setupBox, sub === 'live' || sub === 'berichte' ? null : filter, body);
+    tabs, setupBox, ['live', 'berichte', 'einrichtung'].includes(sub) ? null : filter, body);
 
   // ---- Status & Einrichtung
   let status = null;
@@ -81,7 +82,7 @@ export async function renderAnalytics(main, sub = 'uebersicht', query = {}) {
       s ? h('small', { class: s.ok ? 'muted' : 'err' }, s.ok ? `Stand: ${fmtDate(s.lastSyncAt)} · ${s.orders} Bestellungen` : `Letzte Synchronisierung fehlgeschlagen: ${s.error}`) : h('small.muted', 'Noch nicht synchronisiert'),
       status.permissions.adminApp ? syncBtn : null,
       h('a.btn.small.ghost', { href: '#/einstellungen/analytics' }, 'Einstellungen'));
-    clear(setupBox, setupHint(status));
+    clear(setupBox, sub === 'einrichtung' ? null : setupHint(status));
   }
 
   // ---- Zeitfilter
@@ -94,7 +95,7 @@ export async function renderAnalytics(main, sub = 'uebersicht', query = {}) {
       h('small.muted.a-cmp-note', 'Vergleich: gleich langer Zeitraum unmittelbar davor'));
   }
 
-  const views = { uebersicht: viewOverview, live: viewLive, umsatz: viewSales, kunden: viewCustomers, produkte: viewProducts, produkt: viewProduct, gewinn: viewProfit, berichte: viewReports };
+  const views = { uebersicht: viewOverview, live: viewLive, umsatz: viewSales, kunden: viewCustomers, produkte: viewProducts, produkt: viewProduct, gewinn: viewProfit, berichte: viewReports, einrichtung: viewSetup };
   async function draw() {
     clear(body, h('div.a-loading', h('span.spinner'), 'Daten werden geladen …'));
     try { await views[sub](body, period, { query, timers, redraw: draw }); } catch (err) {
@@ -109,18 +110,12 @@ export async function renderAnalytics(main, sub = 'uebersicht', query = {}) {
 
 function setupHint(status) {
   const p = status.permissions || {};
-  if (p.adminApp && !p.missing?.length) return null;
-  const steps = h('ol.a-steps',
-    h('li', 'Shopify Dev Dashboard (dev.shopify.com) öffnen → deine App für den Shop APOLOGEA (oder neue App anlegen).'),
-    h('li', 'Unter „Konfiguration → Zugriffsbereiche“ zusätzlich auswählen: ', h('strong', 'read_orders, read_reports, read_products'), ' (für Bilder/Website außerdem write_products, read_files, write_files, read_themes, write_themes).'),
-    h('li', 'Unter „API-Zugriff → Geschützte Kundendaten“ den Zugriff auf Bestelldaten beantragen (Grund: Analysen im eigenen Shop). APOLOGEA Studio speichert keine Namen, E-Mails oder Adressen.'),
-    h('li', 'Optional: ', h('strong', 'read_all_orders'), ' – ohne diese Berechtigung sieht Shopify nur die letzten 60 Tage.'),
-    h('li', 'App-Version veröffentlichen und im Shop installieren bzw. aktualisieren, dann Client-ID und Client-Secret unter Einstellungen → Shopify → B eintragen.'));
-  return h('div.frame.a-setup',
-    h('h3', p.adminApp ? 'Es fehlen Shopify-Berechtigungen' : 'Analytics einrichten'),
-    p.adminApp ? h('p', 'Fehlend: ', h('strong', p.missing.join(', ')), '. Ohne sie bleiben einzelne Bereiche leer.') : h('p', 'Analytics braucht die Shopify-Admin-App (offizielle GraphQL Admin API). Theme Access reicht dafür nicht.'),
-    steps,
-    h('p.hint', 'Live View (Besucher in Echtzeit) braucht zusätzlich den kleinen Live-View-Dienst – Anleitung unter Einstellungen → Analytics.'));
+  const shopReady = p.adminApp && !p.missing?.length;
+  if (shopReady && status.collector) return null;
+  return h('div.frame.a-setup.a-setup-slim',
+    h('div', h('h3', shopReady ? 'Live View noch nicht eingerichtet' : 'Analytics ist noch nicht vollständig eingerichtet'),
+      h('p.muted', shopReady ? 'Alle Shopify-Zahlen laufen. Für „Besucher online“ fehlt noch der Live-Dienst.' : 'Der Assistent führt dich Schritt für Schritt durch – mit Knöpfen, die genau die richtige Seite öffnen.')),
+    h('a.btn.primary', { href: '#/analytics/einrichtung' }, 'Einrichtung öffnen'));
 }
 
 // ------------------------------------------------------------------ Übersicht

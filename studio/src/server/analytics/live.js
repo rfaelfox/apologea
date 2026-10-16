@@ -6,7 +6,7 @@ import { getSecret } from '../secrets.js';
  * Live View.
  *
  * Shopify bietet für die eigene „Live View“ keine öffentliche Schnittstelle. Echtzeitdaten über Besucher
- * kommen deshalb aus einem kleinen, eigenen Dienst (analytics-collector/), der die Customer Events eines
+ * kommen deshalb aus einem kleinen, eigenen Dienst (src/collector/), der die Customer Events eines
  * Shopify Web Pixels entgegennimmt – nur mit Einwilligung der Besucher (Cookie-Banner/Customer Privacy API),
  * ohne IP-Adressen, mit täglich wechselndem Pseudonym. Das Programm fragt diesen Dienst ab; der Zugangsschlüssel
  * bleibt im Programm (verschlüsselt) und wird nie an die Oberfläche gegeben.

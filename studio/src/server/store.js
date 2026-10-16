@@ -195,7 +195,7 @@ export const DEFAULT_SETTINGS = {
     fees: { percent: null, fixed: null }, // Zahlungsgebühren je Bestellung, falls Shopify keine tatsächlichen Gebühren liefert
     podShippingPerOrder: null, // Versandkosten des Druckdienstleisters je Bestellung (Schätzung, falls keine Anbieterdaten)
     productCosts: {}, // Shopify-Produkt-ID → { unit, note } – Herstellkosten je Stück (manuell)
-    collectorUrl: '', // Adresse des Live-View-Dienstes (siehe analytics-collector/)
+    collectorUrl: '', // Adresse des Live-View-Dienstes (siehe src/collector/)
     notify: { sales: true, refunds: true, goals: true, errors: true },
   },
   gelato: { mode: 'none' }, // nur Kostendaten für Analytics (API-Schlüssel in den Zugangsdaten)

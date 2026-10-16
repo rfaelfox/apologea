@@ -25,10 +25,16 @@ Textbaustein für die Datenschutzerklärung (bitte rechtlich prüfen lassen):
 > zusammengefasste Tageszahlen je Produkt bleiben bis zu 400 Tage erhalten. Rechtsgrundlage: Art. 6 Abs. 1 lit. a
 > DSGVO (Einwilligung), jederzeit widerrufbar über die Cookie-Einstellungen.
 
-## Einrichtung (einmalig, ca. 15 Minuten)
-Voraussetzung: kostenloses Cloudflare-Konto und Node.js (ist mit dem Studio bereits installiert).
+## Einrichtung – einfacher Weg (empfohlen)
+Im Studio: **Analytics → Einrichtung → Schritt 5**. Dort Cloudflare-Konto anlegen, einen API-Token erstellen
+(Vorlage „Cloudflare Workers bearbeiten“ + „Konto · D1 · Bearbeiten“) und einfügen → „Live-Dienst jetzt einrichten“.
+Das Studio legt Datenbank, Tabellen, Worker, stündliches Aufräumen und die workers.dev-Adresse über die
+Cloudflare-Schnittstelle an und trägt Adresse und Lese-Schlüssel selbst ein. Schritt 6 liefert den fertigen Pixel-Code.
 
-1. Eingabeaufforderung im Ordner `analytics-collector` öffnen.
+## Einrichtung – manuell mit wrangler (nur für Fortgeschrittene)
+Voraussetzung: kostenloses Cloudflare-Konto und Node.js mit npm.
+
+1. Eingabeaufforderung in diesem Ordner (`studio/src/collector`) öffnen.
 2. `npm i -g wrangler`
 3. `wrangler login` (Browser öffnet sich → Cloudflare bestätigen)
 4. `wrangler d1 create apologea-live` → die angezeigte `database_id` in `wrangler.toml` bei

@@ -1,6 +1,6 @@
 {
   "name": "apologea-studio",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "APOLOGEA Studio – lokale Arbeitsoberfläche für Shopify-Website und MarketPrint-Produkte",
   "type": "module",
@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node launcher.js",
     "server": "node src/server/index.js",
-    "test": "node --test test/server.test.mjs test/bridge.test.mjs test/providers.test.mjs test/update.test.mjs test/analytics.test.mjs"
+    "test": "node --test test/server.test.mjs test/bridge.test.mjs test/providers.test.mjs test/update.test.mjs test/analytics.test.mjs test/cloudflare.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",

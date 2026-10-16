@@ -200,6 +200,14 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - Tests: `npm test` 49/49 (neu: analytics.test.mjs mit gekennzeichneten Testdaten), Oberflächen-Durchlauf 58/58,
   alle Analytics-Ansichten gegen simulierten Shop durchgeklickt. Keine neuen Bibliotheken → Aktualisierung im Programm.
 
+## Sitzung 6, Teil 2 (2026-10-16) — Studio 2.1.0: Einrichtungs-Assistent
+- Nutzer war nicht am PC und bat, die Einrichtung zu übernehmen. Nicht möglich (Shopify-/Cloudflare-Logins des Nutzers nötig);
+  stattdessen: Analytics → „Einrichtung“ mit echter Prüfung je Schritt und Knöpfen, die die richtigen Seiten öffnen.
+- Live-Dienst per Klick über die Cloudflare-REST-API (auf dem PC gibt es nur node.exe, kein npm/wrangler).
+  Collector liegt jetzt unter `studio/src/collector/`, damit er mit der Aktualisierung im Programm ausgeliefert wird.
+- Tests: `npm test` 55/55 (neu: cloudflare.test.mjs mit simuliertem Cloudflare), Oberflächen-Durchlauf 58/58,
+  Assistent im Browser durchgeklickt. Gegen echtes Cloudflare noch ungetestet.
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“

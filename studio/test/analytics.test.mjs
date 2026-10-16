@@ -85,7 +85,7 @@ before(async () => {
     reports: await import('../src/server/analytics/reports.js'),
     notify: await import('../src/server/analytics/notify.js'),
     live: await import('../src/server/analytics/live.js'),
-    core: await import('../../analytics-collector/core.js'),
+    core: await import('../src/collector/core.js'),
   };
 });
 after(() => shop.close());
