@@ -53,7 +53,7 @@ export async function newProductDialog(items, templates, presetDesignId) {
     h('div.card.way.stack',
       h('div.eyebrow', 'Weg 2'),
       h('h3', 'Im MarketPrint-Designer gestalten'),
-      h('p.muted', 'Direkt auf der Website von MarketPrint: Kleidungsstück hier wählen, der MarketPrint-Designer öffnet sich im Browser. Gestalten und Veröffentlichen erfolgen dort.'),
+      h('p.muted', 'Direkt auf der Website von MarketPrint: Die MarketPrint-Seite öffnet sich in deinem Browser. Kleidungsstück wählen, gestalten und veröffentlichen erfolgen dort.'),
       h('button', { type: 'button', onclick: () => { closeModal(true); setTimeout(() => marketprintSiteDialog(), 30); } }, 'Zu MarketPrint wechseln')));
   await modal({
     eyebrow: 'Neues Produkt erstellen', title: 'Wie möchtest du das Produkt erstellen?', wide: true,
@@ -109,7 +109,7 @@ async function marketprintSiteDialog() {
     h('div.inline-msg.info', 'Der MarketPrint-Designer öffnet sich in deinem Browser (dort mit deinem MarketPrint-Konto anmelden). Was du dort anlegst, veröffentlicht MarketPrint direkt in deinem Shop – APOLOGEA Studio prüft und protokolliert diese Produkte nicht. Achte dort auf den richtigen Shop (dfz1mp-1u.myshopify.com).'),
     h('div.row', h('button.primary', { type: 'button', onclick: () => open(`${MP_APP}/`, 'MarketPrint') }, 'MarketPrint öffnen'), h('div', { style: { flex: '1 1 260px' } }, search)),
     status,
-    h('div.field-label', 'Oder direkt ein Kleidungsstück im Designer öffnen'),
+    h('div.field-label', 'Kleidungsstück schon wissen? Anklicken – MarketPrint öffnet sich, und hier steht, wo du es dort findest'),
     grid);
   let catalog = null;
   const draw = () => {
@@ -117,10 +117,17 @@ async function marketprintSiteDialog() {
     const q = search.value.toLowerCase();
     const list = catalog.items.filter((c) => !q || c.title.toLowerCase().includes(q));
     clear(grid, list.length ? list.map((c) => {
-      const it = h('button.mp-item', { type: 'button', title: `${c.title} im MarketPrint-Designer öffnen` },
+      const it = h('button.mp-item', { type: 'button', title: `MarketPrint öffnen und „${c.title}“ wählen` },
         c.image ? h('img', { src: c.image, alt: '', loading: 'lazy' }) : null,
         h('span.t', c.title), c.hasNeckPrint ? h('small.badge-neck', 'Nackendruck möglich') : null);
-      it.addEventListener('click', () => open(`${MP_APP}/design/${encodeURIComponent(c.id)}`, `„${c.title}“`));
+      // Direktlinks auf den Designer (/design/<id>) lädt MarketPrint nicht (getestet 2026-10-16) – daher Startseite
+      // öffnen und den Produktnamen zum Einfügen in die MarketPrint-Suche kopieren.
+      it.addEventListener('click', async () => {
+        let copied = false;
+        try { await navigator.clipboard.writeText(c.title); copied = true; } catch { /* Zwischenablage nicht verfügbar */ }
+        await open(`${MP_APP}/`, 'MarketPrint');
+        status.prepend(h('div.inline-msg.info', h('strong', `In MarketPrint: oben „Produkte“ → „${c.title}“ wählen.`), copied ? ' Der Name ist kopiert und kann dort in die Suche eingefügt werden (Strg+V).' : ''));
+      });
       return it;
     }) : h('div.muted', 'Nichts gefunden.'));
   };

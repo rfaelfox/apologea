@@ -83,8 +83,9 @@ Die Oberfläche blendet Funktionen anhand von `meta.capabilities` ein oder aus (
   Platzierung ohne Foto-Editor: „Ganze Fläche“, „Feste Logo-Position“ (MarketPrint) oder „Eigene Position“ mit
   Zahlen (Mitte X/Y, Breite in % der Druckfläche). Das Motiv bleibt immer innerhalb der Druckfläche.
   Vorder-/Rück-/Beidseitig-Auswahl, maximale Motivgröße in cm und DPI-Prüfung bleiben.
-- Weg 2 „Im MarketPrint-Designer gestalten“: Kleidungsstück im Programm wählen → `https://app.marketprint.de/design/<id>`
-  öffnet sich im Browser. Gestaltung und Veröffentlichung erfolgen dort; das Programm protokolliert diese Produkte nicht.
+- Weg 2 „Im MarketPrint-Designer gestalten“: öffnet `https://app.marketprint.de/` im Standardbrowser. Direktlinks auf
+  `/design/<id>` lädt MarketPrint nicht (endlose Ladeanzeige, getestet 2026-10-16); ein gewähltes Kleidungsstück wird
+  daher als Hinweis angezeigt und sein Name in die Zwischenablage kopiert. Gestaltung und Veröffentlichung erfolgen dort; das Programm protokolliert diese Produkte nicht.
 - Der Foto-Platzier-Editor (1.3.x) wurde verworfen: MarketPrint liefert die Lage der Druckfläche auf dem Foto nicht.
 **DPI-Prüfung (wie im MarketPrint-Editor)**
 - Effektive DPI = Pixelbreite des Motivs ÷ gedruckte Breite (Zoll). Annahme: Druckflächen-Pixel von MarketPrint
