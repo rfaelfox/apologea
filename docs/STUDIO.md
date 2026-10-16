@@ -89,6 +89,12 @@ Die Oberfläche blendet Funktionen anhand von `meta.capabilities` ein oder aus (
 - Wo die Druckfläche auf dem Produktfoto liegt, liefert MarketPrint nicht. Der gestrichelte Rahmen ist eine
   Annahme und kann je Produkt über „Druckfläche auf dem Foto anpassen“ ausgerichtet werden (Einstellung
   `designerFrames`). Die Werte für den Druck hängen davon nicht ab. Annahme „Anker = Motivmitte“ wie bisher.
+**DPI-Prüfung (wie im MarketPrint-Editor)**
+- Effektive DPI = Pixelbreite des Motivs ÷ gedruckte Breite (Zoll). Annahme: Druckflächen-Pixel von MarketPrint
+  ≙ 300 DPI (4677 × 5881 px ≙ ca. 39,6 × 49,8 cm); die Schnittstelle nennt keine Zentimeter.
+- Stufen: **gut** ab 200 DPI, **mittel** 150–199 DPI (Hinweis), **schlecht** unter 150 DPI (blockiert die Freigabe).
+- Live im Platzier-Editor (Anzeige unten rechts auf dem Foto, mit Druckgröße in cm), in der Druckdatei-Prüfung,
+  in der Zusammenfassung vor dem Veröffentlichen und in der Designbibliothek (maximale Druckgröße je Stufe).
 **Nackendruck (MarketPrint)**
 - Nur bei Grundprodukten mit `hasNeckPrint: true` (Stand 2026-10-16 live geprüft: 7 von 97 – VACANCY Oversized
   Shirt, HigherBlanks Premium T-Shirt, Regular Fit T-Shirt, Ladies Cropped Tee, Basic Shirt Unisex,

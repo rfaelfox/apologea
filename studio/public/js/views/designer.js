@@ -53,6 +53,33 @@ export function fitToArea(p, area, design) {
   };
 }
 
+// DPI-Prüfung (gleiche Regeln wie auf dem Server, src/server/images.js):
+// Druckflächen-Pixel laut Anbieter ≙ 300 DPI; ab 200 DPI gut, 150–199 mittel, darunter schlecht.
+const AREA_DPI = 300;
+export function dpiInfo(placement, area, design) {
+  if (!design) return null;
+  if (design.analysis?.vector) return { vector: true, rating: 'gut' };
+  const iw = design.analysis?.width;
+  if (!iw) return null;
+  if (placement?.mode === 'named') return { named: true };
+  const g = effectiveGeometry(placement, area, design);
+  const inches = (g.w * area.width) / AREA_DPI;
+  const dpi = Math.round(iw / inches);
+  return {
+    dpi,
+    rating: dpi >= 200 ? 'gut' : dpi >= 150 ? 'mittel' : 'schlecht',
+    widthCm: inches * 2.54,
+    heightCm: ((g.h * area.height) / AREA_DPI) * 2.54,
+  };
+}
+const cm = (v) => v.toFixed(1).replace('.', ',');
+export function dpiText(info) {
+  if (!info) return '';
+  if (info.vector) return 'Vektor · gut';
+  if (info.named) return 'DPI: Größe legt der Anbieter fest';
+  return `${info.dpi} DPI · ${info.rating} · ${cm(info.widthCm)} × ${cm(info.heightCm)} cm`;
+}
+
 /** Standardlage der Druckfläche auf einem Produktfoto (Anteile des Fotos). */
 export function defaultFrame(area, imgW, imgH) {
   const w = 0.42;
@@ -81,9 +108,10 @@ export function placementStage(opts) {
   const motif = h('div.motif', { tabindex: disabled ? -1 : 0, title: 'Ziehen zum Verschieben · Ecke ziehen zum Skalieren · Pfeiltasten zum Feinjustieren' }, motifImg, handle);
   const frameHandle = h('span.handle.frame-handle', { title: 'Druckfläche skalieren' });
   const label = h('span.stage-label', area.label || area.name);
+  const dpiBadge = h('span.dpi-badge', { title: 'DPI-Prüfung: ab 200 DPI gut, 150–199 mittel, darunter schlecht (Druckfläche laut Anbieter ≙ 300 DPI)' });
   frameEl.append(guideV, guideH, motif, frameHandle);
   if (img) stage.append(img);
-  stage.append(frameEl, label);
+  stage.append(frameEl, label, dpiBadge);
 
   const design = () => (opts.showAlt && opts.altDesign ? opts.altDesign : opts.design);
 
@@ -99,6 +127,9 @@ export function placementStage(opts) {
   function layoutMotif() {
     const d = design();
     motif.classList.toggle('hidden', !d);
+    const q = dpiInfo(placement, area, d);
+    dpiBadge.className = `dpi-badge${q?.rating ? ' ' + q.rating : ''}${q ? '' : ' hidden'}`;
+    dpiBadge.textContent = dpiText(q);
     if (!d) return;
     const g = effectiveGeometry(placement, area, d);
     const url = `/files/design/${d.id}/thumb`;

@@ -176,11 +176,13 @@ export function checkPrintFile({ analysis, printArea, placement, printerType }) 
     add('warn', `Benannte Position „${geom.named}“: Größe und Lage bestimmt MarketPrint. Bitte das Mockup prüfen.`);
     return notes;
   }
-  const scale = geom.targetW / imgW;
-  const pct = Math.round(scale * 100);
-  if (scale > 2) add('error', `Das Motiv müsste auf ${pct} % vergrößert werden, um die gewünschte Breite zu füllen. Das wird sichtbar unscharf. Bitte eine größere Datei liefern (mindestens ${Math.ceil(geom.targetW)} px breit).`);
-  else if (scale > 1.15) add('warn', `Das Motiv wird auf ${pct} % vergrößert (Ziel ca. ${Math.round(geom.targetW)} px breit). Eine Datei in voller Druckflächen-Auflösung wäre schärfer.`);
-  else add('ok', `Auflösung ausreichend: Die Datei wird höchstens auf ${pct} % skaliert.`);
+  const q = dpiRating(imgW, geom.targetW, geom.targetH);
+  const size = `${String(q.widthCm).replace('.', ',')} × ${String(q.heightCm).replace('.', ',')} cm`;
+  const needPx = Math.ceil((geom.targetW / AREA_DPI) * DPI_LEVELS.gut);
+  const dpiNote = (level, text) => notes.push({ level, text, dpi: q });
+  if (q.rating === 'gut') dpiNote('ok', `DPI-Prüfung: gut – ca. ${q.dpi} DPI bei ${size} Druckgröße.`);
+  else if (q.rating === 'mittel') dpiNote('warn', `DPI-Prüfung: mittel – ca. ${q.dpi} DPI bei ${size} Druckgröße. Der Druck kann leicht weich wirken. Für „gut“ mindestens ${needPx} px Breite oder das Motiv etwas kleiner setzen.`);
+  else dpiNote('error', `DPI-Prüfung: schlecht – nur ca. ${q.dpi} DPI bei ${size} Druckgröße. Das Motiv wird stark vergrößert und sichtbar unscharf. Bitte eine größere Datei liefern (mindestens ${needPx} px breit) oder das Motiv kleiner setzen.`);
 
   const coverW = Math.round((geom.targetW / areaW) * 100);
   const coverH = Math.round((geom.targetH / areaH) * 100);
@@ -192,6 +194,22 @@ export function checkPrintFile({ analysis, printArea, placement, printerType }) 
   }
   if (geom.outOfBounds) add('error', 'Das Motiv ragt über die Druckfläche hinaus. Annahme dabei: Der Ankerpunkt ist die Motivmitte, MarketPrint dokumentiert ihn nicht genauer. Bitte Breite oder Position anpassen.');
   return notes;
+}
+
+/**
+ * DPI-Prüfung wie im Editor von MarketPrint.
+ * Annahme: Die Pixelmaße der Druckfläche, die MarketPrint liefert, entsprechen 300 DPI
+ * (z. B. 4677 × 5881 px ≙ ca. 39,6 × 49,8 cm beim Oversized Shirt). Die Schnittstelle nennt keine Zentimeter.
+ * Effektive DPI = Pixel des Motivs ÷ gedruckte Breite in Zoll.
+ */
+export const AREA_DPI = 300;
+export const DPI_LEVELS = { gut: 200, mittel: 150 }; // ab 200 gut, 150–199 mittel, darunter schlecht
+
+export function dpiRating(imgW, targetWpx, targetHpx) {
+  const inches = targetWpx / AREA_DPI;
+  const dpi = Math.round(imgW / inches);
+  const rating = dpi >= DPI_LEVELS.gut ? 'gut' : dpi >= DPI_LEVELS.mittel ? 'mittel' : 'schlecht';
+  return { dpi, rating, widthCm: Math.round(inches * 2.54 * 10) / 10, heightCm: targetHpx ? Math.round((targetHpx / AREA_DPI) * 2.54 * 10) / 10 : null };
 }
 
 export function placementGeometry({ imgW, imgH, areaW, areaH, placement }) {

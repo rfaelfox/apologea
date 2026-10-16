@@ -360,3 +360,12 @@ button.linkish { border: 0; padding: 0; min-height: 0; text-transform: none; let
   .site-editor { grid-template-columns: 1fr; }
   .site-left { position: static; max-height: 320px; }
 }
+.dpi-badge { position: absolute; right: 8px; bottom: 8px; font-size: .74rem; font-weight: 600; padding: 3px 9px; background: #ffffffd9; color: #3a342a; border-left: 4px solid #9a907f; pointer-events: none; }
+.dpi-badge.gut { border-left-color: #4e8a47; color: #24481f; }
+.dpi-badge.mittel { border-left-color: #c58a1c; color: #6b4a08; }
+.dpi-badge.schlecht { border-left-color: #b8483c; color: #7a2018; background: #fff0ee; }
+.dpi-badge.hidden { display: none; }
+.dpi-table { border: 1px solid var(--line-soft); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.dpi-row { display: grid; grid-template-columns: 70px 1fr auto; gap: 8px; align-items: baseline; border-left: 3px solid var(--line); padding-left: 8px; }
+.dpi-row.gut { border-left-color: var(--ok); }
+.dpi-row.mittel { border-left-color: var(--warn); }

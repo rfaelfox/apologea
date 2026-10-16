@@ -175,6 +175,7 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - Website: Editor wie bei Shopify (Abschnitte, Einstellungen, Live-Ansicht des Shops im Programm), Claude-Auftrag oben.
   Neues Geheimnis `shopify.storefrontPassword` (nur verschlüsselt auf dem PC).
 - Tests: `npm test` grün, Oberflächen-Durchlauf 52/52, Website-Editor zusätzlich gegen simulierten Shop durchgeklickt.
+- DPI-Prüfung gut/mittel/schlecht (≥200 / 150–199 / <150 DPI, Annahme Druckfläche ≙ 300 DPI) live im Editor.
 - Verteilung über die Aktualisierung im Programm (kein neues Paket nötig, keine neuen Bibliotheken).
 
 ## Nächste Schritte

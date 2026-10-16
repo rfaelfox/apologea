@@ -319,6 +319,7 @@ export async function reviewProduct(id) {
       design: d?.name, file: d?.originalName, providerFileId: getLink(d, draft.provider)?.imageId,
       placement: p.placement?.mode === 'custom' ? `x ${pct(p.placement.xPercent)}, y ${pct(p.placement.yPercent)}, Breite ${pct(p.placement.widthPercent)}` : p.placement?.mode === 'named' ? p.placement.named : 'automatisch eingepasst',
       alternative: alt ? { design: alt.name, colors: p.alternative.colors } : null,
+      dpi: (v.fileChecks?.[p.printArea] || []).find((n) => n.dpi)?.dpi || null,
     };
   });
   const catalogueAll = Object.values(byColor).flatMap((c) => c.catalogue);

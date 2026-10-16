@@ -237,7 +237,16 @@ test('Datensicherung: Export, Import (mit Sicherheitskopie), keine Zugangsdaten 
 test('Druckdatei-Prüfung: Hochskalierung, Ränder, Format', () => {
   const area = { name: 'front', width: 4677, height: 5881 };
   const small = S.images.checkPrintFile({ analysis: { format: 'PNG', width: 1000, height: 1200, hasAlphaChannel: true, hasAlpha: true, transparentRatio: 0.5 }, printArea: area, placement: 'auto', printerType: 'dtg' });
-  assert.ok(small.some((n) => n.level === 'error' && /vergrößert/.test(n.text)));
+  assert.ok(small.some((n) => n.level === 'error' && /DPI-Prüfung: schlecht/.test(n.text) && n.dpi.rating === 'schlecht'));
+  // 4677 px über die volle Breite = 300 DPI → gut; 2800 px → ca. 180 DPI → mittel
+  const full = S.images.checkPrintFile({ analysis: { format: 'PNG', width: 4677, height: 5881, hasAlphaChannel: true, hasAlpha: true }, printArea: area, placement: 'auto' });
+  assert.equal(full.find((n) => n.dpi).dpi.rating, 'gut');
+  assert.equal(full.find((n) => n.dpi).dpi.dpi, 300);
+  assert.equal(full.find((n) => n.dpi).dpi.widthCm, 39.6);
+  const mid = S.images.checkPrintFile({ analysis: { format: 'PNG', width: 2800, height: 3520, hasAlphaChannel: true, hasAlpha: true }, printArea: area, placement: 'auto' });
+  assert.equal(mid.find((n) => n.dpi).dpi.rating, 'mittel');
+  const half = S.images.checkPrintFile({ analysis: { format: 'PNG', width: 2800, height: 2800, hasAlphaChannel: true, hasAlpha: true }, printArea: area, placement: { mode: 'custom', xPercent: 0.5, yPercent: 0.5, widthPercent: 0.5 } });
+  assert.equal(half.find((n) => n.dpi).dpi.rating, 'gut', 'kleiner gesetzt → höhere DPI');
   const edge = S.images.checkPrintFile({ analysis: { format: 'PNG', width: 4000, height: 4000, hasAlphaChannel: true, hasAlpha: true }, printArea: area, placement: { xPercent: 0.9, yPercent: 0.5, widthPercent: 0.5 } });
   assert.ok(edge.some((n) => /ragt über/.test(n.text)));
   const jpg = S.images.checkPrintFile({ analysis: { format: 'JPEG', width: 4677, height: 5881 }, printArea: area, placement: 'auto' });

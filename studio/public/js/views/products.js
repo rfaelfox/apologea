@@ -599,7 +599,7 @@ export async function renderProductEditor(main, id) {
           h('dt', 'Grundprodukt'), h('dd', `${s.baseProduct} · Druck: ${String(s.printerType).toUpperCase()}`),
           h('dt', 'Varianten'), h('dd', `${s.variantCount} Varianten`, s.variants.map((v) => h('div', h('span', { style: { display: 'inline-block', width: '12px', height: '12px', background: v.hex, border: '1px solid #fff4', marginRight: '6px' } }), `${v.color}: ${v.sizes.join(', ')}`))),
           h('dt', 'Verkaufspreis'), h('dd', h('strong', fmtEuro(s.price)), h('div.muted', s.catalogueMin !== null ? `${s.priceLabel || 'Katalogpreis'}: ${fmtEuro(s.catalogueMin)} – ${fmtEuro(s.catalogueMax)}` : (s.priceLabel || ''))),
-          h('dt', 'Dateien'), h('dd', s.files.map((f) => h('div', `${f.printArea}: ${f.design} (${f.file}) · ${f.placement}`, f.alternative ? h('div.muted', `Alternativ: ${f.alternative.design} für ${f.alternative.colors.length} Farbe(n)`) : null))),
+          h('dt', 'Dateien'), h('dd', s.files.map((f) => h('div', `${f.printArea}: ${f.design} (${f.file}) · ${f.placement}${f.dpi ? ` · ca. ${f.dpi.dpi} DPI (${f.dpi.rating})` : ''}`, f.alternative ? h('div.muted', `Alternativ: ${f.alternative.design} für ${f.alternative.colors.length} Farbe(n)`) : null))),
           s.neckPrint ? [h('dt', 'Nackendruck'), h('dd', `${s.neckPrint.light}${s.neckPrint.dark ? ` (dunkle Textilien: ${s.neckPrint.dark})` : ''}`)] : null,
           h('dt', 'Anbieter'), h('dd', s.provider),
           h('dt', 'Produktbilder'), h('dd', s.mockups),
