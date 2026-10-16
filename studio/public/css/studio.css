@@ -369,3 +369,6 @@ button.linkish { border: 0; padding: 0; min-height: 0; text-transform: none; let
 .dpi-row { display: grid; grid-template-columns: 70px 1fr auto; gap: 8px; align-items: baseline; border-left: 3px solid var(--line); padding-left: 8px; }
 .dpi-row.gut { border-left-color: var(--ok); }
 .dpi-row.mittel { border-left-color: var(--warn); }
+.max-size { margin: 8px 0 4px; padding: 8px 10px; border: 1px solid var(--line-soft); background: var(--night-2); display: flex; flex-direction: column; gap: 3px; font-size: .86rem; }
+.max-size .k { display: inline-block; min-width: 160px; color: var(--muted); font-size: .76rem; letter-spacing: .08em; text-transform: uppercase; }
+.max-size strong { color: var(--gold-2); font-weight: 600; }

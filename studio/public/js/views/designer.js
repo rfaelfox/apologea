@@ -80,6 +80,29 @@ export function dpiText(info) {
   return `${info.dpi} DPI · ${info.rating} · ${cm(info.widthCm)} × ${cm(info.heightCm)} cm`;
 }
 
+/** Größe der Druckfläche in cm (Annahme: Pixel des Anbieters ≙ 300 DPI). */
+export function areaCm(area) {
+  return { w: (area.width / AREA_DPI) * 2.54, h: (area.height / AREA_DPI) * 2.54 };
+}
+export const fmtCm = (v) => cm(v);
+
+/**
+ * Maximale Größe eines Motivs auf dieser Druckfläche:
+ *  fit  – größtmöglich in der Druckfläche (Seitenverhältnis bleibt erhalten)
+ *  good – größtmöglich, solange die DPI-Prüfung noch „gut“ ist (ab 200 DPI)
+ */
+export function motifMaxCm(area, design) {
+  const a = areaCm(area);
+  const iw = design?.analysis?.width;
+  const ih = design?.analysis?.height;
+  if (!iw || !ih) return { area: a, fit: null, good: null };
+  const s = Math.min(a.w / iw, a.h / ih);
+  const fit = { w: iw * s, h: ih * s };
+  const goodW = Math.min(fit.w, (iw / 200) * 2.54);
+  const good = design.analysis.vector ? fit : { w: goodW, h: goodW * (ih / iw) };
+  return { area: a, fit, good };
+}
+
 /** Standardlage der Druckfläche auf einem Produktfoto (Anteile des Fotos). */
 export function defaultFrame(area, imgW, imgH) {
   const w = 0.42;

@@ -2,7 +2,7 @@ import { h, clear, get, post, put, del, badge, fmtDate, fmtEuro, fmtUsd, showErr
 import { confirmAiCall, issuesList, fileNotes, htmlPreview } from './shared.js';
 import { pickDesign } from './library.js';
 import { setCleanup, state } from '../app.js';
-import { placementStage, quickTools, placementReadout } from './designer.js';
+import { placementStage, quickTools, placementReadout, areaCm, motifMaxCm, fmtCm } from './designer.js';
 
 const AREA_LABEL = { front: 'Vorderseite', back: 'Rückseite' };
 const STYLE_LABEL = { kurz: 'Kurz', schlicht: 'Schlicht', ausfuehrlich: 'Ausführlich & markengerecht' };
@@ -115,7 +115,7 @@ export async function renderProductEditor(main, id) {
         h('div.stack',
           h('h3', draft.baseProduct.title), draft.baseProduct.optionLabel ? h('div.muted', `Druckdienstleister: ${draft.baseProduct.optionLabel}`) : null,
           h('dl.kv',
-            h('dt', 'Druckflächen'), h('dd', details.printAreas.map((a) => `${AREA_LABEL[a.name] || a.name}: ${a.width} × ${a.height} px`).join(' · ')),
+            h('dt', 'Druckflächen'), h('dd', details.printAreas.map((a) => { const c = areaCm(a); return `${AREA_LABEL[a.name] || a.name}: max. ${fmtCm(c.w)} × ${fmtCm(c.h)} cm (${a.width} × ${a.height} px)`; }).join(' · ')),
             h('dt', 'Druckverfahren'), h('dd', (details.supportedPrinterTypes || []).map((t) => t.toUpperCase()).join(', ') || '–'),
             h('dt', 'Nackendruck'), h('dd', details.hasNeckPrint ? (caps().neckPrint ? 'möglich – siehe „Druck & Motive“' : `vom Produkt unterstützt, über ${PN()} nicht verfügbar`) : 'bei diesem Produkt nicht möglich'),
             h('dt', 'Alternativ-Motiv je Farbe'), h('dd', details.hasAlternativeDesign ? 'unterstützt' : 'nein'),
@@ -310,6 +310,7 @@ export async function renderProductEditor(main, id) {
     checkFile();
     return h('div.frame.area-panel',
       h('div.row.between', h('h3', { style: { margin: 0 } }, AREA_LABEL[area.name] || area.name), h('small.muted', `Druckfläche ${area.width} × ${area.height} px`)),
+      maxSizeBox(area, design),
       h('div.row', { style: { margin: '10px 0' } },
         design ? h('img', { src: `/files/design/${design.id}/thumb`, alt: '', style: { width: '44px', height: '44px', objectFit: 'contain', background: '#fff1' } }) : null,
         h('div', { style: { flex: '1 1 140px' } }, design ? h('div', h('strong', design.name), h('div.muted', linkOf(design)?.imageId ? `${PN()} verknüpft` : `Noch nicht mit ${PN()} verknüpft`)) : h('span.muted', 'Kein Motiv auf dieser Seite')),
@@ -326,6 +327,16 @@ export async function renderProductEditor(main, id) {
           calibrating ? h('button.small.ghost', { type: 'button', onclick: () => stage.resetFrame() }, 'Zurücksetzen') : null) : null),
       altBox,
       design ? h('div', h('div.field-label', 'Prüfung der Druckdatei'), notesBox) : null);
+  }
+
+  /** Wie groß das Motiv auf dieser Fläche maximal sein darf (in cm). */
+  function maxSizeBox(area, design) {
+    const m = motifMaxCm(area, design);
+    const sz = (o) => `${fmtCm(o.w)} × ${fmtCm(o.h)} cm`;
+    return h('div.max-size',
+      h('div', h('span.k', 'Motiv max.'), h('strong', sz(m.area)), h('small.muted', ' (Breite × Höhe der Druckfläche)')),
+      m.fit ? h('div', h('span.k', 'Dieses Motiv'), h('strong', sz(m.fit)), h('small.muted', ' größtmöglich, Seitenverhältnis bleibt')) : null,
+      m.good && m.good.w < m.fit.w - 0.05 ? h('div', h('span.k', 'In guter Qualität'), h('strong', sz(m.good)), h('small.muted', ' bis hier ab 200 DPI – größer wird „mittel“/„schlecht“')) : null);
   }
 
   function neckPrintBox(dis) {

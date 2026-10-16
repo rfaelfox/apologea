@@ -95,6 +95,11 @@ Die Oberfläche blendet Funktionen anhand von `meta.capabilities` ein oder aus (
 - Stufen: **gut** ab 200 DPI, **mittel** 150–199 DPI (Hinweis), **schlecht** unter 150 DPI (blockiert die Freigabe).
 - Live im Platzier-Editor (Anzeige unten rechts auf dem Foto, mit Druckgröße in cm), in der Druckdatei-Prüfung,
   in der Zusammenfassung vor dem Veröffentlichen und in der Designbibliothek (maximale Druckgröße je Stufe).
+**Maximale Motivgröße in cm (je Kleidungsstück und Druckfläche)**
+- Beim Grundprodukt und über jeder Druckfläche: „Motiv max.“ (Druckfläche, ≙ 300 DPI), „Dieses Motiv“ (größtmöglich
+  mit seinem Seitenverhältnis) und „In guter Qualität“ (größtmöglich bei ab 200 DPI).
+- In der Katalogauswahl selbst steht die Größe noch nicht: dafür müsste für jedes der ~97 Produkte einzeln
+  „get_base_product_details“ abgefragt werden; sie erscheint, sobald ein Produkt gewählt ist.
 **Nackendruck (MarketPrint)**
 - Nur bei Grundprodukten mit `hasNeckPrint: true` (Stand 2026-10-16 live geprüft: 7 von 97 – VACANCY Oversized
   Shirt, HigherBlanks Premium T-Shirt, Regular Fit T-Shirt, Ladies Cropped Tee, Basic Shirt Unisex,
