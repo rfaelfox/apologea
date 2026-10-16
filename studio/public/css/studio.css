@@ -56,7 +56,7 @@ small, .muted { color: var(--muted); }
   display: flex; flex-direction: column; padding: var(--s5) var(--s4);
 }
 .brand { display: block; text-align: center; padding: var(--s3) 0 var(--s5); border-bottom: 1px solid var(--line-soft); margin-bottom: var(--s4); text-decoration: none; }
-.brand img { max-width: 170px; max-height: 90px; }
+.brand img { display: block; margin: 0 auto; width: 150px; max-height: 90px; object-fit: contain; }
 .wordmark { font-family: var(--font-display); color: var(--gold-2); font-size: 1.45rem; letter-spacing: .34em; padding-left: .34em; display: block; }
 .wordmark-sub { display: block; font-size: .64rem; letter-spacing: .5em; color: var(--muted); margin-top: 6px; text-transform: uppercase; padding-left: .5em; }
 .nav a.item {

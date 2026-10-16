@@ -4,7 +4,7 @@ export async function renderDashboard(main) {
   const connBox = h('div.grid.cols-3', h('div.card', h('span.muted', 'Verbindungen werden geprüft …')));
   const lists = h('div');
   clear(main,
-    h('div.page-head', h('div', h('div.eyebrow', 'Arbeitsoberfläche'), h('h1', 'Willkommen im Atelier'))),
+    h('div.page-head', h('div', h('div.eyebrow', 'Arbeitsoberfläche'), h('h1', 'Willkommen im Atelier')), h('img', { src: '/brand/emblem-29.svg', alt: '', style: { width: '64px', opacity: '.9' } })),
     h('div.hero-actions',
       h('a.hero-btn', { href: '#/website?neu' , onclick: (e) => { e.preventDefault(); newWebsiteDraft(); } },
         glyph(ICONS.web),

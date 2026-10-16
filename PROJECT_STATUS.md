@@ -142,13 +142,13 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   **Nicht auf dem Nutzer-PC installiert** (keine Verbindung zum PC aus der Cloud-Umgebung).
 - Zielshop-Schutz: Nur `dfz1mp-1u.myshopify.com` ist als Zielshop freigegeben; `xgyzvd-1m.myshopify.com` wird im Studio
   gesperrt angezeigt (Einstellungen → MarketPrint → erlaubte Zielshops).
-- Offen: Logo Nr. 29 (Nutzer liefert), echte Verbindungsprüfung auf dem PC (Claude Code + MarketPrint-Connector),
+- Logo Nr. 29 = das gelieferte Logo (Kreuz + Schriftzug, vom Nutzer bestätigt) → im Studio und als Programmsymbol eingebunden.
+- Offen: echte Verbindungsprüfung auf dem PC (Claude Code + MarketPrint-Connector),
   Shopify-Dev-Dashboard-App für Seiten/Kollektionen.
 
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“
    → Verbindung prüfen), Claude (Claude Code oder API-Schlüssel). Rückmeldung, was „Verbindung prüfen“ anzeigt.
-3. Logo Nr. 29 bereitstellen (Studio: Einstellungen → Marke; Theme: Platzhalter-Regel).
-4. Erstes echtes Produkt: Druckdatei in MarketPrint „Meine Designs“ hochladen, im Studio verknüpfen, Entwurf → Freigabe.
-5. Theme NOCTURNE: Inhalte im Editor füllen; Vorschau prüfen.
+3. Erstes echtes Produkt: Druckdatei in MarketPrint „Meine Designs“ hochladen, im Studio verknüpfen, Entwurf → Freigabe.
+4. Theme NOCTURNE: Inhalte im Editor füllen; Vorschau prüfen.

@@ -125,12 +125,13 @@ export async function renderSettings(main) {
   // ---------- Marke
   const voice = h('textarea', null);
   voice.value = s.brand.voice;
-  const logoPrev = h('div', boot.logo ? h('img', { src: boot.logo + '?v=' + Date.now(), alt: 'Logo', style: { maxWidth: '240px', background: '#000', padding: '12px', border: '1px solid var(--line)' } }) : h('div.inline-msg.info', 'Noch kein Logo hinterlegt – es wird die APOLOGEA-Wortmarke als Platzhalter verwendet.'));
+  const logoPrev = h('div', h('img', { src: boot.logo ? boot.logo + '?v=' + Date.now() : '/brand/logo-29.svg', alt: 'Logo', style: { maxWidth: '240px', background: '#000', padding: '12px', border: '1px solid var(--line)' } }),
+    h('div.hint', boot.logo ? 'Eigene Logo-Datei aktiv.' : 'APOLOGEA-Logo Nr. 29 ist eingebunden (Vektorfassung des Originals).'));
   const brandBox = h('div.frame.stack',
     h('h3', 'Marke'),
     h('div.field-label', 'Logo Nr. 29'),
     logoPrev,
-    dropzone({ accept: 'image/png,image/svg+xml,image/webp,image/jpeg', multiple: false, label: 'Logo-Datei Nr. 29 hierher ziehen oder klicken (PNG mit Transparenz oder SVG)', onFiles: async (files) => { try { await upload('/api/upload?kind=logo', files[0]); await reloadBoot(); toast('Logo übernommen.', 'ok'); renderSettings(main); } catch (err) { showError(err); } } }),
+    dropzone({ accept: 'image/png,image/svg+xml,image/webp,image/jpeg', multiple: false, label: 'Nur bei Bedarf: andere Logo-Datei hierher ziehen (PNG mit Transparenz oder SVG)', onFiles: async (files) => { try { await upload('/api/upload?kind=logo', files[0]); await reloadBoot(); toast('Logo übernommen.', 'ok'); renderSettings(main); } catch (err) { showError(err); } } }),
     h('label.field', h('span', 'Markenstimme (für Claude)'), voice),
     h('button.small', { type: 'button', onclick: () => saveSettings({ brand: { voice: voice.value } }) }, 'Markenstimme speichern'));
 

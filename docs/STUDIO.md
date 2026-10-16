@@ -49,7 +49,7 @@ Daten: Dokumente\APOLOGEA Studio\  (Designs, Website-Uploads, Exporte, Sicherung
 * **Nackendruck** und **Musterbestellungen**: nicht über das Studio.
 * **Mockups**: echte Mockups erzeugt MarketPrint erst beim Anlegen; vorher zeigt das Studio eine gekennzeichnete schematische Vorschau und das leere MarketPrint-Produktfoto.
 * **Kollektionen/Tags** nach dem Anlegen nur mit Shopify-Admin-App und eindeutiger Produktsuche.
-* **Logo Nr. 29**: noch nicht bereitgestellt → Wortmarke als Platzhalter; Logo unter Einstellungen → Marke hochladen.
+* **Logo Nr. 29**: vom Inhaber bestätigt (= `docs/brand/`, Kreuz + Schriftzug). Eingebunden als `public/brand/logo-29.svg` (Navigation), Emblem als Programmsymbol (`icon.svg`, `icon.ico`). Eine eigene Datei unter Einstellungen → Marke hat Vorrang.
 
 ## 4. Kosten bei Nutzung
 | Posten | Kosten |

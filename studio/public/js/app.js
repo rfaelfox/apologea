@@ -24,10 +24,11 @@ let cleanup = null;
 export function setCleanup(fn) { cleanup = fn; }
 
 function brand() {
-  const logo = state.boot?.logo;
+  // Logo Nr. 29 (Original der Marke, als SVG); eine eigene Datei aus den Einstellungen hat Vorrang.
+  const logo = state.boot?.logo ? state.boot.logo + '?v=' + Date.now() : '/brand/logo-29.svg';
   return h('a.brand', { href: '#/' },
-    logo ? h('img', { src: logo + '?v=' + Date.now(), alt: 'APOLOGEA' })
-      : h('span', h('span.wordmark', 'APOLOGEA'), h('span.wordmark-sub', 'Studio')));
+    h('img', { src: logo, alt: 'APOLOGEA' }),
+    h('span.wordmark-sub', 'Studio'));
 }
 
 export function renderNav() {
