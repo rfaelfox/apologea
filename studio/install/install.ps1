@@ -46,9 +46,36 @@ if (Test-Path $rt) {
   } catch { }
 }
 
+# Alle Prozesse beenden, die noch Dateien im Programmordner benutzen: das mitgelieferte Node.js
+# und Claude-Code-Aufrufe, die das Studio gestartet hatte (erkennbar an ihren Startparametern).
+function Stop-StudioProcesses {
+  try {
+    Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+      ($_.ExecutablePath -and $_.ExecutablePath.StartsWith($InstallDir, [StringComparison]::OrdinalIgnoreCase)) -or
+      ($_.Name -like 'claude*' -and $_.CommandLine -like '*--no-session-persistence*' -and $_.CommandLine -like '*stream-json*')
+    } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  } catch { }
+}
+
 Step 'Programmdateien kopieren'
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-if (Test-Path $AppDir) { Remove-Item -Recurse -Force $AppDir }
+if (Test-Path $AppDir) {
+  $removed = $false
+  for ($i = 1; $i -le 6 -and -not $removed; $i++) {
+    Stop-StudioProcesses
+    Start-Sleep -Milliseconds (500 * $i)
+    try { Remove-Item -Recurse -Force $AppDir -ErrorAction Stop; $removed = $true } catch { }
+  }
+  if (-not $removed) {
+    Write-Host ''
+    Write-Host '    Der alte Programmordner wird noch von einem anderen Programm benutzt.' -ForegroundColor Red
+    Write-Host '    Bitte APOLOGEA Studio und alle Fenster von Claude Code schliessen' -ForegroundColor Red
+    Write-Host '    (oder den Computer neu starten) und Installieren.cmd erneut ausfuehren.' -ForegroundColor Red
+    Write-Host "    Ordner: $AppDir" -ForegroundColor DarkGray
+    throw 'Programmordner ist noch in Benutzung.'
+  }
+  Ok 'Alte Programmversion entfernt (deine Daten bleiben erhalten)'
+}
 Copy-Item -Recurse -Force (Join-Path $PackageDir 'app') $AppDir
 Copy-Item -Force (Join-Path $PackageDir 'app\APOLOGEA Studio.vbs') (Join-Path $InstallDir 'APOLOGEA Studio.vbs')
 Copy-Item -Force (Join-Path $PSScriptRoot 'uninstall.ps1') (Join-Path $InstallDir 'uninstall.ps1')
