@@ -227,7 +227,11 @@ export function dropzone({ accept, multiple = true, label, onFiles }) {
 }
 
 export async function openExternal(url) {
-  try { await post('/api/open-external', { url }); } catch (err) { showError(err); }
+  try {
+    const r = await post('/api/open-external', { url });
+    // Ausweg, falls Windows den Standardbrowser nicht startet: im Programmfenster öffnen
+    if (!r.ok) window.open(url, '_blank', 'noopener');
+  } catch (err) { showError(err); }
 }
 
 export function extLink(label, url) {

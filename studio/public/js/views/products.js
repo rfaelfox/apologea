@@ -91,16 +91,19 @@ async function marketprintSiteDialog() {
   const status = h('div');
   const open = async (url, label) => {
     clear(status, h('div.inline-msg.info', `${label} wird im Browser geöffnet …`));
+    const fallback = () => h('div.row', { style: { marginTop: '8px' } },
+      h('a.btn.small', { href: url, target: '_blank', rel: 'noopener' }, 'Hier im Programmfenster öffnen'),
+      copyBtn(url));
     try {
-      await post('/api/open-external', { url });
-      clear(status, h('div.inline-msg.ok', `${label} wurde in deinem Standardbrowser geöffnet. `,
-        h('span.muted', 'Falls sich nichts geöffnet hat: '), copyBtn(url)));
+      const r = await post('/api/open-external', { url });
+      if (r.ok) clear(status, h('div.inline-msg.ok', `${label} wurde in deinem Standardbrowser geöffnet. Nichts zu sehen? Prüfe die Taskleiste – oder nutze einen der Wege hier:`, fallback()));
+      else clear(status, h('div.inline-msg.warn', 'Windows hat den Standardbrowser nicht gestartet. So geht es trotzdem:', fallback()));
     } catch (err) {
-      clear(status, h('div.inline-msg.error', `Öffnen fehlgeschlagen: ${err.message} `, copyBtn(url)));
+      clear(status, h('div.inline-msg.error', `Öffnen fehlgeschlagen: ${err.message}`, fallback()));
     }
   };
   const copyBtn = (url) => h('button.small', { type: 'button', onclick: async (e) => {
-    try { await navigator.clipboard.writeText(url); e.target.textContent = 'Adresse kopiert – im Browser einfügen'; } catch { e.target.replaceWith(h('code', url)); }
+    try { await navigator.clipboard.writeText(url); e.target.textContent = 'Kopiert – im Browser einfügen'; } catch { e.target.replaceWith(h('code', url)); }
   } }, 'Adresse kopieren');
   const body = h('div.stack',
     h('div.inline-msg.info', 'Der MarketPrint-Designer öffnet sich in deinem Browser (dort mit deinem MarketPrint-Konto anmelden). Was du dort anlegst, veröffentlicht MarketPrint direkt in deinem Shop – APOLOGEA Studio prüft und protokolliert diese Produkte nicht. Achte dort auf den richtigen Shop (dfz1mp-1u.myshopify.com).'),

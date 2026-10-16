@@ -196,8 +196,9 @@ route('POST', '/api/open-external', async (_r, _p, body) => {
   let host;
   try { host = new URL(u).hostname; } catch { throw new UserError('Ungültige Adresse.'); }
   if (!/^https:\/\//.test(u) || !allowedHosts.some((r) => r.test(host))) throw new UserError('Diese Adresse wird aus Sicherheitsgründen nicht geöffnet.');
-  await openExternal(u);
-  return { ok: true };
+  const r = await openExternal(u);
+  console.log(`[Studio] Browser öffnen (${host}): ${r.opened ? 'gestartet über ' + r.via : 'fehlgeschlagen'}`);
+  return { ok: r.opened, ...r };
 });
 
 route('POST', '/api/reveal', async (_r, _p, body) => {
