@@ -1,0 +1,87 @@
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div>
+        <span class="logo__wordmark">{{ shop.name | upcase }}</span>
+        {%- if settings.brand_claim != blank -%}
+          <p class="muted small" style="margin-top: 12px;">{{ settings.brand_claim | escape }}</p>
+        {%- endif -%}
+        {%- if section.settings.text != blank -%}
+          <div class="rte muted small">{{ section.settings.text }}</div>
+        {%- endif -%}
+        {%- liquid
+          assign socials = 'instagram,tiktok,youtube,pinterest' | split: ','
+        -%}
+        <div class="social">
+          {%- for s in socials -%}
+            {%- assign key = 'social_' | append: s -%}
+            {%- if settings[key] != blank -%}
+              <a href="{{ settings[key] }}" target="_blank" rel="noopener">
+                {% render 'icon', name: s %}
+                <span class="visually-hidden">{{ s | capitalize }}</span>
+              </a>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      </div>
+
+      {%- for block in section.blocks -%}
+        <div {{ block.shopify_attributes }}>
+          {%- case block.type -%}
+            {%- when 'menu' -%}
+              <h2>{{ block.settings.heading | escape }}</h2>
+              <ul>
+                {%- for link in block.settings.menu.links -%}
+                  <li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>
+                {%- endfor -%}
+              </ul>
+            {%- when 'text' -%}
+              <h2>{{ block.settings.heading | escape }}</h2>
+              <div class="rte muted">{{ block.settings.text }}</div>
+          {%- endcase -%}
+        </div>
+      {%- endfor -%}
+    </div>
+
+    <div class="footer__bottom">
+      <span>&copy; {{ 'now' | date: '%Y' }} {{ shop.name }}</span>
+      {%- if section.settings.show_payment_icons and shop.enabled_payment_types.size > 0 -%}
+        <span>
+          {%- for type in shop.enabled_payment_types -%}
+            {{ type | payment_type_svg_tag: class: 'payment-icon' }}
+          {%- endfor -%}
+        </span>
+      {%- endif -%}
+    </div>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Footer",
+  "class": "section-footer",
+  "settings": [
+    { "type": "richtext", "id": "text", "label": "Text unter der Wortmarke" },
+    { "type": "checkbox", "id": "show_payment_icons", "label": "Zahlungsarten anzeigen", "default": true }
+  ],
+  "blocks": [
+    {
+      "type": "menu",
+      "name": "Menü",
+      "settings": [
+        { "type": "text", "id": "heading", "label": "Überschrift", "default": "Shop" },
+        { "type": "link_list", "id": "menu", "label": "Menü", "default": "footer" }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "Text",
+      "settings": [
+        { "type": "text", "id": "heading", "label": "Überschrift", "default": "Über uns" },
+        { "type": "richtext", "id": "text", "label": "Text" }
+      ]
+    }
+  ],
+  "max_blocks": 4
+}
+{% endschema %}

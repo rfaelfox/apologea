@@ -1,0 +1,11 @@
+<section class="section" style="--pt: 48px; --pt-d: 96px;">
+  <div class="container container--narrow">
+    <h1 class="center reveal">{{ page.title | escape }}</h1>
+    {% render 'ornament' %}
+    <div class="rte reveal">{{ page.content }}</div>
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Seite", "settings": [] }
+{% endschema %}

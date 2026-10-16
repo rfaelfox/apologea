@@ -1,0 +1,27 @@
+<section class="section{% if section.settings.alt_bg %} section--alt{% endif %}" style="{% render 'section-spacing', s: section.settings %}">
+  <div class="container container--narrow center reveal">
+    {%- if section.settings.eyebrow != blank -%}<p class="eyebrow">{{ section.settings.eyebrow | escape }}</p>{%- endif -%}
+    {%- if section.settings.heading != blank -%}<h2>{{ section.settings.heading | escape }}</h2>{%- endif -%}
+    <div class="rte muted">{{ section.settings.text }}</div>
+    {%- if section.settings.button_label != blank -%}
+      <a class="btn" href="{{ section.settings.button_link | default: '#' }}" style="margin-top: 16px;">{{ section.settings.button_label | escape }}</a>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Text / Manifest",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Manifest" },
+    { "type": "text", "id": "heading", "label": "Überschrift", "default": "Mehr als Kleidung" },
+    { "type": "richtext", "id": "text", "label": "Text", "default": "<p>Hier das Marken-Manifest eintragen.</p>" },
+    { "type": "text", "id": "button_label", "label": "Button-Text" },
+    { "type": "url", "id": "button_link", "label": "Button-Link" },
+    { "type": "checkbox", "id": "alt_bg", "label": "Abgesetzter Hintergrund", "default": false },
+    { "type": "range", "id": "padding_top", "label": "Abstand oben", "min": 0, "max": 160, "step": 8, "unit": "px", "default": 112 },
+    { "type": "range", "id": "padding_bottom", "label": "Abstand unten", "min": 0, "max": 160, "step": 8, "unit": "px", "default": 112 }
+  ],
+  "presets": [{ "name": "Text / Manifest" }]
+}
+{% endschema %}

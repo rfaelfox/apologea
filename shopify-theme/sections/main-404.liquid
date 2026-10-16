@@ -1,0 +1,13 @@
+<section class="section">
+  <div class="container container--narrow center reveal">
+    <p class="eyebrow">404</p>
+    <h1>{{ 'templates.404.title' | t }}</h1>
+    {% render 'ornament' %}
+    <p class="muted">{{ 'templates.404.subtext' | t }}</p>
+    <a class="btn" href="{{ routes.all_products_collection_url }}">{{ 'general.continue_shopping' | t }}</a>
+  </div>
+</section>
+
+{% schema %}
+{ "name": "404", "settings": [] }
+{% endschema %}

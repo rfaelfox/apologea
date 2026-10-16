@@ -1,0 +1,23 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "title": { "type": "title", "settings": { "show_vendor": false } },
+        "price": { "type": "price", "settings": {} },
+        "buy": { "type": "buy_buttons", "settings": { "show_quantity": true, "show_dynamic_checkout": true } },
+        "description": { "type": "description", "settings": {} },
+        "details": { "type": "details", "settings": {} },
+        "shipping": { "type": "collapsible", "settings": { "heading": "Versand & Rückgabe", "content": "<p>Hier Versand- und Rückgabeinformationen eintragen.</p>" } },
+        "story": { "type": "motif_story", "settings": { "heading": "Hinter dem Motiv" } }
+      },
+      "block_order": ["title", "price", "buy", "description", "details", "shipping", "story"],
+      "settings": {}
+    },
+    "related": {
+      "type": "featured-collection",
+      "settings": { "eyebrow": "Mehr entdecken", "heading": "Weitere Stücke", "limit": 4, "columns": "4", "alt_bg": true, "padding_top": 96, "padding_bottom": 96 }
+    }
+  },
+  "order": ["main", "related"]
+}

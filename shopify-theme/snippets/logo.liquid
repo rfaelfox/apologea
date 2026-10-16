@@ -1,0 +1,23 @@
+{%- comment -%}
+  Logo. Solange kein Original-Logo hochgeladen ist, wird ein KLAR MARKIERTER Platzhalter gezeigt.
+  Parameter: logo (image), width (number), tag ('h1' oder 'div')
+{%- endcomment -%}
+{%- assign tag = tag | default: 'div' -%}
+<{{ tag }} class="logo">
+  <a href="{{ routes.root_url }}">
+    {%- if logo != blank -%}
+      {%- liquid
+        assign w2 = width | times: 2
+        assign logo_sizes = width | append: 'px'
+        assign logo_widths = width | append: ',' | append: w2
+      -%}
+      {{ logo | image_url: width: w2 | image_tag: width: width, alt: shop.name, loading: 'eager', sizes: logo_sizes, widths: logo_widths }}
+    {%- else -%}
+      <span class="logo__wordmark" aria-hidden="true">{{ shop.name | upcase }}</span>
+      {%- if request.design_mode -%}
+        <span class="logo__placeholder-tag">{{ 'general.logo_placeholder' | t }}</span>
+      {%- endif -%}
+      <span class="visually-hidden">{{ shop.name }}</span>
+    {%- endif -%}
+  </a>
+</{{ tag }}>

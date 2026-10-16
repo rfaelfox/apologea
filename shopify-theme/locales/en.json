@@ -1,0 +1,102 @@
+{
+  "general": {
+    "meta": { "tags": "Tagged \"{{ tags }}\"", "page": "Page {{ page }}" },
+    "menu": "Menu",
+    "main_menu": "Main menu",
+    "close": "Close",
+    "search": "Search",
+    "account": "Account",
+    "cart": "Cart",
+    "cart_count": { "one": "{{ count }} item", "other": "{{ count }} items" },
+    "announcement": "Announcement",
+    "logo_placeholder": "Logo placeholder",
+    "view_all": "View all",
+    "discover": "Discover",
+    "continue_shopping": "Continue shopping",
+    "pagination": "Pagination",
+    "previous": "Previous page",
+    "next": "Next page"
+  },
+  "accessibility": { "skip_to_content": "Skip to content" },
+  "products": {
+    "add_to_cart": "Add to cart",
+    "sold_out": "Sold out",
+    "unavailable": "Unavailable",
+    "sale": "Sale",
+    "quantity": "Quantity",
+    "increase": "Increase quantity",
+    "decrease": "Decrease quantity",
+    "price": { "from": "from {{ price }}", "regular": "Regular price" },
+    "tax_included": "Tax included.",
+    "shipping_policy_html": "<a href=\"{{ link }}\">Shipping</a> calculated at checkout.",
+    "production_time": "Made for you · Production time: {{ time }}",
+    "details": "Details",
+    "material": "Material",
+    "fit": "Fit",
+    "print_method": "Print method",
+    "care": "Care",
+    "placeholder_title": "Product name"
+  },
+  "collections": {
+    "eyebrow": "Collection",
+    "all": "Collections",
+    "count": { "one": "{{ count }} product", "other": "{{ count }} products" },
+    "empty": "This collection has no products yet.",
+    "sort_by": "Sort by"
+  },
+  "cart": {
+    "title": "Cart",
+    "product": "Product",
+    "quantity": "Quantity",
+    "total": "Total",
+    "remove": "Remove",
+    "note": "Order note",
+    "update": "Update",
+    "subtotal": "Subtotal",
+    "taxes_shipping": "Taxes and shipping calculated at checkout.",
+    "checkout": "Check out",
+    "empty": "Your cart is empty."
+  },
+  "newsletter": { "label": "Email address", "button": "Subscribe", "success": "Thanks for subscribing." },
+  "blogs": { "eyebrow": "Journal", "empty": "No posts yet.", "back": "Back to journal" },
+  "templates": {
+    "404": { "title": "Page not found", "subtext": "This page does not exist." },
+    "search": {
+      "title": "Search",
+      "placeholder": "What are you looking for?",
+      "results": { "one": "{{ count }} result for \"{{ terms }}\"", "other": "{{ count }} results for \"{{ terms }}\"" }
+    }
+  },
+  "sections": {
+    "scripture": { "empty": "Add a Bible verse in the theme editor (verse + reference). Only visible in the editor." }
+  },
+  "password": { "eyebrow": "Coming soon", "enter": "Enter using password", "label": "Password", "submit": "Enter" },
+  "customer": {
+    "email": "Email",
+    "password": "Password",
+    "password_confirm": "Confirm password",
+    "first_name": "First name",
+    "last_name": "Last name",
+    "logout": "Log out",
+    "orders": "Orders",
+    "no_orders": "You haven't placed any orders yet.",
+    "login": { "title": "Log in", "submit": "Sign in" },
+    "register": { "title": "Create account", "submit": "Create" },
+    "recover": { "title": "Forgot your password?", "submit": "Send link", "success": "We've sent you an email to reset your password." },
+    "account": { "title": "My account" },
+    "order": { "title": "Order {{ name }}", "number": "Order", "date": "Date", "status": "Status" },
+    "addresses": {
+      "title": "Addresses",
+      "add": "Add a new address",
+      "delete": "Delete",
+      "save": "Save",
+      "address1": "Address",
+      "zip": "Postal code",
+      "city": "City",
+      "country": "Country"
+    },
+    "reset": { "title": "Reset password", "submit": "Reset password" },
+    "activate": { "title": "Activate account", "submit": "Activate" }
+  },
+  "gift_card": { "title": "Gift card", "code": "Gift card code", "unavailable": "This gift card is no longer valid." }
+}
