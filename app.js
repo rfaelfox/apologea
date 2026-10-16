@@ -118,7 +118,13 @@ function unbusy() { if (busyEl) { busyEl.remove(); busyEl = null; } }
 
 // ================================================================ Start und Anmeldung
 async function boot() {
-  if ('serviceWorker' in navigator && !S.demo && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && !S.demo && location.protocol === 'https:') {
+    // Kommt eine neue App-Version an, einmal neu laden, damit sie sofort sichtbar ist
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded && !S.form) { reloaded = true; location.reload(); } });
+    navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
+  }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - S.lastSync > 20000 && !S.form && Store.drive) sync(true); });
   if (S.demo) { await openCollection(DemoDrive, 'Sammlung'); return; }
   if (!Auth.configured()) { renderSetupMissing(); return; }
