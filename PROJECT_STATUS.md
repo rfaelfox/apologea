@@ -3,7 +3,7 @@
 > Diese Datei ist der Einstiegspunkt für jede neue Claude-Sitzung.
 > Neue Sitzung: „Weiter laut PROJECT_STATUS.md“.
 
-Stand: 2026-10-16 (Sitzung 4) · Branch: `claude/apologea-shopify-theme-9kvfrj`
+Stand: 2026-10-16 (Sitzung 5 – APOLOGEA Studio) · Branch: `claude/apologea-shopify-theme-9kvfrj`
 
 ## Auftrag (Kurzfassung)
 Eigenes Shopify-Online-Store-2.0-Theme „NOCTURNE“ für APOLOGEA (Luxury Christian Streetwear),
@@ -26,7 +26,7 @@ Dokumentation. Vollständiger Master-Prompt: liegt beim Nutzer; Kernregeln siehe
 | Live-Theme | „Horizon“ (benannt „apologea.eu“) — **nicht anfassen** |
 | Weitere Themes | Entwurf „Feather“ — nicht anfassen |
 | Theme Access App | im Shop installiert; Passwort vom Nutzer erzeugt |
-| Claude-Connectors | Stand Sitzung 3: nur Gmail. **MarketPrint bietet seit 10/2026 einen Claude-Connector** (help.marketprint.de, „MarketPrint mit Claude verbinden“; Produkte im Chat anlegen + in den Shop veröffentlichen). Offizieller **Shopify**-Connector im Verzeichnis ebenfalls verfügbar. Nutzer verbindet beide unter claude.ai/customize/connectors → wirkt erst in **neuer Sitzung**. |
+| Claude-Connectors | Gmail + **MarketPrint verbunden** (ab Sitzung 3, Teil 3). Vorher: nur Gmail. **MarketPrint bietet seit 10/2026 einen Claude-Connector** (help.marketprint.de, „MarketPrint mit Claude verbinden“; Produkte im Chat anlegen + in den Shop veröffentlichen). Offizieller **Shopify**-Connector im Verzeichnis ebenfalls verfügbar. Nutzer verbindet beide unter claude.ai/customize/connectors → wirkt erst in **neuer Sitzung**. |
 | Netzwerk | Benutzerdefiniert: `*.myshopify.com`, `theme-kit-access.shopifyapps.com` + Paketmanager. Erreichbarkeit getestet ✔ |
 | Theme-Access-Secret | Als Network Secret hinterlegt (Header `X-Shopify-Access-Token`, ohne Präfix, Host `theme-kit-access.shopifyapps.com`). **Funktioniert ab Sitzung 3** ✔ |
 | Env-Variable | `SHOPIFY_FLAG_STORE=dfz1mp-1u.myshopify.com` (gilt ab neuer Sitzung) |
@@ -127,10 +127,28 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - Offene Entscheidungen des Nutzers fürs Testprodukt: Basisprodukt, Farben/Größen, Motiv(e) + Platzierung,
   DTG oder DTF, Verkaufspreis, Mockups (`withDesign`/`all`), Titel/Beschreibung.
 
+## Sitzung 5 (2026-10-16) — APOLOGEA Studio (lokales Verwaltungsprogramm)
+- Neues Projekt `studio/` (Node.js-Dienst + Oberfläche im Edge-App-Fenster), Doku: `docs/STUDIO.md`.
+- Schnittstellen geprüft: MarketPrint-MCP (7 Werkzeuge, nur lesend aufgerufen), Shopify GraphQL 2026-07 (Theme Access = nur Themes;
+  Inhalte brauchen Dev-Dashboard-App mit Client-Credentials), Claude (API mit eigenem Schlüssel ODER lokale Claude-Code-CLI).
+- Funktionen: Dashboard mit echtem Verbindungsstatus, Website bearbeiten (Claude-Vorschlag → Theme-Kopie als Vorschau →
+  Änderungsübersicht → Freigabe → Übernahme mit Sicherung/Konfliktprüfung → Wiederherstellung), Produkt-Assistent für MarketPrint
+  (Katalog, Varianten, Druckflächen, Platzierung, Druckdatei-Prüfung, Alternativ-Motiv, Claude-Texte kurz/schlicht/ausführlich,
+  Preis/Shop/Mockups/Kollektionen/Tags, Freigabe, Doppelschutz, Ergebnisprüfung), Designbibliothek (Kopie im Datenordner),
+  Vorlagen, Verlauf, Einstellungen (DPAPI-verschlüsselte Zugänge), Sicherung Export/Import + tägliche Auto-Sicherung.
+- Tests: 17 automatische (simulierter Shopify-Server, MarketPrint-Simulation, Ersatz-CLI) + 40 Oberflächenprüfungen – alle bestanden.
+  Keine echten Schreibaktionen bei Shopify/MarketPrint.
+- Installationspaket (`node studio/tools/build-package.mjs`, ca. 42 MB inkl. Node.js 22.23.3) an Nutzer übergeben.
+  **Nicht auf dem Nutzer-PC installiert** (keine Verbindung zum PC aus der Cloud-Umgebung).
+- Zielshop-Schutz: Nur `dfz1mp-1u.myshopify.com` ist als Zielshop freigegeben; `xgyzvd-1m.myshopify.com` wird im Studio
+  gesperrt angezeigt (Einstellungen → MarketPrint → erlaubte Zielshops).
+- Offen: Logo Nr. 29 (Nutzer liefert), echte Verbindungsprüfung auf dem PC (Claude Code + MarketPrint-Connector),
+  Shopify-Dev-Dashboard-App für Seiten/Kollektionen.
+
 ## Nächste Schritte
-1. **Nutzer:** Vorschau ansehen (Admin → Onlineshop → NOCTURNE → „…“ → Vorschau), Feedback geben.
-2. Inhalte im Theme-Editor: Hero-Bild, Kollektion für „Die Kollektion“, Markengeschichte, Manifest, Bibelstelle (Nutzer wählt Vers + Übersetzung).
-3. **Neue Sitzung mit MarketPrint- (+ Shopify-)Connector:** Zuerst nur lesend prüfen, welche Tools die Connectoren bieten (keine Bestellungen, nichts veröffentlichen ohne Freigabe). Dann 1 Testprodukt — alternativ Nutzer legt es selbst an:
-   1 Testprodukt in MarketPrint anlegen und nach Shopify übertragen (Status „Aktiv“ im Onlineshop — Shop ist passwortgeschützt, also nicht öffentlich; keine Bestellung) → Claude liest Produktdaten über die Storefront und passt Produktseite (Varianten, Größen, Farben, Texte) an.
-   Danach Metafeld-Definitionen (`docs/POD_DATA_MODEL.md`) im Admin anlegen. Bekanntes Risiko laut Shopify-Community: MarketPrint-Bestellungen wurden teils nicht übertragen → vor Livegang mit Support klären/testen.
-4. Echte Produkte anlegen/importieren, dann Produkt- und Kollektionsseiten erneut prüfen.
+1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
+2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“
+   → Verbindung prüfen), Claude (Claude Code oder API-Schlüssel). Rückmeldung, was „Verbindung prüfen“ anzeigt.
+3. Logo Nr. 29 bereitstellen (Studio: Einstellungen → Marke; Theme: Platzhalter-Regel).
+4. Erstes echtes Produkt: Druckdatei in MarketPrint „Meine Designs“ hochladen, im Studio verknüpfen, Entwurf → Freigabe.
+5. Theme NOCTURNE: Inhalte im Editor füllen; Vorschau prüfen.

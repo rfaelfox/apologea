@@ -1,0 +1,602 @@
+{
+ "id": "6391c767702e1dea29b936ed",
+ "title": "VACANCY Oversized Shirt",
+ "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_designer.png",
+ "description": "Stylish premium-shirt in an oversized fit, that sets new quality standards.<br><br>\n\n• 100% cotton <br>\n• 240 GSM<br>\n• Drop Shoulders<br>\n• brushed on the inside and on the outside<br>\nMade in Bangladesh.<br><br>\n\nPlease wash inside out with similar colors and do not iron the print.",
+ "hasNeckPrint": true,
+ "hasAlternativeDesign": true,
+ "supportedPrinterTypes": [
+  "dtg",
+  "dtf"
+ ],
+ "printAreas": [
+  {
+   "width": 4677,
+   "height": 5881,
+   "name": "front"
+  },
+  {
+   "width": 4677,
+   "height": 5881,
+   "name": "back"
+  }
+ ],
+ "variants": [
+  {
+   "id": "639222ffa325839316d75d07",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_0f0e0e_7c12d1af3025_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_0f0e0e_3cec8529ec00_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XS",
+   "color": "Black",
+   "colorHex": "#0f0e0e",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6391c73b702e1dea29b936e5",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_0f0e0e_7c12d1af3025_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_0f0e0e_3cec8529ec00_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "S",
+   "color": "Black",
+   "colorHex": "#0f0e0e",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6391c73f702e1dea29b936e6",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_0f0e0e_7c12d1af3025_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_0f0e0e_3cec8529ec00_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "M",
+   "color": "Black",
+   "colorHex": "#0f0e0e",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6391c743702e1dea29b936e7",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_0f0e0e_7c12d1af3025_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_0f0e0e_3cec8529ec00_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "L",
+   "color": "Black",
+   "colorHex": "#0f0e0e",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6391c74a702e1dea29b936e8",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_0f0e0e_7c12d1af3025_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_0f0e0e_3cec8529ec00_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XL",
+   "color": "Black",
+   "colorHex": "#0f0e0e",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6391c7b8702e1dea29b936ee",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_0f0e0e_7c12d1af3025_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_0f0e0e_3cec8529ec00_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XXL",
+   "color": "Black",
+   "colorHex": "#0f0e0e",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "64623f4afef6a7fd86bb5ed7",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_0f0e0e_7c12d1af3025_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_0f0e0e_3cec8529ec00_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "3XL",
+   "color": "Black",
+   "colorHex": "#0f0e0e",
+   "price": 19.65,
+   "available": true
+  },
+  {
+   "id": "6475fbc71316198ffe40ebc5",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_0f0e0e_7c12d1af3025_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_0f0e0e_3cec8529ec00_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "4XL",
+   "color": "Black",
+   "colorHex": "#0f0e0e",
+   "price": 19.65,
+   "available": true
+  },
+  {
+   "id": "667d7bdde3e2cb8b5b40c715",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_743f0b650c49.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_7e9ffdb2a836.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XS",
+   "color": "Washed Black",
+   "colorHex": "#3d3d3d",
+   "price": 17.15,
+   "available": true
+  },
+  {
+   "id": "667d7bd7e3e2cb8b5b40c714",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_743f0b650c49.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_7e9ffdb2a836.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "S",
+   "color": "Washed Black",
+   "colorHex": "#3d3d3d",
+   "price": 17.15,
+   "available": true
+  },
+  {
+   "id": "667d7bd3e3e2cb8b5b40c713",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_743f0b650c49.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_7e9ffdb2a836.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "M",
+   "color": "Washed Black",
+   "colorHex": "#3d3d3d",
+   "price": 17.15,
+   "available": true
+  },
+  {
+   "id": "667d7bcee3e2cb8b5b40c712",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_743f0b650c49.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_7e9ffdb2a836.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "L",
+   "color": "Washed Black",
+   "colorHex": "#3d3d3d",
+   "price": 17.15,
+   "available": true
+  },
+  {
+   "id": "667d7bc8e3e2cb8b5b40c711",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_743f0b650c49.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_7e9ffdb2a836.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XL",
+   "color": "Washed Black",
+   "colorHex": "#3d3d3d",
+   "price": 17.15,
+   "available": true
+  },
+  {
+   "id": "667d7bc4e3e2cb8b5b40c710",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_743f0b650c49.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_7e9ffdb2a836.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XXL",
+   "color": "Washed Black",
+   "colorHex": "#3d3d3d",
+   "price": 17.15,
+   "available": true
+  },
+  {
+   "id": "667d7bc0e3e2cb8b5b40c70f",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_743f0b650c49.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_7e9ffdb2a836.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "3XL",
+   "color": "Washed Black",
+   "colorHex": "#3d3d3d",
+   "price": 20.15,
+   "available": true
+  },
+  {
+   "id": "667d7bbbe3e2cb8b5b40c70e",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_743f0b650c49.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_7e9ffdb2a836.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "4XL",
+   "color": "Washed Black",
+   "colorHex": "#3d3d3d",
+   "price": 20.15,
+   "available": true
+  },
+  {
+   "id": "6475fbb51316198ffe40ebc4",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_faf2d8_2a3c9e98027b_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_faf2d8_be9db36cde01_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XS",
+   "color": "Natural Raw",
+   "colorHex": "#fff2e6",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6475fbae1316198ffe40ebc3",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_faf2d8_2a3c9e98027b_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_faf2d8_be9db36cde01_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "S",
+   "color": "Natural Raw",
+   "colorHex": "#fff2e6",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6475fba61316198ffe40ebc2",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_faf2d8_2a3c9e98027b_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_faf2d8_be9db36cde01_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "M",
+   "color": "Natural Raw",
+   "colorHex": "#fff2e6",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6475fb9f1316198ffe40ebc1",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_faf2d8_2a3c9e98027b_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_faf2d8_be9db36cde01_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "L",
+   "color": "Natural Raw",
+   "colorHex": "#fff2e6",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6475fb941316198ffe40ebc0",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_faf2d8_2a3c9e98027b_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_faf2d8_be9db36cde01_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XL",
+   "color": "Natural Raw",
+   "colorHex": "#fff2e6",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6475fb8d1316198ffe40ebbf",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_faf2d8_2a3c9e98027b_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_faf2d8_be9db36cde01_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XXL",
+   "color": "Natural Raw",
+   "colorHex": "#fff2e6",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6475fb861316198ffe40ebbe",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_faf2d8_2a3c9e98027b_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_faf2d8_be9db36cde01_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "3XL",
+   "color": "Natural Raw",
+   "colorHex": "#fff2e6",
+   "price": 19.65,
+   "available": true
+  },
+  {
+   "id": "6475fb7e1316198ffe40ebbd",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_faf2d8_2a3c9e98027b_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_faf2d8_be9db36cde01_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "4XL",
+   "color": "Natural Raw",
+   "colorHex": "#fff2e6",
+   "price": 19.65,
+   "available": true
+  },
+  {
+   "id": "6392227ea325839316d75d06",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_ffffff_4796fe84b7f7_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_ffffff_add102a651d2_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XS",
+   "color": "White",
+   "colorHex": "#ffffff",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6391c753702e1dea29b936e9",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_ffffff_4796fe84b7f7_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_ffffff_add102a651d2_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "S",
+   "color": "White",
+   "colorHex": "#ffffff",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6391c757702e1dea29b936ea",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_ffffff_4796fe84b7f7_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_ffffff_add102a651d2_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "M",
+   "color": "White",
+   "colorHex": "#ffffff",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6391c75c702e1dea29b936eb",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_ffffff_4796fe84b7f7_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_ffffff_add102a651d2_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "L",
+   "color": "White",
+   "colorHex": "#ffffff",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6391c760702e1dea29b936ec",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_ffffff_4796fe84b7f7_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_ffffff_add102a651d2_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XL",
+   "color": "White",
+   "colorHex": "#ffffff",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "6391c822702e1dea29b936ef",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_ffffff_4796fe84b7f7_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_ffffff_add102a651d2_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "XXL",
+   "color": "White",
+   "colorHex": "#ffffff",
+   "price": 16.65,
+   "available": true
+  },
+  {
+   "id": "64623f44fef6a7fd86bb5ed6",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_ffffff_4796fe84b7f7_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_ffffff_add102a651d2_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "3XL",
+   "color": "White",
+   "colorHex": "#ffffff",
+   "price": 19.65,
+   "available": true
+  },
+  {
+   "id": "64760b2d1316198ffe40ebca",
+   "images": [
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_ffffff_4796fe84b7f7_v2.png",
+     "printArea": "front"
+    },
+    {
+     "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_back_ffffff_add102a651d2_v2.png",
+     "printArea": "back"
+    }
+   ],
+   "size": "4XL",
+   "color": "White",
+   "colorHex": "#ffffff",
+   "price": 19.65,
+   "available": true
+  }
+ ]
+}
