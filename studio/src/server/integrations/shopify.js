@@ -28,6 +28,12 @@ function cfg() {
   return s;
 }
 
+/** Von Shopify erteilte Berechtigungen der Admin-App (für die Prüfung in Analytics). */
+export async function adminScopes() {
+  const t = await getAdminToken().catch(() => null);
+  return t ? t.scopes : null;
+}
+
 export function connectionKinds() {
   return {
     themeAccess: hasSecret('shopify.themeAccessPassword'),

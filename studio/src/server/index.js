@@ -20,13 +20,20 @@ import * as backup from './services/backup.js';
 import { listJobs, recoverInterruptedJobs } from './services/jobs.js';
 import * as updater from './services/updater.js';
 import * as productImages from './services/productImages.js';
+import * as aSync from './analytics/sync.js';
+import * as aMetrics from './analytics/metrics.js';
+import * as aCosts from './analytics/costs.js';
+import * as aLive from './analytics/live.js';
+import * as aReports from './analytics/reports.js';
+import * as aNotify from './analytics/notify.js';
+import { buildInsights } from './analytics/insights.js';
 import * as storefront from './services/storefront.js';
 import * as themeEditor from './services/themeEditor.js';
 
 const VERSION = JSON.parse(fs.readFileSync(path.join(APP_DIR, 'package.json'), 'utf8')).version;
 const RUNTIME_FILE = path.join(DIRS.internal, 'laufzeit.json');
 const PREFERRED_PORT = Number(process.env.APOLOGEA_PORT || 47821);
-const SECRET_NAMES = new Set(['shopify.themeAccessPassword', 'shopify.storefrontPassword', 'shopify.clientId', 'shopify.clientSecret', 'anthropic.apiKey', 'printify.token', 'printful.token']);
+const SECRET_NAMES = new Set(['shopify.themeAccessPassword', 'shopify.storefrontPassword', 'analytics.collectorToken', 'gelato.apiKey', 'shopify.clientId', 'shopify.clientSecret', 'anthropic.apiKey', 'printify.token', 'printful.token']);
 const MAX_UPLOAD = 300 * 1024 * 1024;
 
 ensureDirs();
@@ -54,7 +61,7 @@ function send(res, status, body, headers = {}) {
   res.end(data);
 }
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.json': 'application/json' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.json': 'application/json', '.pdf': 'application/pdf', '.csv': 'text/csv; charset=utf-8', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
 
 function sendFile(res, file, { download = false, csp = true } = {}) {
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return send(res, 404, { error: 'Datei nicht gefunden' });
@@ -174,6 +181,20 @@ route('PUT', '/api/settings', async (_r, _p, body) => {
   }
   if (body.brand) allowed.brand = { voice: body.brand.voice };
   if (body.ui) allowed.ui = body.ui;
+  if (body.analytics) {
+    const a = body.analytics;
+    const n = (v) => (v === null || v === '' || v === undefined ? null : Number(v));
+    const ok = (v) => v === null || (Number.isFinite(v) && v >= 0);
+    allowed.analytics = {};
+    if (a.syncMinutes !== undefined) { const m = n(a.syncMinutes); if (!ok(m) || m > 1440) throw new UserError('Ungültiger Abstand.'); allowed.analytics.syncMinutes = m || 0; }
+    if (a.goals) { const g = { daily: n(a.goals.daily), monthly: n(a.goals.monthly) }; if (!ok(g.daily) || !ok(g.monthly)) throw new UserError('Ungültiges Umsatzziel.'); allowed.analytics.goals = g; }
+    if (a.fees) { const f = { percent: n(a.fees.percent), fixed: n(a.fees.fixed) }; if (!ok(f.percent) || !ok(f.fixed) || (f.percent || 0) > 50) throw new UserError('Ungültige Gebühr.'); allowed.analytics.fees = f; }
+    if (a.podShippingPerOrder !== undefined) { const v = n(a.podShippingPerOrder); if (!ok(v)) throw new UserError('Ungültige Versandkosten.'); allowed.analytics.podShippingPerOrder = v; }
+    if (a.fx) { allowed.analytics.fx = {}; for (const [c, v] of Object.entries(a.fx)) if (/^[A-Z]{3}$/.test(c) && ok(n(v))) allowed.analytics.fx[c] = n(v); }
+    if (a.collectorUrl !== undefined) { const u = String(a.collectorUrl || '').trim(); if (u && !/^https:\/\/[\w.-]+(\/[\w./-]*)?$/.test(u) && !(process.env.APOLOGEA_TEST === '1' && /^http:\/\/127\.0\.0\.1:\d+$/.test(u))) throw new UserError('Die Adresse des Live-View-Dienstes muss mit https:// beginnen.'); allowed.analytics.collectorUrl = u; }
+    if (a.notify) allowed.analytics.notify = { sales: Boolean(a.notify.sales), refunds: Boolean(a.notify.refunds), goals: Boolean(a.notify.goals), errors: Boolean(a.notify.errors) };
+  }
+  if (body.gelato) allowed.gelato = { mode: body.gelato.mode === 'api' ? 'api' : 'none' };
   if (allowed.ai?.engine && !['none', 'api', 'claude-code'].includes(allowed.ai.engine)) throw new UserError('Ungültige KI-Auswahl.');
   if (allowed.ai?.model && !ai.PRICES[allowed.ai.model]) throw new UserError('Unbekanntes Modell.');
   if (allowed.marketprint?.mode) mp.resetMcp();
@@ -275,6 +296,58 @@ route('PUT', '/api/templates/:id', async (_r, p, body) => { const t = store().te
 route('DELETE', '/api/templates/:id', async (_r, p, _b, url) => { if (url.searchParams.get('confirm') !== '1') throw new UserError('Bitte bestätigen.'); return { ok: store().templates.remove(p.id) }; });
 
 // ---- Website
+// ------------------------------------------------------------------ Analytics & Business Intelligence
+const periodOf = (url) => ({ preset: url.searchParams.get('preset') || '30d', from: url.searchParams.get('from') || undefined, to: url.searchParams.get('to') || undefined });
+route('GET', '/api/analytics/status', async () => {
+  const perms = await aSync.permissions().catch((err) => ({ adminApp: false, error: errorMessage(err), missing: [] }));
+  const s = getSettings();
+  return { permissions: perms, sync: aSync.meta().lastSyncAt ? { lastSyncAt: aSync.meta().lastSyncAt, ok: aSync.meta().lastSyncOk !== false, error: aSync.meta().lastError || null, orders: store().orders.list().length } : null, collector: Boolean(s.analytics.collectorUrl && secretInfo('analytics.collectorToken').set), syncMinutes: s.analytics.syncMinutes, unread: aNotify.listNotices({ unreadOnly: true }).length };
+});
+route('POST', '/api/analytics/sync', async (_r, _p, body) => aSync.syncOrders({ full: Boolean(body?.full), reason: 'manuell' }));
+route('GET', '/api/analytics/overview', async (_r, _p, _b, url) => {
+  const p = periodOf(url);
+  const o = await aMetrics.overview(p);
+  o.goal = await aMetrics.goalProgress();
+  return o;
+});
+route('GET', '/api/analytics/sales', async (_r, _p, _b, url) => aMetrics.sales(periodOf(url), { granularity: url.searchParams.get('granularity') || undefined }));
+route('GET', '/api/analytics/orders', async (_r, _p, _b, url) => aMetrics.ordersList({ ...periodOf(url), q: url.searchParams.get('q') || '', status: url.searchParams.get('status') || '', sort: url.searchParams.get('sort') || 'date-desc', page: Math.max(1, Number(url.searchParams.get('page')) || 1) }));
+route('GET', '/api/analytics/products', async (_r, _p, _b, url) => aMetrics.products(periodOf(url)));
+route('GET', '/api/analytics/product', async (_r, _p, _b, url) => aMetrics.productDetail(url.searchParams.get('key') || '', periodOf(url)));
+route('GET', '/api/analytics/profit', async (_r, _p, _b, url) => aMetrics.profit(periodOf(url)));
+route('GET', '/api/analytics/customers', async (_r, _p, _b, url) => aMetrics.customers(periodOf(url)));
+route('GET', '/api/analytics/live', async () => aLive.liveSnapshot());
+route('GET', '/api/analytics/insights', async (_r, _p, _b, url) => {
+  const p = periodOf(url);
+  const [overview, sales, products, profit, goal] = await Promise.all([aMetrics.overview(p), aMetrics.sales(p), aMetrics.products(p), aMetrics.profit(p), aMetrics.goalProgress()]);
+  overview.goal = goal;
+  return { period: overview.period, insights: buildInsights({ overview, sales, products, profit }) };
+});
+route('GET', '/api/analytics/costs', async () => store().costs.list().sort((a, b) => b.date.localeCompare(a.date)));
+route('POST', '/api/analytics/costs', async (_r, _p, body) => aCosts.saveCost(body || {}));
+route('DELETE', '/api/analytics/costs/:id', async (_r, p) => ({ ok: store().costs.remove(p.id) }));
+route('POST', '/api/analytics/product-cost', async (_r, _p, body) => {
+  const id = String(body?.productId || '');
+  if (!/^(gid:\/\/shopify\/Product\/\d+|titel:.{1,200})$/.test(id)) throw new UserError('Ungültiges Produkt.');
+  const unit = body.unit === null || body.unit === '' ? null : Number(body.unit);
+  if (unit !== null && (!Number.isFinite(unit) || unit < 0)) throw new UserError('Bitte einen gültigen Betrag eingeben.');
+  const cur = { ...(getSettings().analytics.productCosts || {}) };
+  if (unit === null) delete cur[id]; else cur[id] = { unit, note: String(body.note || '').slice(0, 200), at: new Date().toISOString() };
+  // ganze Liste ersetzen, damit Löschen funktioniert
+  const s = getSettings();
+  s.analytics.productCosts = cur;
+  store().settings.put(s);
+  return { ok: true };
+});
+route('POST', '/api/analytics/pod-costs/refresh', async () => aCosts.podOrderCosts({ refresh: true }));
+route('GET', '/api/analytics/notices', async () => aNotify.listNotices());
+route('POST', '/api/analytics/notices/read', async (_r, _p, body) => aNotify.markRead(body?.ids || 'all'));
+route('POST', '/api/analytics/reports', async (_r, _p, body) => aReports.createReport(body || {}, { port }));
+route('GET', '/api/analytics/reports', async () => aReports.listReports());
+route('POST', '/api/analytics/reports/open', async (_r, _p, body) => { const f = aReports.reportFile(String(body?.name || '')); if (!fs.existsSync(f)) throw new UserError('Bericht nicht gefunden.', { status: 404 }); openFile(f); return { ok: true }; });
+route('POST', '/api/analytics/reports/reveal', async (_r, _p, body) => { const f = aReports.reportFile(String(body?.name || '')); revealInExplorer(f); return { ok: true }; });
+route('POST', '/api/analytics/collector/test', async () => aLive.testCollector());
+
 route('GET', '/api/website/areas', async () => website.listAreas());
 route('GET', '/api/website/editor', async (_r, _p, _b, url) => themeEditor.structure({ template: url.searchParams.get('template') || undefined }));
 route('GET', '/api/website/editor/session', async () => ({ previewLive: storefront.previewBase(), draft: themeEditor.manualDraft() }));
@@ -381,6 +454,7 @@ function handleFiles(res, url) {
     if (!att) return send(res, 404, { error: 'Nicht gefunden' });
     return sendFile(res, website.attachmentPath(d.id, url.searchParams.get('preview') === '1' && att.preview ? att.preview : att.file));
   }
+  if (parts[0] === 'bericht') return sendFile(res, aReports.reportFile(parts[1] || ''), { download: true });
   if (parts[0] === 'product-image') {
     const d = store().products.get(parts[1]);
     const img = d?.extraImages?.find((i) => i.id === parts[2]);
@@ -427,6 +501,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/ping') return send(res, 200, { ok: true, app: 'APOLOGEA Studio', version: VERSION });
 
+    // Berichtsdruck (PDF) durch Edge: einmalige Adresse, nur vom eigenen Dienst erzeugt
+    if (url.pathname.startsWith('/bericht/')) {
+      const html = aReports.htmlByToken(url.pathname.slice('/bericht/'.length));
+      return html ? send(res, 200, html, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'" }) : send(res, 404, 'Nicht gefunden');
+    }
     // Live-Ansicht des Shops: eigener Vorschau-Schlüssel, abgeschottet (siehe services/storefront.js)
     if (url.pathname.startsWith('/vorschau/')) return await storefront.handle(req, res, url);
 
@@ -514,6 +593,18 @@ async function waitForExit(pid, ms = 20_000) {
   }
 }
 
+/** Automatische Bestell-Synchronisierung im eingestellten Abstand (nur mit Admin-App). */
+let lastAutoSync = 0;
+function startAnalyticsScheduler() {
+  setInterval(() => {
+    const min = Number(getSettings().analytics?.syncMinutes) || 0;
+    if (!min || Date.now() - lastAutoSync < min * 60_000) return;
+    try { if (!shopify.connectionKinds().adminApp) return; } catch { return; }
+    lastAutoSync = Date.now();
+    aSync.syncOrders({ reason: 'automatisch' }).catch((err) => console.error('[Analytics] Synchronisierung:', errorMessage(err)));
+  }, 30_000).unref();
+}
+
 export async function start() {
   if (RESTART.waitPid) await waitForExit(RESTART.waitPid);
   const existing = await alreadyRunning();
@@ -532,6 +623,7 @@ export async function start() {
   mp.setOAuthCallbackBase(`http://127.0.0.1:${port}`);
   fs.writeFileSync(RUNTIME_FILE, JSON.stringify({ port, token, pid: process.pid, startedAt: new Date().toISOString() }));
   if (process.platform !== 'win32') { try { fs.chmodSync(RUNTIME_FILE, 0o600); } catch { /* ignorieren */ } }
+  startAnalyticsScheduler();
   backup.dailyAutoBackup().catch((err) => console.error('[Studio] Automatische Sicherung fehlgeschlagen:', err.message));
   const startUrl = `http://127.0.0.1:${port}/auth?t=${token}`;
   console.log(JSON.stringify({ ready: true, port }));

@@ -169,3 +169,6 @@ export async function mockups(request, { details: d, draft, ctx }) {
   }
   throw new UserError('Printful erzeugt die Mockups noch. Bitte später erneut versuchen.');
 }
+
+/** Lesender Zugriff für Analytics (Bestellkosten). */
+export { call as api };

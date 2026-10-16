@@ -69,6 +69,21 @@ class Collection {
     return ok;
   }
 
+  /** Viele Einträge auf einmal anlegen/ersetzen – nur ein Schreibvorgang (z. B. Bestell-Synchronisierung). */
+  putMany(objs) {
+    const now = nowIso();
+    for (const obj of objs) {
+      const item = { ...clone(obj) };
+      if (!item.id) item.id = newId(this.prefix);
+      const prev = this.items.get(item.id);
+      item.createdAt = prev?.createdAt || item.createdAt || now;
+      item.updatedAt = now;
+      this.items.set(item.id, item);
+    }
+    if (objs.length) this.persist();
+    return objs.length;
+  }
+
   replaceAll(items) {
     this.items.clear();
     for (const it of items || []) this.items.set(it.id, it);
@@ -117,6 +132,10 @@ export const COLLECTION_DEFS = {
   templates: 't_',
   websiteDrafts: 'w_',
   jobs: 'j_',
+  // Analytics
+  orders: 'o_', // synchronisierte Shopify-Bestellungen (ohne Kundendaten)
+  costs: 'c_', // manuell erfasste Kosten (Werbung, Sonstiges)
+  notices: 'n_', // Benachrichtigungen (neue Verkäufe, Ziele, Rückerstattungen, Fehler)
 };
 
 let db = null;
@@ -169,6 +188,17 @@ export const DEFAULT_SETTINGS = {
     voice: 'Ruhig, würdevoll, hochwertig. Christlich-östliche Bildsprache ohne Kitsch. Keine Übertreibungen, keine erfundenen Fakten.',
   },
   ui: { onboardingDone: false },
+  // Analytics & Business Intelligence
+  analytics: {
+    syncMinutes: 3, // Abstand der automatischen Bestell-Synchronisierung (0 = aus)
+    goals: { daily: null, monthly: null }, // Umsatzziele (Gesamtumsatz, Shop-Währung)
+    fees: { percent: null, fixed: null }, // Zahlungsgebühren je Bestellung, falls Shopify keine tatsächlichen Gebühren liefert
+    podShippingPerOrder: null, // Versandkosten des Druckdienstleisters je Bestellung (Schätzung, falls keine Anbieterdaten)
+    productCosts: {}, // Shopify-Produkt-ID → { unit, note } – Herstellkosten je Stück (manuell)
+    collectorUrl: '', // Adresse des Live-View-Dienstes (siehe analytics-collector/)
+    notify: { sales: true, refunds: true, goals: true, errors: true },
+  },
+  gelato: { mode: 'none' }, // nur Kostendaten für Analytics (API-Schlüssel in den Zugangsdaten)
 };
 
 export function getSettings() {

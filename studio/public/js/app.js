@@ -2,6 +2,7 @@ import { h, clear, svg, ICONS, get, post, showError, toast, confirmDialog } from
 import { renderDashboard } from './views/dashboard.js';
 import { renderWebsiteList, renderWebsiteDraft } from './views/website.js';
 import { renderSiteEditor } from './views/siteEditor.js';
+import { renderAnalytics } from './views/analytics.js';
 import { renderProductList, renderProductEditor } from './views/products.js';
 import { renderLibrary } from './views/library.js';
 import { renderHistory } from './views/history.js';
@@ -11,6 +12,7 @@ export const state = { boot: null };
 
 const NAV = [
   { href: '#/', label: 'Dashboard', icon: 'home', match: /^#\/?$/ },
+  { href: '#/analytics', label: 'Analytics', icon: 'analytics', match: /^#\/analytics/ },
   { href: '#/website', label: 'Website', icon: 'web', match: /^#\/website/ },
   { href: '#/produkte', label: 'Produkte', icon: 'shirt', match: /^#\/produkte/ },
   { href: '#/bibliothek', label: 'Designbibliothek', icon: 'library', match: /^#\/bibliothek/ },
@@ -32,11 +34,31 @@ function brand() {
     h('span.wordmark-sub', 'Studio'));
 }
 
+// ---- Benachrichtigungen (neue Verkäufe, Ziele, Erstattungen, Sync-Fehler) – dezent, einmal je Meldung
+let unreadNotices = 0;
+const shownNotices = new Set();
+async function pollNotices(first = false) {
+  try {
+    const list = await get('/api/analytics/notices');
+    const unread = list.filter((n) => !n.read);
+    unreadNotices = unread.length;
+    for (const n of unread.slice(0, 5).reverse()) {
+      if (shownNotices.has(n.id)) continue;
+      shownNotices.add(n.id);
+      if (first) continue; // beim Start nicht alle alten Meldungen aufpoppen lassen
+      toast(`${n.title}${n.text ? ' – ' + n.text : ''}`, n.kind === 'error' ? 'error' : 'ok', 9000);
+      try { if ('Notification' in window && Notification.permission === 'granted') new Notification(`APOLOGEA · ${n.title}`, { body: n.text || '', icon: '/icon.svg', silent: true }); } catch { /* ohne Systembenachrichtigung */ }
+    }
+    renderNav();
+  } catch { /* Analytics nicht eingerichtet */ }
+}
+setTimeout(() => { pollNotices(true); setInterval(() => pollNotices(false), 60_000); }, 2000);
+
 export function renderNav() {
   clear(nav,
     brand(),
     NAV.map((n) => {
-      const a = h('a.item', { href: n.href }, svg(ICONS[n.icon]), n.label);
+      const a = h('a.item', { href: n.href }, svg(ICONS[n.icon]), n.label, n.icon === 'analytics' && unreadNotices ? h('span.nav-badge', { title: 'Neue Benachrichtigungen' }, String(unreadNotices)) : null);
       if (n.match.test(location.hash || '#/')) a.classList.add('active');
       a.addEventListener('click', () => nav.classList.remove('open'));
       return a;
@@ -65,6 +87,7 @@ async function route() {
   clear(main, h('div.muted', 'Lädt …'));
   try {
     if (!parts.length) await renderDashboard(main);
+    else if (parts[0] === 'analytics') await renderAnalytics(main, parts[1] || 'uebersicht', query);
     else if (parts[0] === 'website' && parts[1] === 'liste') await renderWebsiteList(main);
     else if (parts[0] === 'website' && parts[1]) await renderWebsiteDraft(main, parts[1], query);
     else if (parts[0] === 'website') await renderSiteEditor(main, query);

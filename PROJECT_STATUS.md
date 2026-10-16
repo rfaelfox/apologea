@@ -189,6 +189,17 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - Weg 2 (MarketPrint-Website): Direktlinks laden dort nicht → Startseite + Wegbeschreibung (1.4.3).
 - Tests: `npm test` 41/41, Oberflächen-Durchlauf 58/58.
 
+## Sitzung 6 (2026-10-16) — Studio 2.0.0: Analytics & Business Intelligence
+- Sicherung vorher: Commit `4b4f447`, Tag `sicherung-vor-analytics-1.5.0`.
+- Neuer Bereich „Analytics“: Übersicht, Live View, Verkäufe & Umsatz, Kunden & Besucher, Produktperformance,
+  Gewinn & POD-Kosten, Berichte (PDF/CSV/Excel). Details, Definitionen und Grenzen: docs/ANALYTICS.md.
+- Live View über eigenen Dienst `analytics-collector/` (Cloudflare Worker + Shopify Pixel, nur mit Einwilligung, 48 h Löschung).
+- Abgleich per Abfrage (keine Webhooks, Studio ist nicht öffentlich erreichbar). Benachrichtigungen im Programm.
+- Nutzer muss: Admin-App-Bereiche read_orders/read_reports/read_products (+ optional read_all_orders), geschützte
+  Kundendaten beantragen, Live-View-Dienst einrichten, Kosten/Gebühren eintragen.
+- Tests: `npm test` 49/49 (neu: analytics.test.mjs mit gekennzeichneten Testdaten), Oberflächen-Durchlauf 58/58,
+  alle Analytics-Ansichten gegen simulierten Shop durchgeklickt. Keine neuen Bibliotheken → Aktualisierung im Programm.
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“

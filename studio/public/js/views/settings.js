@@ -9,7 +9,7 @@ const MODELS = [
   ['claude-haiku-5-5', 'Claude Haiku 5.5 – sehr günstig, einfache Texte ($0,10 / $0,50)'],
 ];
 
-export async function renderSettings(main) {
+export async function renderSettings(main, sub) {
   const boot = await reloadBoot();
   const s = boot.settings;
   const secrets = s.secrets;
@@ -53,7 +53,7 @@ export async function renderSettings(main) {
     h('h4', 'B · Eigene Shopify-App (Theme + Shop-Inhalte)'),
     h('div.inline-msg.info',
       'Für Seiten, Kollektionen, Tags und Bild-Uploads: Im Shopify Dev Dashboard (dev.shopify.com) eine App für deinen Shop anlegen, nur diese Berechtigungen auswählen: ',
-      h('strong', 'read_themes, write_themes, read_products, write_products, read_content, write_content, read_files, write_files'),
+      h('strong', 'read_themes, write_themes, read_products, write_products, read_content, write_content, read_files, write_files, read_orders, read_reports'),
       '. App im Shop installieren, dann Client-ID und Client-Secret hier eintragen. Das Programm holt sich damit selbst einen Zugangsschlüssel (24 Stunden gültig, wird automatisch erneuert). Das funktioniert nur für Shops deiner eigenen Organisation.'),
     secretField('shopify.clientId', 'Client-ID', 'Client-ID der App'),
     secretField('shopify.clientSecret', 'Client-Secret', 'Client-Secret der App'),
@@ -179,6 +179,50 @@ export async function renderSettings(main) {
     } }),
     h('div.field-label', 'Vorhandene Sicherungen'), backupList);
 
+  // ---------- Analytics
+  const a = s.analytics || {};
+  const numIn = (v, ph) => h('input', { type: 'number', step: '0.01', min: 0, value: v ?? '', placeholder: ph || '' });
+  const syncMin = h('select', [[0, 'Aus (nur manuell)'], [2, 'alle 2 Minuten'], [3, 'alle 3 Minuten'], [5, 'alle 5 Minuten'], [15, 'alle 15 Minuten'], [60, 'stündlich']].map(([v, l]) => h('option', { value: v, selected: Number(a.syncMinutes ?? 3) === v }, l)));
+  const goalDay = numIn(a.goals?.daily, 'z. B. 200'); const goalMonth = numIn(a.goals?.monthly, 'z. B. 5000');
+  const feePct = numIn(a.fees?.percent, 'z. B. 2,1'); const feeFix = numIn(a.fees?.fixed, 'z. B. 0,30');
+  const podShip = numIn(a.podShippingPerOrder, 'z. B. 4,90');
+  const fxUsd = numIn(a.fx?.USD, 'z. B. 0,92');
+  const notify = ['sales', 'refunds', 'goals', 'errors'].map((k) => h('label.check', h('input', { type: 'checkbox', checked: a.notify?.[k] !== false, 'data-k': k }), h('span', { sales: 'Neue Verkäufe', refunds: 'Rückerstattungen', goals: 'Umsatzziele erreicht', errors: 'Fehlgeschlagene Synchronisierung' }[k])));
+  const collectorUrl = h('input', { type: 'text', value: a.collectorUrl || '', placeholder: 'https://apologea-live.<name>.workers.dev' });
+  const testCollector = h('button.small', { type: 'button' }, 'Verbindung prüfen');
+  testCollector.addEventListener('click', () => busy(testCollector, async () => { try { const r = await post('/api/analytics/collector/test'); toast(`Live-View-Dienst erreichbar (Version ${r.version}, ${r.events24h ?? 0} Ereignisse in 24 h).`, 'ok', 8000); } catch (err) { showError(err); } }));
+  const gelatoMode = h('select', h('option', { value: 'none', selected: s.gelato?.mode !== 'api' }, 'Nicht verbunden'), h('option', { value: 'api', selected: s.gelato?.mode === 'api' }, 'Verbunden (nur Kostendaten)'));
+  const notifPerm = h('button.small.ghost', { type: 'button', onclick: async () => { try { const r = await Notification.requestPermission(); toast(r === 'granted' ? 'Windows-Benachrichtigungen erlaubt.' : 'Nicht erlaubt – Hinweise erscheinen weiter im Programm.', 'info'); } catch { toast('Dieses Fenster unterstützt keine Systembenachrichtigungen.', 'info'); } } }, 'Windows-Benachrichtigungen erlauben');
+  const analyticsBox = h('div.frame.stack', { id: 'analytics' },
+    h('h3', 'Analytics & Business Intelligence'),
+    h('p.muted', 'Daten aus deinem Shopify-Shop über die Admin-App (Berechtigungen read_orders, read_reports, read_products). Bestellungen werden ohne Namen, E-Mails und Adressen gespeichert.'),
+    h('div.grid.cols-2',
+      h('label.field', h('span', 'Automatische Aktualisierung'), syncMin),
+      h('div.field', h('span', 'Benachrichtigungen'), h('div', notify), notifPerm)),
+    h('h4', 'Umsatzziele (Gesamtumsatz)'),
+    h('div.grid.cols-2', h('label.field', h('span', 'Tagesziel'), goalDay), h('label.field', h('span', 'Monatsziel'), goalMonth)),
+    h('h4', 'Kosten für die Gewinnrechnung (falls die Anbieter keine echten Werte liefern)'),
+    h('div.grid.cols-2',
+      h('label.field', h('span', 'Zahlungsgebühr in %'), feePct, h('div.hint', 'Shopify Payments in DE z. B. ca. 2,1 % + 0,30 € je Bestellung (je nach Tarif und Karte – bitte im Shopify-Admin prüfen).')),
+      h('label.field', h('span', 'Zahlungsgebühr fest je Bestellung'), feeFix),
+      h('label.field', h('span', 'Versandkosten des Druckdienstleisters je Bestellung'), podShip, h('div.hint', 'Schätzung für Bestellungen, zu denen der Anbieter keine Kosten liefert (z. B. MarketPrint).')),
+      h('label.field', h('span', 'Wechselkurs 1 USD in Shop-Währung'), fxUsd, h('div.hint', 'Printify rechnet in US-Dollar ab. Ohne Kurs werden diese Kosten als „fehlend“ ausgewiesen.'))),
+    h('button.small.primary', { type: 'button', onclick: () => saveSettings({ analytics: {
+      syncMinutes: Number(syncMin.value), goals: { daily: goalDay.value, monthly: goalMonth.value }, fees: { percent: feePct.value, fixed: feeFix.value }, podShippingPerOrder: podShip.value, fx: { USD: fxUsd.value },
+      notify: Object.fromEntries(notify.map((l) => { const i = l.querySelector('input'); return [i.dataset.k, i.checked]; })),
+    } }, 'Analytics-Einstellungen gespeichert.') }, 'Speichern'),
+    ornament(),
+    h('h4', 'Live View (Besucher in Echtzeit)'),
+    h('div.inline-msg.info', 'Shopify bietet seine Live View nicht über eine Schnittstelle an. Dafür gibt es einen kleinen eigenen Dienst (kostenlos bei Cloudflare) plus ein Web Pixel im Shop – nur mit Einwilligung der Besucher, ohne IP-Adressen. Schritt-für-Schritt-Anleitung: Ordner analytics-collector im Projekt bzw. docs/ANALYTICS.md.'),
+    h('label.field', h('span', 'Adresse des Live-View-Dienstes'), collectorUrl),
+    h('div.row', h('button.small', { type: 'button', onclick: () => saveSettings({ analytics: { collectorUrl: collectorUrl.value } }, 'Adresse gespeichert.') }, 'Adresse speichern'), testCollector),
+    secretField('analytics.collectorToken', 'Lese-Schlüssel des Dienstes (READ_TOKEN)', 'langer Zufallswert', 'Derselbe Wert wie beim Einrichten des Dienstes (wrangler secret put READ_TOKEN). Bleibt verschlüsselt auf diesem PC.'),
+    ornament(),
+    h('h4', 'Gelato (Kostendaten)'),
+    h('label.field', h('span', 'Verbindung'), gelatoMode),
+    secretField('gelato.apiKey', 'Gelato-API-Schlüssel', 'API-Schlüssel aus dem Gelato-Dashboard', 'Gelato-Dashboard → Developer → API Keys. Wird nur zum Lesen der Bestellkosten genutzt.'),
+    h('button.small', { type: 'button', onclick: () => saveSettings({ gelato: { mode: gelatoMode.value } }, 'Gelato gespeichert.') }, 'Gelato speichern'));
+
   const connBox = h('div.grid.cols-3');
   clear(main,
     h('div.page-head', h('div', h('div.eyebrow', 'Einrichtung'), h('h1', 'Einstellungen'))),
@@ -186,7 +230,9 @@ export async function renderSettings(main) {
     h('section.section', h('h2', 'Verbindungen'), h('div.grid.cols-2', shopifyBox, aiBox)),
     h('section.section', h('h2', 'Print-on-Demand-Anbieter'), h('div.grid.cols-2', mpBox.children.length ? [...mpBox.children] : mpBox)),
     h('section.section', h('h2', 'Marke & Daten'), h('div.grid.cols-2', brandBox, dataBox)),
+    h('section.section', h('h2', 'Analytics'), analyticsBox),
     h('section.section', h('h2', 'Programm'), updateBox(boot.version)));
+  if (sub === 'analytics') setTimeout(() => document.getElementById('analytics')?.scrollIntoView({ behavior: 'smooth' }), 100);
   loadConnections(connBox);
   drawBackups();
   if (!s.ui.onboardingDone) put('/api/settings', { ui: { onboardingDone: true } }).catch(() => {});

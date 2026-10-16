@@ -212,3 +212,6 @@ export async function reconcile(draft) {
   if (p.external?.id || p.external?.handle) return { found: true, links: p.external.handle ? [{ label: 'Im Shop ansehen', url: p.external.handle }] : [] };
   return { found: false, existsAsDraft: true, message: 'Das Produkt existiert bei Printify, ist aber (noch) nicht im Shop veröffentlicht.' };
 }
+
+/** Lesender Zugriff für Analytics (Bestellkosten). */
+export { call as api };
