@@ -26,7 +26,7 @@ Dokumentation. Vollständiger Master-Prompt: liegt beim Nutzer; Kernregeln siehe
 | Live-Theme | „Horizon“ (benannt „apologea.eu“) — **nicht anfassen** |
 | Weitere Themes | Entwurf „Feather“ — nicht anfassen |
 | Theme Access App | im Shop installiert; Passwort vom Nutzer erzeugt |
-| Claude-Connectors | nur Gmail. **Kein Shopify-, kein MarketPrint-Connector.** |
+| Claude-Connectors | Stand Sitzung 3: nur Gmail. **MarketPrint bietet seit 10/2026 einen Claude-Connector** (help.marketprint.de, „MarketPrint mit Claude verbinden“; Produkte im Chat anlegen + in den Shop veröffentlichen). Offizieller **Shopify**-Connector im Verzeichnis ebenfalls verfügbar. Nutzer verbindet beide unter claude.ai/customize/connectors → wirkt erst in **neuer Sitzung**. |
 | Netzwerk | Benutzerdefiniert: `*.myshopify.com`, `theme-kit-access.shopifyapps.com` + Paketmanager. Erreichbarkeit getestet ✔ |
 | Theme-Access-Secret | Als Network Secret hinterlegt (Header `X-Shopify-Access-Token`, ohne Präfix, Host `theme-kit-access.shopifyapps.com`). **Funktioniert ab Sitzung 3** ✔ |
 | Env-Variable | `SHOPIFY_FLAG_STORE=dfz1mp-1u.myshopify.com` (gilt ab neuer Sitzung) |
@@ -111,6 +111,7 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 ## Nächste Schritte
 1. **Nutzer:** Vorschau ansehen (Admin → Onlineshop → NOCTURNE → „…“ → Vorschau), Feedback geben.
 2. Inhalte im Theme-Editor: Hero-Bild, Kollektion für „Die Kollektion“, Markengeschichte, Manifest, Bibelstelle (Nutzer wählt Vers + Übersetzung).
-3. **Nutzer:** 1 Testprodukt in MarketPrint anlegen und nach Shopify übertragen (Status „Aktiv“ im Onlineshop — Shop ist passwortgeschützt, also nicht öffentlich; keine Bestellung) → Claude liest Produktdaten über die Storefront und passt Produktseite (Varianten, Größen, Farben, Texte) an.
+3. **Neue Sitzung mit MarketPrint- (+ Shopify-)Connector:** Zuerst nur lesend prüfen, welche Tools die Connectoren bieten (keine Bestellungen, nichts veröffentlichen ohne Freigabe). Dann 1 Testprodukt — alternativ Nutzer legt es selbst an:
+   1 Testprodukt in MarketPrint anlegen und nach Shopify übertragen (Status „Aktiv“ im Onlineshop — Shop ist passwortgeschützt, also nicht öffentlich; keine Bestellung) → Claude liest Produktdaten über die Storefront und passt Produktseite (Varianten, Größen, Farben, Texte) an.
    Danach Metafeld-Definitionen (`docs/POD_DATA_MODEL.md`) im Admin anlegen. Bekanntes Risiko laut Shopify-Community: MarketPrint-Bestellungen wurden teils nicht übertragen → vor Livegang mit Support klären/testen.
 4. Echte Produkte anlegen/importieren, dann Produkt- und Kollektionsseiten erneut prüfen.
