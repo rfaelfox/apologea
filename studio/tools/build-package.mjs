@@ -23,7 +23,10 @@ fs.mkdirSync(path.join(PKG, 'install'), { recursive: true });
 
 // App-Dateien
 const APP = path.join(PKG, 'app');
-for (const item of ['package.json', 'package-lock.json', 'launcher.js', 'APOLOGEA Studio.vbs', 'src', 'public', 'fixtures', 'node_modules']) {
+// Prüfsummenliste für die Aktualisierung im Programm frisch erzeugen
+const { buildManifest } = await import('./manifest.mjs');
+fs.writeFileSync(path.join(ROOT, 'update.json'), JSON.stringify(buildManifest(), null, 1) + '\n');
+for (const item of ['package.json', 'package-lock.json', 'launcher.js', 'APOLOGEA Studio.vbs', 'update.json', 'src', 'public', 'fixtures', 'node_modules']) {
   const src = path.join(ROOT, item);
   if (fs.existsSync(src)) fs.cpSync(src, path.join(APP, item), { recursive: true });
 }

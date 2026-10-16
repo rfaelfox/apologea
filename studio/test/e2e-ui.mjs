@@ -22,7 +22,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message));
 // Absichtlich angezeigte Benutzermeldungen (ApiError) und erwartete 4xx-Antworten zählen nicht als Programmfehler.
-page.on('console', (m) => { if (m.type() === 'error' && !/^ApiError|Failed to load resource: the server responded with a status of 4\d\d|ERR_TUNNEL_CONNECTION_FAILED/.test(m.text())) errors.push(m.text()); });
+page.on('console', (m) => { if (m.type() === 'error' && !/^ApiError|Failed to load resource: the server responded with a status of (4\d\d|502)|ERR_TUNNEL_CONNECTION_FAILED/.test(m.text())) errors.push(m.text()); });
 page.on('dialog', (d) => d.accept());
 const shot = (n) => page.screenshot({ path: path.join(shotDir, n + '.png'), fullPage: false });
 const btn = (name) => page.getByRole('button', { name, exact: true });

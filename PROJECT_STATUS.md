@@ -162,6 +162,13 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - Statuskarten in den Einstellungen aktualisieren sich nach Speichern/Prüfen selbst.
 - Tests: `npm test` 28/28, Oberflächen-Durchlauf ohne Fehler (neuer Test für nachgeladene Werkzeuge).
 
+## Sitzung 5, Teil 4 (2026-10-16) — Studio 1.2.0: Aktualisierung im Programm
+- Wunsch: Programm verbessern, ohne jedes Mal ein neues Paket herunterzuladen. Nutzer hat die Ein-Klick-Aktualisierung
+  ausdrücklich freigegeben (Risiko erklärt: Code kommt aus dem öffentlichen GitHub-Repo).
+- Umsetzung siehe docs/STUDIO.md §2b. Installer beendet außerdem hängende Studio-/Claude-Code-Prozesse selbst.
+- Ab jetzt nach jeder Studio-Änderung: `node tools/manifest.mjs`, Tests, committen, pushen → Nutzer klickt „Jetzt aktualisieren“.
+- Tests: `npm test` 36/36 (neu: update.test.mjs), Neustart-Ablauf manuell geprüft (gleicher Port und Schlüssel).
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“

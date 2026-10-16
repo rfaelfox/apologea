@@ -1,9 +1,12 @@
+import { updateBanner } from './update.js';
 import { h, clear, svg, ICONS, get, post, badge, fmtDate, showError, ornament, extLink } from '../core.js';
 
 export async function renderDashboard(main) {
   const connBox = h('div.grid.cols-3', h('div.card', h('span.muted', 'Verbindungen werden geprüft …')));
   const lists = h('div');
+  const updBox = h('div');
   clear(main,
+    updBox,
     h('div.page-head', h('div', h('div.eyebrow', 'Arbeitsoberfläche'), h('h1', 'Willkommen im Atelier')), h('img', { src: '/brand/emblem-29.svg', alt: '', style: { width: '64px', opacity: '.9' } })),
     h('div.hero-actions',
       h('a.hero-btn', { href: '#/website?neu' , onclick: (e) => { e.preventDefault(); newWebsiteDraft(); } },
@@ -18,6 +21,7 @@ export async function renderDashboard(main) {
     lists);
 
   loadConnections(connBox);
+  updateBanner(updBox);
   try {
     const d = await get('/api/dashboard');
     clear(lists,

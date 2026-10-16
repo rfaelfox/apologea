@@ -63,6 +63,20 @@ Die Oberfläche blendet Funktionen anhand von `meta.capabilities` ein oder aus (
 * `Erfolgreich` erst nach Bestätigung der Plattform; Website-Änderungen werden zurückgelesen (Prüfsummen).
 * Website: Konfliktprüfung (Datei/Seite seit Vorschlag geändert → Abbruch ohne Schreiben), Sicherung aller betroffenen Originale (Datei + Datenbank), Wiederherstellung auf Knopfdruck. Vorschau in einer Theme-Kopie (`themeDuplicate`), das Live-Theme bleibt bis zur Freigabe unberührt.
 
+## 2b. Programm-Aktualisierung (ab 1.2.0)
+- Einstellungen → „Programm“ bzw. Hinweis auf der Startseite. Suchen = eine kostenlose Abfrage bei GitHub
+  (öffentliches Repository `rfaelfox/apologea`, Zweig `claude/apologea-shopify-theme-9kvfrj`, Ordner `studio/`).
+- `studio/update.json` listet alle Programmdateien mit SHA-256. Erzeugen mit `node tools/manifest.mjs`
+  (passiert auch beim Paketbau); ein Test schlägt fehl, wenn die Liste nicht zum Stand passt.
+- Erst nach Klick und Bestätigung: geänderte Dateien des geprüften Commits laden, jede Prüfsumme kontrollieren
+  (bei Abweichung wird nichts verändert), alte Fassung nach `.studio/programm-sicherung/` sichern (letzte 5),
+  Dateien ersetzen, Dienst mit gleichem Port und Startschlüssel neu starten – das Fenster lädt sich neu.
+- Geschrieben werden nur `launcher.js`, `package*.json`, `src/`, `public/`, `fixtures/`. Daten, Zugangsdaten,
+  `node_modules` und die Node.js-Laufzeit bleiben unberührt. Ändern sich Abhängigkeiten, verlangt das Programm
+  einmal das Installationspaket. Während ein Vorgang läuft, wird nicht aktualisiert.
+- Sicherheitshinweis: Wer auf diesen Zweig schreiben kann, kann über die Aktualisierung Programmcode auf den PC
+  bringen. Darum nur nach ausdrücklichem Klick, und das GitHub-Konto sollte mit Zwei-Faktor-Anmeldung geschützt sein.
+
 ## 3. Einschränkungen (ehrlich)
 * **Installation auf deinem PC**: konnte aus der Cloud-Umgebung nicht durchgeführt werden. Installer bis zum Anlegen der Verknüpfungen in PowerShell 7 (Linux) erprobt; Verknüpfungen (COM) und Edge-App-Fenster nur unter Windows prüfbar.
 * **MarketPrint über Claude Code**: Ablauf mit Ersatz-CLI getestet. Ob die lokale Claude-Code-Installation den claude.ai-Connector im Druckmodus lädt, zeigt erst „Verbindung prüfen“ auf deinem PC.

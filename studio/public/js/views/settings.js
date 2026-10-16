@@ -1,6 +1,7 @@
 import { h, clear, get, post, put, upload, fmtDate, fmtBytes, showError, toast, busy, confirmDialog, dropzone, extLink, ornament, userError } from '../core.js';
 import { state, reloadBoot } from '../app.js';
 import { loadConnections } from './dashboard.js';
+import { updateBox } from './update.js';
 
 const MODELS = [
   ['claude-opus-5-5', 'Claude Opus 5.5 – höchste Qualität ($4 / $20 je 1 Mio. Token)'],
@@ -182,7 +183,8 @@ export async function renderSettings(main) {
     h('section.section', h('h2', 'Status'), connBox, h('div.row', { style: { marginTop: '12px' } }, h('button.small', { type: 'button', onclick: () => loadConnections(connBox) }, 'Erneut prüfen'))),
     h('section.section', h('h2', 'Verbindungen'), h('div.grid.cols-2', shopifyBox, aiBox)),
     h('section.section', h('h2', 'Print-on-Demand-Anbieter'), h('div.grid.cols-2', mpBox.children.length ? [...mpBox.children] : mpBox)),
-    h('section.section', h('h2', 'Marke & Daten'), h('div.grid.cols-2', brandBox, dataBox)));
+    h('section.section', h('h2', 'Marke & Daten'), h('div.grid.cols-2', brandBox, dataBox)),
+    h('section.section', h('h2', 'Programm'), updateBox(boot.version)));
   loadConnections(connBox);
   drawBackups();
   if (!s.ui.onboardingDone) put('/api/settings', { ui: { onboardingDone: true } }).catch(() => {});

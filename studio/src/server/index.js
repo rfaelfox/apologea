@@ -18,6 +18,7 @@ import * as products from './services/products.js';
 import * as website from './services/website.js';
 import * as backup from './services/backup.js';
 import { listJobs, recoverInterruptedJobs } from './services/jobs.js';
+import * as updater from './services/updater.js';
 
 const VERSION = JSON.parse(fs.readFileSync(path.join(APP_DIR, 'package.json'), 'utf8')).version;
 const RUNTIME_FILE = path.join(DIRS.internal, 'laufzeit.json');
@@ -26,7 +27,12 @@ const SECRET_NAMES = new Set(['shopify.themeAccessPassword', 'shopify.clientId',
 const MAX_UPLOAD = 300 * 1024 * 1024;
 
 ensureDirs();
-const token = crypto.randomBytes(24).toString('base64url');
+// Nach einer Aktualisierung übernimmt der neue Dienst Startschlüssel und Port des alten,
+// damit das offene Programmfenster angemeldet bleibt. Danach aus der Umgebung entfernen
+// (Unterprozesse wie Claude Code sollen ihn nicht erben).
+const RESTART = { token: process.env.APOLOGEA_RESTART_TOKEN, port: Number(process.env.APOLOGEA_RESTART_PORT) || 0, waitPid: Number(process.env.APOLOGEA_WAIT_PID) || 0 };
+delete process.env.APOLOGEA_RESTART_TOKEN; delete process.env.APOLOGEA_RESTART_PORT; delete process.env.APOLOGEA_WAIT_PID;
+const token = /^[A-Za-z0-9_-]{32}$/.test(RESTART.token || '') ? RESTART.token : crypto.randomBytes(24).toString('base64url');
 let port = 0;
 let lastSeen = Date.now();
 let hadClient = false;
@@ -292,6 +298,15 @@ route('POST', '/api/backup/reveal', async (_r, _p, body) => {
 
 // ---- Leben & Beenden
 route('POST', '/api/heartbeat', async () => { lastSeen = Date.now(); hadClient = true; return { ok: true }; });
+route('GET', '/api/update/check', async () => updater.checkForUpdate());
+route('POST', '/api/update/apply', async (_r, _p, body) => {
+  const r = await updater.applyUpdate({ sha: body?.sha });
+  setTimeout(() => {
+    updater.spawnReplacement({ port, token, logFile: path.join(DIRS.logs, 'studio.log') });
+    shutdown('Neustart nach Aktualisierung');
+  }, 300);
+  return { ...r, restarting: true };
+});
 route('POST', '/api/quit', async () => { setTimeout(() => shutdown('Beenden über die Oberfläche'), 200); return { ok: true }; });
 
 // ------------------------------------------------------------------ Uploads (Rohdaten)
@@ -463,7 +478,16 @@ async function shutdown(reason) {
   setTimeout(() => process.exit(0), 300);
 }
 
+async function waitForExit(pid, ms = 20_000) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    try { process.kill(pid, 0); } catch { return; }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
 export async function start() {
+  if (RESTART.waitPid) await waitForExit(RESTART.waitPid);
   const existing = await alreadyRunning();
   if (existing) {
     console.log(JSON.stringify({ alreadyRunning: true, port: existing.port }));
@@ -472,7 +496,11 @@ export async function start() {
   openStore();
   const recovered = recoverInterruptedJobs();
   if (recovered.length) console.log(`[Studio] ${recovered.length} unterbrochene(r) Vorgang/Vorgänge als „Ergebnis muss geprüft werden“ markiert.`);
-  try { port = await listen(PREFERRED_PORT); } catch { port = await listen(0); }
+  const wanted = RESTART.port || PREFERRED_PORT;
+  for (let i = 0; i < (RESTART.port ? 20 : 1) && !port; i++) {
+    try { port = await listen(wanted); } catch { if (RESTART.port) await new Promise((r) => setTimeout(r, 250)); }
+  }
+  if (!port) port = await listen(0);
   mp.setOAuthCallbackBase(`http://127.0.0.1:${port}`);
   fs.writeFileSync(RUNTIME_FILE, JSON.stringify({ port, token, pid: process.pid, startedAt: new Date().toISOString() }));
   if (process.platform !== 'win32') { try { fs.chmodSync(RUNTIME_FILE, 0o600); } catch { /* ignorieren */ } }
