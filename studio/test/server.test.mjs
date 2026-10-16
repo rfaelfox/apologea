@@ -338,3 +338,10 @@ test('Shop-Vorschau: Anmeldung mit Shop-Passwort, Links umgeschrieben, Einbettun
     assert.equal(res.status, 405);
   } finally { shop.close(); proxy.close(); delete process.env.APOLOGEA_STOREFRONT_URL; }
 });
+
+test('MarketPrint-Website: Produktliste sofort verfügbar (ohne Abfrage über Claude Code)', async () => {
+  const mp = await import('../src/server/integrations/marketprint.js');
+  const c = mp.websiteCatalog();
+  assert.ok(c.items.length >= 10);
+  assert.ok(c.items.every((i) => /^[a-f0-9]{24}$/.test(i.id) && i.title));
+});

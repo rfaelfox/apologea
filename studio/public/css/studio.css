@@ -352,3 +352,8 @@ button.linkish { border: 0; padding: 0; min-height: 0; text-transform: none; let
 .way-choice .way { justify-content: space-between; min-height: 220px; }
 .way-choice .way h3 { margin: 2px 0 6px; }
 .catalog .item .badge-neck { display: block; padding: 0 8px 8px; font-size: .7rem; color: var(--gold-2); letter-spacing: .04em; }
+.mp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; max-height: 52vh; overflow: auto; }
+.mp-item { justify-content: flex-start; text-transform: none; letter-spacing: 0; font-size: .86rem; text-align: left; flex-wrap: wrap; gap: 8px; min-height: 48px; }
+.mp-item img { width: 40px; height: 40px; object-fit: contain; background: #f1ede6; }
+.mp-item .t { flex: 1 1 100px; }
+.mp-item .badge-neck { flex-basis: 100%; color: var(--gold-2); font-size: .7rem; }

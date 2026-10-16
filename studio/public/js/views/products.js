@@ -84,36 +84,50 @@ async function programDialog(items, templates, presetDesignId) {
   });
 }
 
-/** Weg 2: Kleidungsstück wählen → MarketPrint-Designer im Browser öffnen. */
+/** Weg 2: Kleidungsstück wählen → MarketPrint-Designer im Browser öffnen (ohne Wartezeit). */
 async function marketprintSiteDialog() {
-  const grid = h('div.catalog', h('span.muted', 'Katalog wird geladen …'));
+  const grid = h('div.mp-list', h('span.muted', 'Wird geladen …'));
   const search = h('input', { type: 'search', placeholder: 'Suchen, z. B. Shirt, Hoodie …' });
-  const open = async (url) => {
-    try { await post('/api/open-external', { url }); toast('MarketPrint wurde im Browser geöffnet.', 'ok'); } catch (err) { showError(err); }
+  const status = h('div');
+  const open = async (url, label) => {
+    clear(status, h('div.inline-msg.info', `${label} wird im Browser geöffnet …`));
+    try {
+      await post('/api/open-external', { url });
+      clear(status, h('div.inline-msg.ok', `${label} wurde in deinem Standardbrowser geöffnet. `,
+        h('span.muted', 'Falls sich nichts geöffnet hat: '), copyBtn(url)));
+    } catch (err) {
+      clear(status, h('div.inline-msg.error', `Öffnen fehlgeschlagen: ${err.message} `, copyBtn(url)));
+    }
   };
+  const copyBtn = (url) => h('button.small', { type: 'button', onclick: async (e) => {
+    try { await navigator.clipboard.writeText(url); e.target.textContent = 'Adresse kopiert – im Browser einfügen'; } catch { e.target.replaceWith(h('code', url)); }
+  } }, 'Adresse kopieren');
   const body = h('div.stack',
-    h('div.inline-msg.info', 'Der MarketPrint-Designer öffnet sich in deinem Browser. Dort bist du mit deinem MarketPrint-Konto angemeldet. Was du dort anlegst, veröffentlicht MarketPrint direkt in deinem Shop – APOLOGEA Studio prüft und protokolliert diese Produkte nicht. Achte dort auf den richtigen Shop (dfz1mp-1u.myshopify.com).'),
-    h('div.row', h('div', { style: { flex: '1 1 260px' } }, search), h('button.small', { type: 'button', onclick: () => open(`${MP_APP}/`) }, 'MarketPrint-Startseite öffnen')),
+    h('div.inline-msg.info', 'Der MarketPrint-Designer öffnet sich in deinem Browser (dort mit deinem MarketPrint-Konto anmelden). Was du dort anlegst, veröffentlicht MarketPrint direkt in deinem Shop – APOLOGEA Studio prüft und protokolliert diese Produkte nicht. Achte dort auf den richtigen Shop (dfz1mp-1u.myshopify.com).'),
+    h('div.row', h('button.primary', { type: 'button', onclick: () => open(`${MP_APP}/`, 'MarketPrint') }, 'MarketPrint öffnen'), h('div', { style: { flex: '1 1 260px' } }, search)),
+    status,
+    h('div.field-label', 'Oder direkt ein Kleidungsstück im Designer öffnen'),
     grid);
   let catalog = null;
   const draw = () => {
     if (!catalog) return;
     const q = search.value.toLowerCase();
-    clear(grid, catalog.items.filter((c) => !q || c.title.toLowerCase().includes(q)).map((c) => {
-      const it = h('div.item', { tabindex: 0, role: 'button', title: `${c.title} im MarketPrint-Designer öffnen` }, c.image ? h('img', { src: c.image, alt: '', loading: 'lazy' }) : h('div', { style: { aspectRatio: '1' } }), h('div.t', c.title), c.hasNeckPrint ? h('small.badge-neck', 'Nackendruck möglich') : null);
-      const go = () => open(`${MP_APP}/design/${encodeURIComponent(c.id)}`);
-      it.addEventListener('click', go);
-      it.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    const list = catalog.items.filter((c) => !q || c.title.toLowerCase().includes(q));
+    clear(grid, list.length ? list.map((c) => {
+      const it = h('button.mp-item', { type: 'button', title: `${c.title} im MarketPrint-Designer öffnen` },
+        c.image ? h('img', { src: c.image, alt: '', loading: 'lazy' }) : null,
+        h('span.t', c.title), c.hasNeckPrint ? h('small.badge-neck', 'Nackendruck möglich') : null);
+      it.addEventListener('click', () => open(`${MP_APP}/design/${encodeURIComponent(c.id)}`, `„${c.title}“`));
       return it;
-    }));
+    }) : h('div.muted', 'Nichts gefunden.'));
   };
   search.addEventListener('input', draw);
-  modal({ eyebrow: 'Weg 2 · MarketPrint-Website', title: 'Welches Kleidungsstück willst du gestalten?', wide: true, body, actions: [{ label: 'Schließen', value: false }] });
+  modal({ eyebrow: 'Weg 2 · MarketPrint-Website', title: 'Im MarketPrint-Designer gestalten', wide: true, body, actions: [{ label: 'Schließen', value: false }] });
   try {
-    catalog = await get('/api/providers/marketprint/catalog');
+    catalog = await get('/api/marketprint/website-catalog');
     draw();
   } catch (err) {
-    clear(grid, h('div.inline-msg.warn', 'Katalog nicht verfügbar (', err.message, '). Du kannst MarketPrint trotzdem über „MarketPrint-Startseite öffnen“ aufrufen.'));
+    clear(grid, h('div.inline-msg.warn', 'Produktliste nicht verfügbar – „MarketPrint öffnen“ funktioniert trotzdem. (', err.message, ')'));
   }
 }
 

@@ -189,6 +189,7 @@ route('POST', '/api/secrets', async (_r, _p, body) => {
   return { ok: true, info: secretInfo(body.name) };
 });
 
+route('GET', '/api/marketprint/website-catalog', async () => mp.websiteCatalog());
 route('POST', '/api/open-external', async (_r, _p, body) => {
   const u = String(body.url || '');
   const allowedHosts = [/\.myshopify\.com$/, /(^|\.)apologea\.eu$/, /(^|\.)shopify\.com$/, /(^|\.)marketprint\.de$/, /(^|\.)printify\.com$/, /(^|\.)printful\.com$/, /(^|\.)anthropic\.com$/, /(^|\.)claude\.(ai|com)$/];

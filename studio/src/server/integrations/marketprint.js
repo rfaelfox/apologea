@@ -247,6 +247,19 @@ export async function baseProducts({ refresh = false } = {}) {
   }
 }
 
+/**
+ * Produktliste für den Absprung in den MarketPrint-Designer – sofort, ohne Abfrage über Claude Code:
+ * zuletzt geladener Katalog (mit Bildern), sonst die mitgelieferte Momentaufnahme.
+ */
+export function websiteCatalog() {
+  for (const m of ['claude-code', 'mcp', mode()]) {
+    const c = readCache(`catalog-${m}`);
+    if (c?.data?.length) return { items: c.data.map((x) => ({ id: x.id, title: x.title, image: x.image, hasNeckPrint: Boolean(x.hasNeckPrint) })), source: 'cache', at: c.at };
+  }
+  const snap = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'katalog-website.json'), 'utf8'));
+  return { items: snap.items.map(([id, title, neck]) => ({ id, title, image: null, hasNeckPrint: Boolean(neck) })), source: 'snapshot', at: snap.at };
+}
+
 export async function baseProductDetails(id, { refresh = false } = {}) {
   if (!/^[a-f0-9]{24}$/i.test(id)) throw new UserError('Ungültige Grundprodukt-ID.');
   const key = `details-${mode()}-${id}`;
