@@ -28,6 +28,21 @@ test('Verbindung prüfen: Connector und Werkzeugnamen werden erkannt', async () 
   assert.equal(store.getSettings().marketprint.mcpUrl, 'https://mcp.marketprint.test/mcp');
 });
 
+test('Verbindung prüfen: auch bei nachgeladenen Werkzeugen (Werkzeugsuche)', async () => {
+  store.saveSettings({ marketprint: { claudeCodeServer: '' } });
+  process.env.FAKE_CLAUDE_MODE = 'deferred';
+  const r = await mp.testConnection();
+  delete process.env.FAKE_CLAUDE_MODE;
+  assert.equal(r.ok, true, r.message);
+  assert.equal(r.toolPrefix, 'mcp__claude_ai_MarketPrint__Print_On_Demand__');
+  assert.equal(r.account.email, 'test@apologea.invalid');
+});
+
+test('Namensvarianten des Servers', () => {
+  assert.ok(mp.nameVariants('claude.ai MarketPrint: Print On Demand').includes('claude_ai_MarketPrint__Print_On_Demand'));
+  assert.ok(mp.nameVariants('claude.ai MarketPrint: Print On Demand').includes('MarketPrint_Print_On_Demand'));
+});
+
 test('Werkzeugergebnis stammt direkt aus dem Ereignisstrom', async () => {
   const r = await mp.createShopProduct({ baseProductId: 'a'.repeat(24), variantIds: ['v1'], addToShops: ['dfz1mp-1u.myshopify.com'], images: [{ imageId: 'i', printArea: 'front' }], mockups: 'withDesign', price: 40 });
   assert.equal(r.draftId, 'draft-123');

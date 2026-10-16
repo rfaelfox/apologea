@@ -21,7 +21,7 @@ export async function renderSettings(main) {
     const stateBox = h('span', secretState(name));
     saveBtn.addEventListener('click', () => busy(saveBtn, async () => {
       if (!input.value.trim()) return showError(userError('Bitte einen Wert eingeben.'));
-      try { const r = await post('/api/secrets', { name, value: input.value }); input.value = ''; clear(stateBox, h('small', { style: { color: 'var(--ok)' } }, `hinterlegt (${fmtDate(r.info.savedAt)})`)); toast('Sicher gespeichert.', 'ok'); } catch (err) { showError(err); }
+      try { const r = await post('/api/secrets', { name, value: input.value }); input.value = ''; loadConnections(connBox); clear(stateBox, h('small', { style: { color: 'var(--ok)' } }, `hinterlegt (${fmtDate(r.info.savedAt)})`)); toast('Sicher gespeichert.', 'ok'); } catch (err) { showError(err); }
     }));
     clearBtn.addEventListener('click', async () => {
       if (!(await confirmDialog({ title: 'Zugang entfernen?', text: label, danger: true, confirmLabel: 'Entfernen' }))) return;
@@ -32,7 +32,7 @@ export async function renderSettings(main) {
   };
 
   const saveSettings = async (patch, msg = 'Gespeichert.') => {
-    try { await put('/api/settings', patch); await reloadBoot(); toast(msg, 'ok'); } catch (err) { showError(err); }
+    try { await put('/api/settings', patch); await reloadBoot(); toast(msg, 'ok'); loadConnections(connBox); } catch (err) { showError(err); }
   };
 
   // ---------- Shopify
@@ -93,6 +93,7 @@ export async function renderSettings(main) {
           r.servers?.length ? h('div.muted', 'Gefunden: ' + r.servers.map((x) => `${x.name} (${x.status})`).join(', ')) : null);
         await reloadBoot();
         drawAllowed();
+        loadConnections(connBox);
       } catch (err) { clear(result, h('div.inline-msg.error', err.message)); }
     }));
     const caps = p.capabilities;

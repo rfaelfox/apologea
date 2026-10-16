@@ -76,7 +76,8 @@ function bridgePrompt(tool, args) {
 async function callViaClaudeCode(tool, args) {
   const prefix = serverPrefix();
   const fullName = `${prefix}${tool}`;
-  const { events } = await streamRun({ prompt: bridgePrompt(tool, args), allowedTools: [fullName], timeoutMs: WRITE_TOOLS.has(tool) ? 900_000 : 300_000 });
+  // „ToolSearch“ (nur lesend) erlaubt Claude Code, bei Bedarf nachgeladene Connector-Werkzeuge zu finden.
+  const { events } = await streamRun({ prompt: bridgePrompt(tool, args), builtinTools: ['ToolSearch'], allowedTools: ['ToolSearch', fullName], timeoutMs: WRITE_TOOLS.has(tool) ? 900_000 : 300_000 });
   const calls = extractToolCalls(events).filter((c) => c.name === fullName);
   if (calls.length === 0) {
     const init = initInfo(events);
@@ -97,6 +98,19 @@ async function callViaClaudeCode(tool, args) {
   if (c.result === null) throw Object.assign(new UserError(`Kein Ergebnis vom Werkzeug „${tool}“ erhalten.`, { status: 502, code: 'needs_check' }), { toolCalls: calls });
   if (c.isError) throw new UserError(`MarketPrint meldet einen Fehler: ${c.result.slice(0, 600)}`, { status: 502, code: 'tool_error' });
   return parseResult(c.result);
+}
+
+/** Mögliche Schreibweisen des Server-Namens in Claude-Code-Werkzeugnamen (z. B. „claude.ai MarketPrint: Print On Demand“). */
+export function nameVariants(name) {
+  const raw = String(name || '');
+  const out = new Set();
+  for (const n of [raw, raw.replace(/^claude\.ai\s+/i, '')]) {
+    const a = n.replace(/[^a-zA-Z0-9_-]/g, '_');
+    out.add(a);
+    out.add(a.replace(/_+/g, '_'));
+    out.add(a.replace(/^_+|_+$/g, ''));
+  }
+  return [...out].filter(Boolean);
 }
 
 function parseResult(text) {
@@ -273,15 +287,22 @@ export async function testConnection() {
     const servers = await findMcpServer(/marketprint/i);
     out.servers = servers;
     if (!servers.length) return { ...out, message: 'Claude Code kennt keinen MarketPrint-Connector. Bitte den Connector in deinem Claude-Konto verbinden (claude.ai → Einstellungen → Connectoren) und Claude Code mit diesem Konto anmelden.' };
-    // Werkzeugnamen aus dem Startereignis ermitteln (kleiner Aufruf, zählt zu deinem Claude-Code-Kontingent).
-    const { events } = await streamRun({ prompt: 'Antworte nur mit OK.', allowedTools: [], timeoutMs: 120_000 });
+    // Werkzeugnamen ermitteln: Probeaufruf des rein lesenden Werkzeugs get_account_info.
+    // Erlaubt sind nur dieses Werkzeug (unter allen denkbaren Server-Namen) und die lesende Werkzeugsuche.
+    const candidates = new Set();
+    for (const s of servers) for (const c of nameVariants(s.name)) candidates.add(`mcp__${c}__get_account_info`);
+    const { events } = await streamRun({ prompt: bridgePrompt('get_account_info', {}), builtinTools: ['ToolSearch'], allowedTools: ['ToolSearch', ...candidates], timeoutMs: 240_000 });
     const init = initInfo(events);
-    const tool = (init?.tools || []).find((t) => /marketprint/i.test(t) && t.endsWith('__get_account_info'));
-    if (!tool) return { ...out, message: 'Der MarketPrint-Connector ist in Claude Code sichtbar, aber seine Werkzeuge wurden nicht geladen. Status: ' + servers.map((s) => s.status).join(', ') };
-    const prefix = tool.slice(0, -'get_account_info'.length);
+    const call = extractToolCalls(events).find((c) => /marketprint/i.test(c.name || '') && c.name.endsWith('__get_account_info'));
+    const listed = (init?.tools || []).find((t) => /marketprint/i.test(t) && t.endsWith('__get_account_info'));
+    const toolName = call?.name || listed;
+    if (!toolName) return { ...out, message: 'Der MarketPrint-Connector ist in Claude Code sichtbar, aber Claude Code konnte seine Werkzeuge nicht aufrufen. Bitte Claude Code einmal im Terminal starten („claude“), dort „/mcp“ eingeben und prüfen, ob „MarketPrint“ verbunden ist. Status: ' + servers.map((s) => s.status).join(', ') };
+    const prefix = toolName.slice(0, -'get_account_info'.length);
     saveSettings({ marketprint: { claudeCodeServer: prefix } });
     if (servers[0]?.url && !getSettings().marketprint.mcpUrl) saveSettings({ marketprint: { mcpUrl: servers[0].url } });
-    const info = await accountInfo({ refresh: true });
+    let info;
+    if (call?.result && !call.isError) { info = parseResult(call.result); await writeCache(`account-${mode()}`, info); }
+    else info = await accountInfo({ refresh: true });
     return { ...out, ok: true, account: info, toolPrefix: prefix, message: 'MarketPrint über Claude Code verbunden.' };
   }
   if (m === 'mcp') {

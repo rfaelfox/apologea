@@ -247,7 +247,7 @@ await modalBtn('Leer beginnen').click();
 await page.waitForSelector('#step-base .swatch');
 await page.locator('#step-base .swatch:has-text("Printify")').click();
 await page.waitForSelector('#step-base .catalog .item:has-text("Oversized")');
-await page.locator('#step-base .catalog .item:has-text("Oversized")').click();
+await page.locator('#step-base .catalog .item:has-text("Oversized")').first().click();
 await page.waitForSelector('text=Druckdienstleister: Beispiel-Druckerei');
 check('Printify: Grundprodukt + Druckdienstleister gewählt', true);
 await page.locator('#step-variants .swatch:has-text("Schwarz")').click();

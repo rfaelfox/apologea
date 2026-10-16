@@ -8,11 +8,15 @@ if (args[0] === 'mcp' && args[1] === 'list') { console.log('Checking MCP server 
 const input = fs.readFileSync(0, 'utf8');
 const emit = (o) => process.stdout.write(JSON.stringify(o) + '\n');
 const tools = ['get_account_info', 'list_base_products', 'get_base_product_details', 'list_my_images', 'upload_image', 'create_shop_product'].map((t) => prefix + t);
-emit({ type: 'system', subtype: 'init', tools, mcp_servers: [{ name: 'claude.ai MarketPrint: Print On Demand', status: 'connected' }], model: 'test' });
+const mode0 = process.env.FAKE_CLAUDE_MODE || 'ok';
+// „deferred“: Werkzeuge werden (wie bei vielen Connectoren) erst bei Bedarf geladen und stehen nicht in der Startliste.
+emit({ type: 'system', subtype: 'init', tools: mode0 === 'deferred' ? ['ToolSearch'] : tools, mcp_servers: [{ name: 'claude.ai MarketPrint: Print On Demand', status: 'connected' }], model: 'test' });
+const allowedIdx = args.indexOf('--allowedTools');
+const allowed = allowedIdx >= 0 ? args[allowedIdx + 1].split(',') : [];
 const toolMatch = input.match(/Werkzeug `([a-z_]+)`/);
 const jsonMatch = input.match(/```json\n([\s\S]*?)\n```/);
 const mode = process.env.FAKE_CLAUDE_MODE || 'ok';
-if (toolMatch && mode !== 'notool') {
+if (toolMatch && mode !== 'notool' && allowed.includes(prefix + toolMatch[1])) {
   const tool = toolMatch[1];
   let callArgs = JSON.parse(jsonMatch[1]);
   if (mode === 'alter') callArgs = { ...callArgs, price: 1 };

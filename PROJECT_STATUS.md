@@ -155,6 +155,13 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - Nutzer hat noch **keine** Printify-/Printful-Konten → nur Simulation/Test-Server. Zielshops neuer Anbieter sind standardmäßig gesperrt.
 - Tests: 26 automatische + 48 Oberflächenprüfungen bestanden.
 
+## Sitzung 5, Teil 3 (2026-10-16) — Studio 1.1.1: MarketPrint über Claude Code
+- Problem beim Nutzer: Verbindungstest meldete „Werkzeuge wurden nicht geladen“, obwohl `claude mcp list` den Connector als verbunden zeigt.
+  Ursache: Claude Code lädt claude.ai-Connector-Werkzeuge bei Bedarf über seine Werkzeugsuche (ToolSearch); das Studio hatte alle eingebauten Werkzeuge abgeschaltet.
+- Lösung: ToolSearch bleibt erlaubt; der Verbindungstest ruft `get_account_info` mit allen Namensvarianten des Servers auf, übernimmt den tatsächlichen Werkzeugnamen und liest dabei gleich das Konto. Claude Code läuft im internen Datenordner statt im Benutzerordner.
+- Statuskarten in den Einstellungen aktualisieren sich nach Speichern/Prüfen selbst.
+- Tests: `npm test` 28/28, Oberflächen-Durchlauf ohne Fehler (neuer Test für nachgeladene Werkzeuge).
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“

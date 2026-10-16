@@ -60,6 +60,8 @@ export async function runClaude(args, { input = '', timeoutMs = 600_000, onLine 
   let cmd = exe;
   let argv = args;
   const opts = { windowsHide: true, env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: 'apologea-studio' } };
+  // Arbeitsordner: der interne Datenordner (kein Benutzer- oder Projektordner).
+  try { const { DIRS } = await import('./paths.js'); opts.cwd = DIRS.internal; } catch { /* Standard */ }
   if (IS_WINDOWS && /\.(cmd|bat)$/i.test(exe)) {
     cmd = process.env.ComSpec || 'cmd.exe';
     argv = ['/d', '/s', '/c', `"${[quoteCmdArg(exe), ...args.map(quoteCmdArg)].join(' ')}"`];
