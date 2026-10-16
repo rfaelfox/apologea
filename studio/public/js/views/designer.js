@@ -105,10 +105,20 @@ export function motifMaxCm(area, design) {
 
 /** Standardlage der Druckfläche auf einem Produktfoto (Anteile des Fotos). */
 export function defaultFrame(area, imgW, imgH) {
-  const w = 0.42;
+  // Aus dem MarketPrint-Editor vermessen (VACANCY Oversized Hoodie, Rückseite, Stand 2026-10-16):
+  // Druckfläche ≈ 34,4 % der Fotobreite, Oberkante bei ≈ 29,8 % der Fotohöhe, mittig.
+  const w = 0.344;
   const hgt = w * (imgW / imgH) * (area.height / area.width);
-  return { x: (1 - w) / 2, y: area.name === 'back' ? 0.2 : 0.22, w, h: hgt };
+  return { x: (1 - w) / 2, y: 0.298, w, h: hgt };
 }
+
+/**
+ * Lage der Druckfläche auf dem Produktfoto, wie im Editor des Anbieters (vermessen aus Screenshots).
+ * Schlüssel: <anbieter>:<grundprodukt>:<druckfläche>. Werte als Anteil des Fotos.
+ */
+export const PRESET_FRAMES = {
+  'marketprint:6391c45e702e1dea29b936e1:back': { x: 0.33, y: 0.298, w: 0.344, h: 0.428 },
+};
 
 /**
  * Bühne für eine Druckfläche.
@@ -264,7 +274,7 @@ export function placementStage(opts) {
     setAlt(show) { opts.showAlt = show; layoutMotif(); },
     setGarment(url) { if (img && url && img.getAttribute('src') !== url) img.src = url; },
     setCalibrating(on) { calibrating = on; stage.classList.toggle('calibrating', on); },
-    resetFrame() { frame = null; layoutFrame(); opts.onFrameCommit?.(null); },
+    resetFrame() { frame = opts.presetFrame ? { ...opts.presetFrame } : null; layoutFrame(); opts.onFrameCommit?.(null); },
   };
 }
 

@@ -2,7 +2,7 @@ import { h, clear, get, post, put, del, badge, fmtDate, fmtEuro, fmtUsd, showErr
 import { confirmAiCall, issuesList, fileNotes, htmlPreview } from './shared.js';
 import { pickDesign } from './library.js';
 import { setCleanup, state } from '../app.js';
-import { placementStage, quickTools, placementReadout, areaCm, motifMaxCm, fmtCm } from './designer.js';
+import { placementStage, quickTools, placementReadout, areaCm, motifMaxCm, fmtCm, PRESET_FRAMES } from './designer.js';
 
 const AREA_LABEL = { front: 'Vorderseite', back: 'Rückseite' };
 const STYLE_LABEL = { kurz: 'Kurz', schlicht: 'Schlicht', ausfuehrlich: 'Ausführlich & markengerecht' };
@@ -285,7 +285,7 @@ export async function renderProductEditor(main, id) {
     const commit = (p) => { ensure(); pl.placement = p; savePl(); ro?.show(p); checkFile(); };
     const stage = placementStage({
       area: { ...area, label: AREA_LABEL[area.name] || area.name },
-      garmentUrl: garmentImg, frame: frames()[frameKey(area)] || null, design, altDesign: alt,
+      garmentUrl: garmentImg, frame: frames()[frameKey(area)] || PRESET_FRAMES[frameKey(area)] || null, presetFrame: PRESET_FRAMES[frameKey(area)] || null, design, altDesign: alt,
       showAlt: Boolean(alt && pl.alternative.colors.includes(previewColor)),
       placement: pl?.placement, disabled: dis || !design,
       onChange: (p) => ro?.show(p), onCommit: commit,
@@ -321,7 +321,7 @@ export async function renderProductEditor(main, id) {
       design && !calibrating ? quickTools({ area, stageApi: stage, namedPlacements: caps().namedPlacements, disabled: dis, onCommit: commit }) : null,
       design && !calibrating ? ro.el : null,
       h('div.row', { style: { justifyContent: 'space-between', marginTop: '6px' } },
-        h('small.muted', calibrating ? 'Rahmen ziehen bzw. an der Ecke skalieren, bis er auf dem Foto auf der Druckfläche liegt.' : garmentImg ? `Foto: ${PN()} (${colorVariant?.color || ''}). Gestrichelt: Druckfläche (ungefähre Lage).` : 'Kein Produktfoto vorhanden – gezeigt wird nur die Druckfläche.'),
+        h('small.muted', calibrating ? 'Rahmen ziehen bzw. an der Ecke skalieren, bis er auf dem Foto auf der Druckfläche liegt.' : garmentImg ? `Foto: ${PN()} (${colorVariant?.color || ''}). Grün: Druckfläche wie im MarketPrint-Editor.` : 'Kein Produktfoto vorhanden – gezeigt wird nur die Druckfläche.'),
         garmentImg ? h('span.row',
           h('button.small.ghost', { type: 'button', onclick: () => { calibrateArea = calibrating ? null : area.name; renderPrint(); } }, calibrating ? 'Fertig' : 'Druckfläche auf dem Foto anpassen'),
           calibrating ? h('button.small.ghost', { type: 'button', onclick: () => stage.resetFrame() }, 'Zurücksetzen') : null) : null),
@@ -572,7 +572,7 @@ export async function renderProductEditor(main, id) {
       const area = details.printAreas.find((a) => a.name === pl.printArea);
       const d = designs.find((x) => x.id === pl.designId);
       const alt = pl.alternative?.designId ? designs.find((x) => x.id === pl.alternative.designId) : null;
-      const st = placementStage({ area: { ...area, label: AREA_LABEL[area.name] || area.name }, garmentUrl: (colorVariant?.images || []).find((i) => i.printArea === area.name)?.image, frame: frames()[frameKey(area)] || null, design: d, altDesign: alt, showAlt: Boolean(alt && pl.alternative.colors.includes(ckey(colorVariant))), placement: pl.placement, disabled: true });
+      const st = placementStage({ area: { ...area, label: AREA_LABEL[area.name] || area.name }, garmentUrl: (colorVariant?.images || []).find((i) => i.printArea === area.name)?.image, frame: frames()[frameKey(area)] || PRESET_FRAMES[frameKey(area)] || null, presetFrame: PRESET_FRAMES[frameKey(area)] || null, design: d, altDesign: alt, showAlt: Boolean(alt && pl.alternative.colors.includes(ckey(colorVariant))), placement: pl.placement, disabled: true });
       return h('div', h('div.field-label', AREA_LABEL[area.name] || area.name), st.el);
     });
     await modal({
