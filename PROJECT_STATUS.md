@@ -82,13 +82,18 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   geprüft: alle 59 Dateien sind auf dem Server.)
 - Vorschau: https://dfz1mp-1u.myshopify.com?preview_theme_id=202489921871
 - Editor: https://dfz1mp-1u.myshopify.com/admin/themes/202489921871/editor
-- Hinweis: Der Shop leitet auf `apologea.eu` weiter; diese Domain ist in der Sandbox nicht freigegeben →
-  Vorschau konnte hier **nicht** gerendert geprüft werden. Visuelle Prüfung durch Nutzer ausstehend.
+- Netzwerk-Allowlist vom Nutzer erweitert: `apologea.eu`, `www.apologea.eu`, `cdn.shopify.com` (wirkt sofort).
+- Vorschau per Playwright gerendert (Desktop 1440 px, Mobil 390 px): Shop ist **passwortgeschützt**,
+  daher nur die Passwortseite sichtbar — sie rendert mit NOCTURNE korrekt (Lichtstrahlen, Wortmarke,
+  Newsletter-Formular, „Shop mit Passwort betreten“), keine Liquid-Fehler. Fehlgeschlagene Requests nur
+  Shopify-Tracking/Shop Pay (shop.app, shopifysvc.com, monorail) — nicht theme-relevant.
+- Startseite/Produkt/Kollektion etc. noch **nicht** gerendert geprüft → braucht Storefront-Passwort
+  (Online Store → Einstellungen) oder Prüfung durch Nutzer im Admin.
 - Künftige Updates ins selbe Dev-Theme: `NODE_USE_ENV_PROXY=1 shopify theme push --path shopify-theme
   --theme 202489921871 --password shptka_placeholder` (nie `--publish`/`--live`).
 
 ## Nächste Schritte
 1. **Nutzer:** Vorschau-Link öffnen, Eindruck/Fehler melden.
 2. **Logo** (Nutzer liefert es) → Platzhalter ersetzen, unverändert einbinden, erneut in Dev-Theme #202489921871 pushen.
-3. Optional: `apologea.eu` in die Netzwerk-Allowlist aufnehmen, damit Claude die Vorschau selbst rendern/prüfen kann.
+3. Für Render-Tests aller Seiten: Storefront-Passwort vom Nutzer (oder Nutzer prüft selbst eingeloggt).
 4. MarketPrint-Status klären (App im Shop installiert?).
