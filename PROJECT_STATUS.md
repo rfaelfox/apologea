@@ -178,6 +178,11 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - DPI-Prüfung gut/mittel/schlecht (≥200 / 150–199 / <150 DPI, Annahme Druckfläche ≙ 300 DPI) live im Editor.
 - Verteilung über die Aktualisierung im Programm (kein neues Paket nötig, keine neuen Bibliotheken).
 
+## Sitzung 5, Teil 6 (2026-10-16) — Studio 1.4.0: zwei Wege für neue Produkte
+- Wunsch: Foto-Editor verwerfen (Druckfläche wich vom MarketPrint-Editor ab; Lage liefert die Schnittstelle nicht).
+- „Neues Produkt erstellen“: Weg 1 im Programm über MCP, Weg 2 direkt in den MarketPrint-Designer (Website).
+- Tests: `npm test` grün, Oberflächen-Durchlauf 55/55.
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“

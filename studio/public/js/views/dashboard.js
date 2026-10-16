@@ -16,7 +16,7 @@ export async function renderDashboard(main) {
       h('a.hero-btn', { href: '#/produkte', onclick: (e) => { e.preventDefault(); newProduct(); } },
         glyph(ICONS.shirt),
         h('span.title', 'Neues Produkt erstellen'),
-        h('span.sub', 'Motiv wählen, MarketPrint-Artikel einrichten, prüfen und nach deiner Freigabe veröffentlichen.'))),
+        h('span.sub', 'Im Programm über die MarketPrint-Schnittstelle anlegen – oder direkt im MarketPrint-Designer auf der Website gestalten.'))),
     h('section.section', h('h2', 'Verbindungen'), connBox),
     lists);
 

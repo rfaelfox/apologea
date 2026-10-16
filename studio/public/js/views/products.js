@@ -2,7 +2,7 @@ import { h, clear, get, post, put, del, badge, fmtDate, fmtEuro, fmtUsd, showErr
 import { confirmAiCall, issuesList, fileNotes, htmlPreview } from './shared.js';
 import { pickDesign } from './library.js';
 import { setCleanup, state } from '../app.js';
-import { placementStage, quickTools, placementReadout, areaCm, motifMaxCm, fmtCm, PRESET_FRAMES } from './designer.js';
+import { fitToArea, dpiInfo, dpiText, areaCm, motifMaxCm, fmtCm } from './placement.js';
 
 const AREA_LABEL = { front: 'Vorderseite', back: 'Rückseite' };
 const STYLE_LABEL = { kurz: 'Kurz', schlicht: 'Schlicht', ausfuehrlich: 'Ausführlich & markengerecht' };
@@ -35,7 +35,35 @@ function cardImage(p) {
   return h('span.muted', 'Kein Grundprodukt');
 }
 
+const MP_APP = 'https://app.marketprint.de';
+
+/**
+ * „Neues Produkt erstellen“: zwei Wege.
+ *  1. Im Programm über die MarketPrint-Schnittstelle (MCP) – mit Prüfungen, Freigabe und Verlauf.
+ *  2. Direkt im MarketPrint-Designer auf der MarketPrint-Website – das Programm öffnet das gewählte Produkt dort.
+ */
 export async function newProductDialog(items, templates, presetDesignId) {
+  let closeModal = () => {};
+  const choice = h('div.grid.cols-2.way-choice',
+    h('div.card.way.stack',
+      h('div.eyebrow', 'Weg 1'),
+      h('h3', 'Im Programm anlegen'),
+      h('p.muted', 'Über die MarketPrint-Schnittstelle (MCP): Kleidungsstück, Farben, Motiv, Platzierung, Texte und Preis hier festlegen. Mit DPI-Prüfung, Vorlagen, Freigabe vor dem Veröffentlichen und Verlauf.'),
+      h('button.primary', { type: 'button', onclick: () => { closeModal(true); setTimeout(() => programDialog(items, templates, presetDesignId), 30); } }, 'Im Programm starten')),
+    h('div.card.way.stack',
+      h('div.eyebrow', 'Weg 2'),
+      h('h3', 'Im MarketPrint-Designer gestalten'),
+      h('p.muted', 'Direkt auf der Website von MarketPrint: Kleidungsstück hier wählen, der MarketPrint-Designer öffnet sich im Browser. Gestalten und Veröffentlichen erfolgen dort.'),
+      h('button', { type: 'button', onclick: () => { closeModal(true); setTimeout(() => marketprintSiteDialog(), 30); } }, 'Zu MarketPrint wechseln')));
+  await modal({
+    eyebrow: 'Neues Produkt erstellen', title: 'Wie möchtest du das Produkt erstellen?', wide: true,
+    body: choice,
+    actions: [{ label: 'Schließen', value: false }],
+    onReady: (close) => { closeModal = close; },
+  });
+}
+
+async function programDialog(items, templates, presetDesignId) {
   items ||= await get('/api/products');
   templates ||= await get('/api/templates');
   let closeModal = () => {};
@@ -46,7 +74,7 @@ export async function newProductDialog(items, templates, presetDesignId) {
     location.hash = `#/produkte/${p.id}`;
   };
   await modal({
-    eyebrow: 'Neues Produkt', title: 'Wie möchtest du beginnen?', wide: true,
+    eyebrow: 'Weg 1 · Im Programm anlegen', title: 'Wie möchtest du beginnen?', wide: true,
     body: h('div.grid.cols-3',
       h('div.card.stack', h('h3', 'Leerer Entwurf'), h('p.muted', 'Alle Angaben selbst festlegen.'), h('button.primary', { type: 'button', onclick: () => make({}).catch(showError) }, 'Leer beginnen')),
       h('div.card.stack', h('h3', 'Aus Vorlage'), templates.length ? templates.map((t) => h('button', { type: 'button', style: { width: '100%' }, onclick: () => make({ fromTemplate: t.id }).catch(showError) }, t.name)) : h('p.muted', 'Noch keine Vorlagen. In einem Entwurf: „Als Vorlage speichern“.')),
@@ -54,6 +82,39 @@ export async function newProductDialog(items, templates, presetDesignId) {
     actions: [{ label: 'Schließen', value: false }],
     onReady: (close) => { closeModal = close; },
   });
+}
+
+/** Weg 2: Kleidungsstück wählen → MarketPrint-Designer im Browser öffnen. */
+async function marketprintSiteDialog() {
+  const grid = h('div.catalog', h('span.muted', 'Katalog wird geladen …'));
+  const search = h('input', { type: 'search', placeholder: 'Suchen, z. B. Shirt, Hoodie …' });
+  const open = async (url) => {
+    try { await post('/api/open-external', { url }); toast('MarketPrint wurde im Browser geöffnet.', 'ok'); } catch (err) { showError(err); }
+  };
+  const body = h('div.stack',
+    h('div.inline-msg.info', 'Der MarketPrint-Designer öffnet sich in deinem Browser. Dort bist du mit deinem MarketPrint-Konto angemeldet. Was du dort anlegst, veröffentlicht MarketPrint direkt in deinem Shop – APOLOGEA Studio prüft und protokolliert diese Produkte nicht. Achte dort auf den richtigen Shop (dfz1mp-1u.myshopify.com).'),
+    h('div.row', h('div', { style: { flex: '1 1 260px' } }, search), h('button.small', { type: 'button', onclick: () => open(`${MP_APP}/`) }, 'MarketPrint-Startseite öffnen')),
+    grid);
+  let catalog = null;
+  const draw = () => {
+    if (!catalog) return;
+    const q = search.value.toLowerCase();
+    clear(grid, catalog.items.filter((c) => !q || c.title.toLowerCase().includes(q)).map((c) => {
+      const it = h('div.item', { tabindex: 0, role: 'button', title: `${c.title} im MarketPrint-Designer öffnen` }, c.image ? h('img', { src: c.image, alt: '', loading: 'lazy' }) : h('div', { style: { aspectRatio: '1' } }), h('div.t', c.title), c.hasNeckPrint ? h('small.badge-neck', 'Nackendruck möglich') : null);
+      const go = () => open(`${MP_APP}/design/${encodeURIComponent(c.id)}`);
+      it.addEventListener('click', go);
+      it.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+      return it;
+    }));
+  };
+  search.addEventListener('input', draw);
+  modal({ eyebrow: 'Weg 2 · MarketPrint-Website', title: 'Welches Kleidungsstück willst du gestalten?', wide: true, body, actions: [{ label: 'Schließen', value: false }] });
+  try {
+    catalog = await get('/api/providers/marketprint/catalog');
+    draw();
+  } catch (err) {
+    clear(grid, h('div.inline-msg.warn', 'Katalog nicht verfügbar (', err.message, '). Du kannst MarketPrint trotzdem über „MarketPrint-Startseite öffnen“ aufrufen.'));
+  }
 }
 
 // ------------------------------------------------------------------ Editor
@@ -202,15 +263,7 @@ export async function renderProductEditor(main, id) {
         h('p.hint', `${selVariants.length} Varianten ausgewählt. Nicht verfügbare Varianten werden automatisch ausgelassen.`)));
   }
 
-  // ---------- 3 Druck & Motive (Platzier-Editor)
-  let previewColor = null; // Farbe des Produktfotos im Editor
-  let calibrateArea = null; // Druckfläche, deren Lage auf dem Foto gerade ausgerichtet wird
-  const frameKey = (area) => `${pid()}:${draft.baseProduct?.id}:${area.name}`;
-  const frames = () => state.boot?.settings?.designerFrames || {};
-  const saveFrame = async (area, frame) => {
-    try { await put('/api/settings', { designerFrames: { [frameKey(area)]: frame } }); if (state.boot?.settings) state.boot.settings.designerFrames = { ...frames(), [frameKey(area)]: frame }; } catch (err) { showError(err); }
-  };
-
+  // ---------- 3 Druck & Motive
   function inferSides() {
     if (draft.printSides) return draft.printSides;
     const used = new Set(draft.placements.filter((p) => p.designId).map((p) => p.printArea));
@@ -228,9 +281,6 @@ export async function renderProductEditor(main, id) {
         pid() === 'marketprint' ? h('div.hint', 'Laut MarketPrint werden für DTF Aufschläge berechnet.') : null));
     }
     const selVariants = details.variants.filter((v) => draft.variantIds.includes(v.id));
-    const colorList = [...new Map((selVariants.length ? selVariants : details.variants).map((v) => [ckey(v), v])).values()];
-    if (!previewColor || !colorList.some((v) => ckey(v) === previewColor)) previewColor = colorList[0] ? ckey(colorList[0]) : null;
-    const colorVariant = colorList.find((v) => ckey(v) === previewColor);
 
     const front = details.printAreas.find((a) => a.name === 'front');
     const back = details.printAreas.find((a) => a.name === 'back');
@@ -252,49 +302,58 @@ export async function renderProductEditor(main, id) {
       };
       parts.push(h('div.side-switch', [['front', 'Vorderseite'], ['back', 'Rückseite'], ['both', 'Beidseitig']].map(([v, l]) => h(`button${sides === v ? '.on' : ''}`, { type: 'button', disabled: dis, onclick: () => choose(v) }, l))));
     }
-    // Farbe des Produktfotos
-    if (colorList.length > 1) {
-      parts.push(h('div.row', { style: { margin: '6px 0 14px', alignItems: 'center' } }, h('small.muted', 'Ansicht in Farbe:'),
-        h('div.swatches.mini', colorList.map((v) => h(`button.swatch${ckey(v) === previewColor ? '.on' : ''}`, { type: 'button', title: v.color, onclick: () => { previewColor = ckey(v); renderPrint(); } }, h('span.c', { style: { background: v.colorHex || '#888' } }))))));
-    }
-    parts.push(h(`div.designer.cols-${shown.length}`, shown.map((area) => areaPanel(area, { dis, types, selVariants, colorVariant }))));
+    parts.push(h(`div.designer.cols-${shown.length}`, shown.map((area) => areaPanel(area, { dis, types, selVariants }))));
     if (others.length) {
       parts.push(h('details.box', { open: others.some((a) => draft.placements.some((p) => p.printArea === a.name && p.designId)) },
         h('summary', `Weitere Druckflächen (${others.map((a) => AREA_LABEL[a.name] || a.name).join(', ')})`),
-        h('div.designer.cols-2', others.map((area) => areaPanel(area, { dis, types, selVariants, colorVariant })))));
+        h('div.designer.cols-2', others.map((area) => areaPanel(area, { dis, types, selVariants })))));
     }
     const neck = neckPrintBox(dis);
     if (neck) parts.push(neck);
     clear(sec.print, parts);
   }
 
-  function areaPanel(area, { dis, types, selVariants, colorVariant }) {
+  function areaPanel(area, { dis, types, selVariants }) {
     let pl = draft.placements.find((p) => p.printArea === area.name);
     const ensure = () => { if (!pl) { pl = { printArea: area.name, designId: null, placement: { mode: 'auto' }, alternative: null }; draft.placements = [...draft.placements, pl]; } return pl; };
     const savePl = () => set({ placements: draft.placements.map((p) => (p.printArea === area.name ? pl : p)) });
     const design = pl?.designId ? designs.find((d) => d.id === pl.designId) : null;
     const alt = pl?.alternative?.designId ? designs.find((d) => d.id === pl.alternative.designId) : null;
-    const garmentImg = (colorVariant?.images || []).find((i) => i.printArea === area.name)?.image
-      || (details.variants[0]?.images || []).find((i) => i.printArea === area.name)?.image || null;
     const notesBox = h('div');
+    const dpiLine = h('div.dpi-line');
     const checkFile = async () => {
       if (!design) return clear(notesBox);
       try { clear(notesBox, fileNotes(await post(`/api/designs/${design.id}/check`, { printArea: area, placement: placementArg(pl), printerType: draft.printerType || types[0] }))); } catch (err) { clear(notesBox, h('div.inline-msg.error', err.message)); }
     };
-    let ro = null;
-    const commit = (p) => { ensure(); pl.placement = p; savePl(); ro?.show(p); checkFile(); };
-    const stage = placementStage({
-      area: { ...area, label: AREA_LABEL[area.name] || area.name },
-      garmentUrl: garmentImg, frame: frames()[frameKey(area)] || PRESET_FRAMES[frameKey(area)] || null, presetFrame: PRESET_FRAMES[frameKey(area)] || null, design, altDesign: alt,
-      showAlt: Boolean(alt && pl.alternative.colors.includes(previewColor)),
-      placement: pl?.placement, disabled: dis || !design,
-      onChange: (p) => ro?.show(p), onCommit: commit,
-      onFrameCommit: (f) => saveFrame(area, f),
-    });
-    ro = placementReadout({ stageApi: stage, disabled: dis || !design, onCommit: commit });
-    ro.show(pl?.placement || { mode: 'auto' });
-    const calibrating = calibrateArea === area.name;
-    stage.setCalibrating(calibrating);
+    const showDpi = () => { const q = dpiInfo(pl?.placement, area, design); dpiLine.className = `dpi-line ${q?.rating || ''}`; dpiLine.textContent = q ? `DPI-Prüfung: ${dpiText(q)}` : ''; };
+    const commit = (p) => { ensure(); pl.placement = fitToArea(p, area, design); savePl(); showDpi(); checkFile(); };
+    const mode = pl?.placement?.mode || 'auto';
+    const named = caps().namedPlacements || [];
+
+    let placementBox = null;
+    if (design) {
+      const custom = () => (pl.placement?.mode === 'custom' ? pl.placement : fitToArea({ mode: 'custom', xPercent: 0.5, yPercent: 0.35, widthPercent: 0.6 }, area, design));
+      const inputs = {};
+      const num = (key, label) => {
+        const inp = h('input', { type: 'number', min: 0, max: 100, step: 0.5, disabled: dis, value: (custom()[key] * 100).toFixed(1) });
+        inputs[key] = inp;
+        inp.addEventListener('change', () => {
+          commit({ ...custom(), mode: 'custom', [key]: Math.min(1, Math.max(0, Number(inp.value) / 100)) });
+          // begrenzte Werte (Motiv bleibt in der Druckfläche) sofort anzeigen – ohne Neuaufbau, damit der Fokus bleibt
+          for (const [k, el] of Object.entries(inputs)) el.value = (pl.placement[k] * 100).toFixed(1);
+        });
+        return h('label.mini', h('span', label), inp, h('span.muted', '%'));
+      };
+      placementBox = h('div',
+        h('div.field-label', 'Platzierung'),
+        h('div.row', [['auto', 'Ganze Fläche (automatisch einpassen)'], ...(named.length ? [['named', 'Feste Logo-Position']] : []), ['custom', 'Eigene Position']].map(([m, l]) => h('label.check', h('input', { type: 'radio', name: `mode-${area.name}`, checked: mode === m, disabled: dis, onchange: () => { commit(m === 'named' ? { mode: 'named', named: pl?.placement?.named || named[0].v } : m === 'custom' ? custom() : { mode: 'auto' }); renderPrint(); } }), h('span', l)))),
+        mode === 'named' ? h('select', { disabled: dis, onchange: (e) => commit({ mode: 'named', named: e.target.value }) }, named.map((n) => h('option', { value: n.v, selected: pl.placement.named === n.v }, n.l))) : null,
+        mode === 'custom' ? h('div.readout', num('xPercent', 'Mitte X'), num('yPercent', 'Mitte Y'), num('widthPercent', 'Breite'),
+          h('small.muted', 'Anteile der Druckfläche (0 % = links/oben, 100 % = rechts/unten). Das Motiv bleibt immer innerhalb der Druckfläche.')) : null,
+        mode === 'auto' ? h('p.hint', 'Das Motiv wird so groß wie möglich eingepasst und zentriert – wie bei einem vollflächigen Druck.') : null,
+        mode === 'named' ? h('p.hint', `Größe und Lage bestimmt ${PN()}. Für eine genaue Kontrolle das Produkt im ${PN()}-Designer ansehen.`) : null,
+        dpiLine);
+    }
 
     const altBox = h('div');
     if (caps().alternativeDesign && details.hasAlternativeDesign !== false && pl?.designId) {
@@ -304,27 +363,21 @@ export async function renderProductEditor(main, id) {
           h('div.row', alt ? h('span', alt.name) : h('span.muted', 'Kein Alternativ-Motiv'),
             h('button.small', { type: 'button', disabled: dis, onclick: async () => { const dId = await pickDesign(designs); if (!dId) return; ensure(); pl.alternative = { designId: dId, colors: pl.alternative?.colors || [] }; savePl(); designs = await get('/api/designs'); renderPrint(); } }, alt ? 'Ändern' : 'Wählen'),
             alt ? h('button.small.ghost', { type: 'button', disabled: dis, onclick: () => { pl.alternative = null; savePl(); renderPrint(); } }, 'Entfernen') : null),
-          alt ? h('div', colorHexes.map(([hex, name]) => h('label.check', h('input', { type: 'checkbox', checked: pl.alternative.colors.includes(hex), disabled: dis, onchange: (e) => { const st = new Set(pl.alternative.colors); e.target.checked ? st.add(hex) : st.delete(hex); pl.alternative = { ...pl.alternative, colors: [...st] }; savePl(); stage.setAlt(st.has(previewColor)); } }), h('span', name)))) : null,
-          h('p.hint', 'Position und Größe des Hauptmotivs werden übernommen; die Datei sollte gleiche Pixelmaße haben. In der Ansicht oben erscheint es, wenn eine dieser Farben gewählt ist.'))));
+          alt ? h('div', colorHexes.map(([hex, name]) => h('label.check', h('input', { type: 'checkbox', checked: pl.alternative.colors.includes(hex), disabled: dis, onchange: (e) => { const st = new Set(pl.alternative.colors); e.target.checked ? st.add(hex) : st.delete(hex); pl.alternative = { ...pl.alternative, colors: [...st] }; savePl(); } }), h('span', name)))) : null,
+          h('p.hint', 'Position und Größe des Hauptmotivs werden übernommen; die Datei sollte gleiche Pixelmaße haben.'))));
     }
+    showDpi();
     checkFile();
     return h('div.frame.area-panel',
       h('div.row.between', h('h3', { style: { margin: 0 } }, AREA_LABEL[area.name] || area.name), h('small.muted', `Druckfläche ${area.width} × ${area.height} px`)),
       maxSizeBox(area, design),
       h('div.row', { style: { margin: '10px 0' } },
-        design ? h('img', { src: `/files/design/${design.id}/thumb`, alt: '', style: { width: '44px', height: '44px', objectFit: 'contain', background: '#fff1' } }) : null,
+        design ? h('img', { src: `/files/design/${design.id}/thumb`, alt: '', style: { width: '64px', height: '64px', objectFit: 'contain', background: '#fff1' } }) : null,
         h('div', { style: { flex: '1 1 140px' } }, design ? h('div', h('strong', design.name), h('div.muted', linkOf(design)?.imageId ? `${PN()} verknüpft` : `Noch nicht mit ${PN()} verknüpft`)) : h('span.muted', 'Kein Motiv auf dieser Seite')),
         h(`button.small${design ? '' : '.primary'}`, { type: 'button', disabled: dis, onclick: async () => { const dId = await pickDesign(designs); if (!dId) return; ensure(); pl.designId = dId; savePl(); designs = await get('/api/designs'); renderPrint(); } }, design ? 'Motiv ändern' : 'Motiv wählen'),
         design ? h('button.small.ghost', { type: 'button', disabled: dis, onclick: () => { draft.placements = draft.placements.filter((p) => p.printArea !== area.name); set({ placements: draft.placements }); renderPrint(); } }, 'Entfernen') : null,
         design && !linkOf(design)?.imageId ? h('a', { href: `#/bibliothek/${design.id}` }, 'Jetzt verknüpfen') : null),
-      stage.el,
-      design && !calibrating ? quickTools({ area, stageApi: stage, namedPlacements: caps().namedPlacements, disabled: dis, onCommit: commit }) : null,
-      design && !calibrating ? ro.el : null,
-      h('div.row', { style: { justifyContent: 'space-between', marginTop: '6px' } },
-        h('small.muted', calibrating ? 'Rahmen ziehen bzw. an der Ecke skalieren, bis er auf dem Foto auf der Druckfläche liegt.' : garmentImg ? `Foto: ${PN()} (${colorVariant?.color || ''}). Grün: Druckfläche wie im MarketPrint-Editor.` : 'Kein Produktfoto vorhanden – gezeigt wird nur die Druckfläche.'),
-        garmentImg ? h('span.row',
-          h('button.small.ghost', { type: 'button', onclick: () => { calibrateArea = calibrating ? null : area.name; renderPrint(); } }, calibrating ? 'Fertig' : 'Druckfläche auf dem Foto anpassen'),
-          calibrating ? h('button.small.ghost', { type: 'button', onclick: () => stage.resetFrame() }, 'Zurücksetzen') : null) : null),
+      placementBox,
       altBox,
       design ? h('div', h('div.field-label', 'Prüfung der Druckdatei'), notesBox) : null);
   }
@@ -567,18 +620,17 @@ export async function renderProductEditor(main, id) {
   async function showPreview() {
     if (!details) return showError(userError('Zuerst ein Grundprodukt wählen.'));
     const selVariants = details.variants.filter((v) => draft.variantIds.includes(v.id));
-    const colorVariant = selVariants.find((v) => ckey(v) === previewColor) || selVariants[0] || details.variants[0];
     const canvases = (draft.placements || []).filter((p) => p.designId).map((pl) => {
       const area = details.printAreas.find((a) => a.name === pl.printArea);
       const d = designs.find((x) => x.id === pl.designId);
-      const alt = pl.alternative?.designId ? designs.find((x) => x.id === pl.alternative.designId) : null;
-      const st = placementStage({ area: { ...area, label: AREA_LABEL[area.name] || area.name }, garmentUrl: (colorVariant?.images || []).find((i) => i.printArea === area.name)?.image, frame: frames()[frameKey(area)] || PRESET_FRAMES[frameKey(area)] || null, presetFrame: PRESET_FRAMES[frameKey(area)] || null, design: d, altDesign: alt, showAlt: Boolean(alt && pl.alternative.colors.includes(ckey(colorVariant))), placement: pl.placement, disabled: true });
-      return h('div', h('div.field-label', AREA_LABEL[area.name] || area.name), st.el);
+      const q = dpiInfo(pl.placement, area, d);
+      const where = pl.placement?.mode === 'custom' ? `Mitte ${Math.round(pl.placement.xPercent * 100)} % / ${Math.round(pl.placement.yPercent * 100)} %, Breite ${Math.round(pl.placement.widthPercent * 100)} %` : pl.placement?.mode === 'named' ? (caps().namedPlacements || []).find((n) => n.v === pl.placement.named)?.l || pl.placement.named : 'Ganze Fläche';
+      return h('div.card', h('div.field-label', AREA_LABEL[area.name] || area.name), h('div.thumb', h('img', { src: `/files/design/${d.id}/thumb`, alt: '' })), h('div', d.name), h('small.muted', where), q ? h(`div.dpi-line.${q.rating || ''}`, dpiText(q)) : null);
     });
     await modal({
       eyebrow: 'Vorschau – nicht verbindlich', title: draft.publicTitle || 'Produktvorschau', wide: true,
       body: h('div.stack',
-        h('div.inline-msg.info', `Diese Vorschau ist von APOLOGEA Studio erzeugt und zeigt nur die ungefähre Lage auf der Druckfläche. Verbindliche Mockups erzeugt ${PN()}${caps().realMockups ? ' (Schaltfläche „Echte Mockups erzeugen“)' : ' beim Anlegen des Produkts'}.`),
+        h('div.inline-msg.info', `Übersicht deiner Angaben. Verbindliche Mockups erzeugt ${PN()}${caps().realMockups ? ' (Schaltfläche „Echte Mockups erzeugen“)' : ' beim Anlegen des Produkts'}.`),
         h('div.grid.cols-3', canvases),
         h('dl.kv', h('dt', 'Grundprodukt'), h('dd', draft.baseProduct?.title || '–'), h('dt', 'Varianten'), h('dd', `${selVariants.length}`), h('dt', 'Preis'), h('dd', fmtEuro(draft.price))),
         draft.mockupImages?.images?.length ? [h('div.field-label', `Echte Mockups von ${PN()} (${fmtDate(draft.mockupImages.at)})`), h('div.grid.cards', draft.mockupImages.images.slice(0, 8).map((m) => h('div.card', h('div.thumb', h('img', { src: m.url, alt: 'Mockup' })))))] : null,

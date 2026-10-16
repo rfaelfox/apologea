@@ -104,6 +104,14 @@ await page.selectOption('select >> nth=0', '');
 await page.click('a.item:has-text("Produkte")');
 await page.waitForSelector('h1:has-text("Produkte")');
 await btn('+ Neues Produkt').click();
+check('Neues Produkt: zwei Wege (Programm / MarketPrint-Website)', await page.locator('.overlay .way').count() === 2);
+await modalBtn('Zu MarketPrint wechseln').click();
+await page.waitForSelector('.overlay .catalog .item');
+check('Weg 2: MarketPrint-Katalog zum Öffnen im Designer', await page.locator('.overlay .catalog .item').count() > 3);
+await shot('04b-weg2-marketprint');
+await modalBtn('Schließen').click();
+await btn('+ Neues Produkt').click();
+await modalBtn('Im Programm starten').click();
 await modalBtn('Leer beginnen').click();
 await page.waitForSelector('#step-base .catalog .item');
 await shot('05-produkt-katalog');
@@ -128,18 +136,22 @@ await page.waitForSelector('#step-print .area-panel >> nth=0 >> text=Prüfung de
 await page.waitForTimeout(800);
 const notes = await page.locator('#step-print .area-panel').first().locator('.inline-msg').allInnerTexts();
 check('Druckdatei geprüft', notes.some((n) => /Transparenter Hintergrund/.test(n)) && notes.some((n) => /Druckfläche/.test(n)), notes.length + ' Hinweise');
-// Frei platzieren: Motiv ziehen und zu groß machen → bleibt in der Druckfläche
+// Eigene Position: zu groß und an den Rand → bleibt in der Druckfläche
 const panel0 = page.locator('#step-print .area-panel').first();
-const mb = await panel0.locator('.motif').boundingBox();
-await page.mouse.move(mb.x + mb.width / 2, mb.y + mb.height / 2); await page.mouse.down();
-await page.mouse.move(mb.x + mb.width / 2 + 400, mb.y + mb.height / 2 + 400, { steps: 6 }); await page.mouse.up();
+await panel0.locator('label.check:has-text("Eigene Position") input').check();
+await page.waitForSelector('#step-print .area-panel >> nth=0 >> .readout');
+await panel0.locator('.readout label:has-text("Mitte X") input').fill('100');
+await panel0.locator('.readout label:has-text("Mitte X") input').dispatchEvent('change');
+await page.waitForTimeout(300);
 await panel0.locator('.readout label:has-text("Breite") input').fill('100');
 await panel0.locator('.readout label:has-text("Breite") input').dispatchEvent('change');
 await page.waitForTimeout(900);
 const notes2 = await panel0.locator('.inline-msg.error').allInnerTexts();
-check('Editor hält das Motiv innerhalb der Druckfläche', !notes2.some((n) => /ragt über/.test(n)) && await panel0.locator('.motif.out').count() === 0, notes2.join(' | ').slice(0, 100));
-await shot('05b-platzier-editor');
-await panel0.getByRole('button', { name: 'Ganze Fläche' }).click();
+const dpiLine = await panel0.locator('.dpi-line').innerText();
+check('Eigene Position bleibt innerhalb der Druckfläche', !notes2.some((n) => /ragt über/.test(n)), notes2.join(' | ').slice(0, 100));
+check('DPI-Prüfung mit Stufe angezeigt', /DPI · (gut|mittel|schlecht)/.test(dpiLine), dpiLine);
+await shot('05b-platzierung');
+await panel0.locator('label.check:has-text("Ganze Fläche") input').check();
 await page.waitForTimeout(300);
 // Alternativ-Motiv
 await page.locator('#step-print summary:has-text("Alternativ-Motiv")').first().click();
@@ -187,7 +199,7 @@ check('Vorlage gespeichert', true);
 
 // Vorschau
 await btn('Vorschau anzeigen').click();
-await page.waitForSelector('.overlay .stage');
+await page.waitForSelector('.overlay .card .dpi-line');
 check('Vorschau (gekennzeichnet) angezeigt', await page.locator('.overlay:has-text("nicht verbindlich")').count() === 1);
 await shot('08-produkt-vorschau');
 await modalBtn('Schließen').click();
@@ -250,6 +262,7 @@ check('Entwurf gespeichert und erneut geöffnet', (await page.locator('#step-tex
 await page.click('a.item:has-text("Produkte")');
 await page.waitForSelector('h1:has-text("Produkte")');
 await btn('+ Neues Produkt').click();
+await modalBtn('Im Programm starten').click();
 await modalBtn('Leer beginnen').click();
 await page.waitForSelector('#step-base .swatch');
 await page.locator('#step-base .swatch:has-text("Printify")').click();
@@ -263,7 +276,7 @@ check('Printify: kein erfundener Einkaufspreis', (await page.locator('#step-vari
 await page.locator('#step-print .area-panel').first().getByRole('button', { name: 'Motiv wählen' }).click();
 await page.locator('.overlay .card:has-text("theotokos-gold")').click();
 await page.waitForTimeout(600);
-check('Printify: keine festen Logo-Positionen (nicht unterstützt)', await page.locator('#step-print .area-panel').first().getByRole('button', { name: 'Klein, linke Brust' }).count() === 0);
+check('Printify: keine festen Logo-Positionen (nicht unterstützt)', await page.locator('#step-print .area-panel').first().locator('label.check:has-text("Feste Logo-Position")').count() === 0);
 await page.locator('#step-texts label.field:has-text("Interner Motivname") input').fill('Printify Test');
 await page.locator('#step-texts label.field:has-text("Öffentlicher Produktname") input').fill('Theotokos – Printify');
 await page.locator('#step-price input[type=number]').fill('42');

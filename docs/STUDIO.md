@@ -78,17 +78,14 @@ Die Oberfläche blendet Funktionen anhand von `meta.capabilities` ein oder aus (
   bringen. Darum nur nach ausdrücklichem Klick, und das GitHub-Konto sollte mit Zwei-Faktor-Anmeldung geschützt sein.
 
 ## 2c. Platzier-Editor, Nackendruck, Website-Editor (ab 1.3.0)
-**Platzier-Editor (Produkte, `public/js/views/designer.js`)**
-- Nach Wahl des Grundprodukts: Ansicht „Vorderseite“, „Rückseite“ oder „Beidseitig“. Beim Wechsel auf eine Seite
-  wird ein Motiv der ausgeblendeten Seite nach Rückfrage entfernt (sonst würde es mitgedruckt).
-- Motiv auf dem Produktfoto des Anbieters (Farbe wählbar) ziehen, an der Ecke skalieren, Pfeiltasten/+/−,
-  Einrasten auf die Mitte, Schnellknöpfe (Ganze Fläche, Mittig, Oben, feste Logo-Positionen von MarketPrint).
-- Gespeichert/übertragen wird exakt das Format von `create_shop_product`: `xPercent`/`yPercent` (Motivmitte)
-  und `widthPercent` relativ zur Druckfläche. Das Motiv bleibt immer vollständig in der Druckfläche (Breite und
-  Lage werden begrenzt); die Prüfung vor dem Veröffentlichen blockiert zusätzlich jeden Überstand.
-- Wo die Druckfläche auf dem Produktfoto liegt, liefert MarketPrint nicht. Der gestrichelte Rahmen ist eine
-  Annahme und kann je Produkt über „Druckfläche auf dem Foto anpassen“ ausgerichtet werden (Einstellung
-  `designerFrames`). Die Werte für den Druck hängen davon nicht ab. Annahme „Anker = Motivmitte“ wie bisher.
+**Neues Produkt erstellen – zwei Wege (ab 1.4.0)**
+- Weg 1 „Im Programm anlegen“: wie bisher über die MarketPrint-Schnittstelle (MCP) mit Prüfungen, Freigabe, Verlauf.
+  Platzierung ohne Foto-Editor: „Ganze Fläche“, „Feste Logo-Position“ (MarketPrint) oder „Eigene Position“ mit
+  Zahlen (Mitte X/Y, Breite in % der Druckfläche). Das Motiv bleibt immer innerhalb der Druckfläche.
+  Vorder-/Rück-/Beidseitig-Auswahl, maximale Motivgröße in cm und DPI-Prüfung bleiben.
+- Weg 2 „Im MarketPrint-Designer gestalten“: Kleidungsstück im Programm wählen → `https://app.marketprint.de/design/<id>`
+  öffnet sich im Browser. Gestaltung und Veröffentlichung erfolgen dort; das Programm protokolliert diese Produkte nicht.
+- Der Foto-Platzier-Editor (1.3.x) wurde verworfen: MarketPrint liefert die Lage der Druckfläche auf dem Foto nicht.
 **DPI-Prüfung (wie im MarketPrint-Editor)**
 - Effektive DPI = Pixelbreite des Motivs ÷ gedruckte Breite (Zoll). Annahme: Druckflächen-Pixel von MarketPrint
   ≙ 300 DPI (4677 × 5881 px ≙ ca. 39,6 × 49,8 cm); die Schnittstelle nennt keine Zentimeter.
