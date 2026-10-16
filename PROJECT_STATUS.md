@@ -3,7 +3,7 @@
 > Diese Datei ist der Einstiegspunkt für jede neue Claude-Sitzung.
 > Neue Sitzung: „Weiter laut PROJECT_STATUS.md“.
 
-Stand: 2026-10-16 (Sitzung 3, Teil 2) · Branch: `claude/apologea-shopify-theme-9kvfrj`
+Stand: 2026-10-16 (Sitzung 4) · Branch: `claude/apologea-shopify-theme-9kvfrj`
 
 ## Auftrag (Kurzfassung)
 Eigenes Shopify-Online-Store-2.0-Theme „NOCTURNE“ für APOLOGEA (Luxury Christian Streetwear),
@@ -107,6 +107,25 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   Header-Raster mittig (minmax), mobile Icons 36 px; leere Bibelstelle wird im Shop ausgeblendet (nur im Editor Hinweis).
 - Shop enthält nur Beispielprodukte (Horizon-Demo) → „Ausgewählte Kollektion“ zeigt Platzhalter, bis eine Kollektion gewählt ist.
 - Theme-Check: 57 Dateien, 0 Befunde. Alles in Dev-Theme #202489921871 gepusht (unveröffentlicht).
+
+## Sitzung 4 (2026-10-16) — MarketPrint-Connector (nur lesend geprüft)
+- Connector **MarketPrint Print On Demand** ist in der Sitzung verfügbar. **Shopify-Connector nicht** verbunden.
+- Tools: `get_account_info`, `list_base_products`, `get_base_product_details`, `list_my_images` (lesend);
+  `upload_image`, `upload_neckprint` (schreibend, Account); `create_shop_product` (**legt echtes Produkt an und
+  veröffentlicht es im Shop** → nur mit ausdrücklicher Freigabe).
+- Konto: `info.maranathaclothing@gmail.com`, verbundene Shops: `dfz1mp-1u.myshopify.com` (**APOLOGEA**) und
+  `xgyzvd-1m.myshopify.com` (**anderer Shop — nie als Ziel verwenden**).
+- 97 Basisprodukte. Kandidaten fürs Testprodukt (beide DTG/DTF, Front + Back je 4677×5881 px, Nackendruck möglich):
+  - **VACANCY Oversized Shirt** `6391c767702e1dea29b936ed` — 240 g/m², Oversized; Farben Black, White, Natural Raw,
+    Baby Blue, Washed Grey, Washed Black; XS–4XL; Basispreis 16,65 € (Washed 17,15 €; 3XL/4XL +3 €).
+  - HigherBlanks Premium T-Shirt `66215c4ac7be538a2491108d` — 180 g/m², Regular; Black, White, French Navy,
+    Natural Raw, Heather Grey; S–4XL; 11,49 € (3XL/4XL 14,49 €).
+- Vorhandene APOLOGEA-Designs (Meine Designs): `02_APOLOGEA_Brust_25cm.png` (6acdfe4efb65be1f3ca35a70),
+  `apologea_seraphim_rueckendruck_DTF.png` (6ac944f3f24314427489e598, plus Duplikat „(1)“ 6ac9485df2431414b289e7cd),
+  `apologea_emblem_DTF_4500px.png` (6ac90b40f24314090f89a0d2), `apologea_emblem_transparent_4500px.png` (6ac909faf24314999989a04e).
+  (Weitere Designs gehören zu Maranatha/anderen Projekten.)
+- Offene Entscheidungen des Nutzers fürs Testprodukt: Basisprodukt, Farben/Größen, Motiv(e) + Platzierung,
+  DTG oder DTF, Verkaufspreis, Mockups (`withDesign`/`all`), Titel/Beschreibung.
 
 ## Nächste Schritte
 1. **Nutzer:** Vorschau ansehen (Admin → Onlineshop → NOCTURNE → „…“ → Vorschau), Feedback geben.
