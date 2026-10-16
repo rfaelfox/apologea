@@ -172,7 +172,7 @@ const GraphDrive = (() => {
   async function downloadUrls(ids) {
     const need = ids.filter(id => { const c = urlCache.get('dl:' + id); return !c || Date.now() - c.t > FRESH; });
     if (need.length) {
-      const res = await batch(need.map(id => ({ id, method: 'GET', url: '/me/drive/items/' + id + '?$select=id,@microsoft.graph.downloadUrl' })));
+      const res = await batch(need.map(id => ({ id, method: 'GET', url: '/me/drive/items/' + id })));
       need.forEach(id => {
         const r = res[id];
         const u = r && r.status === 200 && r.body && r.body['@microsoft.graph.downloadUrl'];
