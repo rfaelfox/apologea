@@ -60,3 +60,38 @@ export function htmlPreview(html) {
   f.srcdoc = `<!doctype html><meta charset="utf-8"><style>body{font:15px/1.6 Georgia,serif;color:#222;padding:16px;max-width:760px}</style>${html || ''}`;
   return f;
 }
+
+/**
+ * Bilder an einen Auftrag anhängen: Schaltfläche, Ziehen & Ablegen und Einfügen aus der Zwischenablage (Strg+V).
+ * Die Dateien bleiben im Browser, bis der Auftrag abgeschickt wird (files()).
+ */
+export function imageAttachments({ label = 'Bilder anhängen', hint = '' } = {}) {
+  let list = [];
+  const thumbs = h('div.att-thumbs');
+  const input = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml', multiple: true, style: { display: 'none' } });
+  const add = (files) => {
+    for (const f of files) if (/^image\//.test(f.type) && !list.some((x) => x.name === f.name && x.size === f.size)) list.push(f);
+    draw();
+  };
+  const draw = () => {
+    thumbs.replaceChildren(...list.map((f, n) => {
+      const url = URL.createObjectURL(f);
+      return h('div.att-thumb', { title: f.name },
+        h('img', { src: url, alt: f.name, onload: () => URL.revokeObjectURL(url) }),
+        h('span.att-no', `Bild ${n + 1}`),
+        h('button.att-x', { type: 'button', title: 'Entfernen', onclick: () => { list.splice(n, 1); draw(); } }, '×'));
+    }));
+  };
+  input.addEventListener('change', () => { add([...input.files]); input.value = ''; });
+  const el = h('div.att-box', h('div.row', h('button.small', { type: 'button', onclick: () => input.click() }, label), h('small.muted', hint || 'oder Bilder hierher ziehen bzw. mit Strg+V einfügen. Im Text kannst du sie mit „Bild 1“, „Bild 2“ … ansprechen.'), input), thumbs);
+  const bindDrop = (target) => {
+    target.addEventListener('dragover', (e) => { if ([...(e.dataTransfer?.items || [])].some((i) => i.kind === 'file')) { e.preventDefault(); target.classList.add('drop-on'); } });
+    target.addEventListener('dragleave', () => target.classList.remove('drop-on'));
+    target.addEventListener('drop', (e) => { e.preventDefault(); target.classList.remove('drop-on'); add([...(e.dataTransfer?.files || [])]); });
+  };
+  const bindPaste = (target) => target.addEventListener('paste', (e) => {
+    const files = [...(e.clipboardData?.files || [])].filter((f) => /^image\//.test(f.type));
+    if (files.length) { e.preventDefault(); add(files.map((f, n) => (f.name && f.name !== 'image.png' ? f : new File([f], `eingefuegt-${Date.now()}-${n + 1}.png`, { type: f.type })))); }
+  });
+  return { el, files: () => [...list], reset: () => { list = []; draw(); }, bindDrop, bindPaste };
+}

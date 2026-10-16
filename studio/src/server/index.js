@@ -19,6 +19,7 @@ import * as website from './services/website.js';
 import * as backup from './services/backup.js';
 import { listJobs, recoverInterruptedJobs } from './services/jobs.js';
 import * as updater from './services/updater.js';
+import * as productImages from './services/productImages.js';
 import * as storefront from './services/storefront.js';
 import * as themeEditor from './services/themeEditor.js';
 
@@ -262,6 +263,10 @@ route('POST', '/api/products/:id/publish', async (_r, p, body) => products.publi
 route('POST', '/api/products/:id/reconcile', async (_r, p, body) => products.reconcileProduct(p.id, body));
 route('POST', '/api/products/:id/reopen', async (_r, p) => products.reopenProduct(p.id));
 route('POST', '/api/products/:id/mockups', async (_r, p) => products.createMockups(p.id));
+route('DELETE', '/api/products/:id/images/:img', async (_r, p) => productImages.removeImage(p.id, p.img));
+route('PUT', '/api/products/:id/image-plan', async (_r, p, body) => productImages.setPlan(p.id, body || {}));
+route('POST', '/api/products/:id/image-plan/estimate', async (_r, p) => productImages.estimatePlan(p.id));
+route('POST', '/api/products/:id/image-plan', async (_r, p, body) => productImages.planWithClaude(p.id, body || {}));
 route('POST', '/api/products/:id/neckprint', async (_r, p) => products.uploadNeckPrint(p.id));
 
 // ---- Vorlagen
@@ -338,6 +343,8 @@ async function handleUpload(req, res, url) {
       if (!/^image\/|^application\/pdf$/.test(mime)) throw new UserError('Bitte Bilder (PNG, JPEG, WebP, SVG) oder PDF hochladen.');
       return send(res, 200, website.addAttachment(url.searchParams.get('draft'), { tmpPath: tmp, originalName: name, mime }));
     }
+    if (kind === 'product-image') return send(res, 200, productImages.addImage(url.searchParams.get('product'), { tmpPath: tmp, originalName: name, mime }));
+    if (kind === 'product-image-preview') return send(res, 200, productImages.setPreview(url.searchParams.get('product'), url.searchParams.get('img'), tmp));
     if (kind === 'website-preview') return send(res, 200, website.setAttachmentPreview(url.searchParams.get('draft'), url.searchParams.get('att'), tmp));
     if (kind === 'logo') {
       const a = analyzeImage(fs.readFileSync(tmp), name);
@@ -373,6 +380,12 @@ function handleFiles(res, url) {
     const att = d?.attachments.find((a) => a.id === parts[2]);
     if (!att) return send(res, 404, { error: 'Nicht gefunden' });
     return sendFile(res, website.attachmentPath(d.id, url.searchParams.get('preview') === '1' && att.preview ? att.preview : att.file));
+  }
+  if (parts[0] === 'product-image') {
+    const d = store().products.get(parts[1]);
+    const img = d?.extraImages?.find((i) => i.id === parts[2]);
+    if (!img) return send(res, 404, { error: 'Nicht gefunden' });
+    return sendFile(res, productImages.imagePath(d.id, url.searchParams.get('preview') === '1' && img.preview ? img.preview : img.file));
   }
   if (parts[0] === 'brand' && parts[1] === 'logo') {
     const f = getSettings().brand.logoFile;

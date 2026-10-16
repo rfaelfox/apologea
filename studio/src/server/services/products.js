@@ -6,6 +6,7 @@ import { checkPrintFile } from '../images.js';
 import { designFilePath, getLink } from './designs.js';
 import { createJob, finishJob, logJob } from './jobs.js';
 import { getProvider } from '../providers/registry.js';
+import * as productImages from './productImages.js';
 import { providerSettings } from '../providers/base.js';
 import * as ai from '../ai/claude.js';
 
@@ -33,6 +34,7 @@ const EMPTY = {
   collections: [], // { id, title }
   tags: [],
   notes: '',
+  imageInstruction: '', // eigene Bilder: wie sollen sie eingesetzt werden (für Claude)
 };
 
 const inFlight = new Set(); // Schutz gegen gleichzeitige Veröffentlichung (Doppelklick)
@@ -272,6 +274,12 @@ export async function validateProduct(id) {
       for (const s of draft.targetShops) if (targets.get(s) && targets.get(s).canPublish === false) add('targetShops', 'warn', `${targets.get(s).label}: ${targets.get(s).note || 'Veröffentlichen über die Schnittstelle nicht möglich.'}`);
     } catch (err) { add('targetShops', 'warn', 'Verbundene Shops konnten nicht geprüft werden: ' + errorMessage(err)); }
   }
+  if ((draft.extraImages || []).length) {
+    const used = productImages.effectivePlan(draft);
+    if (!shopify.connectionKinds().adminApp) add('images', 'warn', 'Eigene Bilder werden nur mit verbundener Shopify-Admin-App ins Produkt übertragen (Einstellungen → Shopify → B).');
+    if (draft.imagePlan?.stale) add('images', 'warn', 'Nach dem Bilder-Plan wurden Bilder hinzugefügt. Neue Bilder werden hinten angefügt – oder Plan neu erstellen.');
+    if (!draft.imagePlan) add('images', 'warn', `Kein Bilder-Plan: ${used.length} eigene(s) Bild(er) werden in der hochgeladenen Reihenfolge hinter den Mockups angefügt.`);
+  }
   if (!draft.description?.trim()) add('description', 'warn', `Keine eigene Beschreibung: ${name} verwendet dann seinen Standardtext.`);
   if (draft.collections?.length || (draft.tags?.length && !caps.tags)) {
     if (!shopify.connectionKinds().adminApp) add('collections', 'warn', `Kollektionen${caps.tags ? '' : ' und Tags'} setzt ${name} nicht. Ohne Shopify-Admin-App werden sie nicht übertragen.`);
@@ -302,7 +310,7 @@ export async function reviewProduct(id) {
   const prov = providerOf(draft);
   const details = await loadDetails(draft);
   const request = await buildRequest(draft, details);
-  const post = { collections: draft.collections || [], tags: prov.meta.capabilities.tags ? [] : (draft.tags || []) };
+  const post = { collections: draft.collections || [], tags: prov.meta.capabilities.tags ? [] : (draft.tags || []), images: productImages.effectivePlan(draft) };
   const varMap = new Map(details.variants.map((x) => [x.id, x]));
   const byColor = {};
   for (const vid of draft.variantIds) {
@@ -341,6 +349,7 @@ export async function reviewProduct(id) {
     catalogueMax: catalogueAll.length ? Math.max(...catalogueAll) : null,
     priceLabel: details.priceLabel,
     files,
+    images: post.images.map((i) => ({ name: i.name, position: i.position, alt: i.alt })),
     neckPrint: draft.neckPrint?.neckPrintId ? {
       light: store().designs.get(draft.neckPrint.lightDesignId)?.name || '–',
       dark: draft.neckPrint.darkDesignId ? store().designs.get(draft.neckPrint.darkDesignId)?.name || '–' : null,
@@ -354,6 +363,7 @@ export async function reviewProduct(id) {
       prov.meta.publishEffect(targetLabels),
       'Es wird KEINE Bestellung und KEINE Zahlung ausgelöst. Kosten entstehen erst bei Kundenbestellungen.',
       post.collections.length || post.tags.length ? 'Danach werden Kollektionen/Tags in Shopify gesetzt, sofern die Shopify-Admin-App verbunden ist und das Produkt eindeutig gefunden wird.' : null,
+      post.images.length ? `Danach werden ${post.images.length} eigene(s) Bild(er) ins Shopify-Produkt geladen${post.images.some((i) => i.position === 'vorne') ? ' (vordere Bilder vor die Mockups, das erste wird Hauptbild)' : ' (hinter die Mockups)'} – sofern die Shopify-Admin-App verbunden ist.` : null,
     ].filter(Boolean),
     warnings: v.issues.filter((i) => i.level === 'warn').map((i) => i.text),
   };
@@ -404,7 +414,7 @@ export async function publishProduct(id, { approvalHash }) {
     if (state === 'running' || state === 'unknown') throw new UserError('Für diesen Entwurf gibt es einen Vorgang mit unklarem Ergebnis. Bitte zuerst „Ergebnis prüfen“.', { status: 409, code: 'needs_check' });
     if (draft.status !== STATUS.APPROVAL || !draft.review) throw new UserError('Bitte zuerst „Zur Veröffentlichung prüfen“.', { status: 409 });
     const request = await buildRequest(draft);
-    const post = { collections: draft.collections || [], tags: prov.meta.capabilities.tags ? [] : (draft.tags || []) };
+    const post = { collections: draft.collections || [], tags: prov.meta.capabilities.tags ? [] : (draft.tags || []), images: productImages.effectivePlan(draft) };
     const notAllowed = (draft.targetShops || []).filter((s) => !allowedTargets(draft.provider).includes(s));
     if (notAllowed.length) throw new UserError(`Zielshop nicht freigegeben: ${notAllowed.join(', ')}. Es wurde nichts ausgeführt.`, { status: 409, code: 'shop_not_allowed' });
     if (stableHash({ provider: draft.provider, request, post }) !== approvalHash || draft.review.approvalHash !== approvalHash) {
@@ -438,6 +448,7 @@ export async function publishProduct(id, { approvalHash }) {
     logJob(jobId, result.message || `${prov.meta.name} hat das Anlegen bestätigt.`);
     const links = [...(result.links || [])];
     let postResult = null;
+    let imagesResult = null;
     let shopifyProduct = null;
     if (!result.simulated && shopify.connectionKinds().adminApp && result.confirmed) {
       try {
@@ -451,12 +462,21 @@ export async function publishProduct(id, { approvalHash }) {
         postResult = { ok: false, message: 'Kollektionen/Tags nicht gesetzt: ' + errorMessage(err) };
         logJob(jobId, postResult.message);
       }
-    } else if (post.collections.length || post.tags.length) {
-      postResult = { ok: false, message: result.simulated ? 'Simulation: Kollektionen/Tags nicht gesetzt.' : 'Kollektionen/Tags nicht gesetzt (keine Shopify-Admin-App verbunden).' };
+      if (post.images?.length) {
+        try {
+          imagesResult = shopifyProduct ? await productImages.applyToShopify(shopifyProduct.id, store().products.get(id), post.images, jobId) : { ok: false, message: 'Produkt in Shopify nicht eindeutig gefunden – eigene Bilder bitte manuell hochladen.' };
+        } catch (err) {
+          imagesResult = { ok: false, message: 'Eigene Bilder nicht (vollständig) eingepflegt: ' + errorMessage(err) };
+          logJob(jobId, imagesResult.message);
+        }
+      }
+    } else if (post.collections.length || post.tags.length || post.images?.length) {
+      const what = [post.collections.length || post.tags.length ? 'Kollektionen/Tags' : null, post.images?.length ? 'eigene Bilder' : null].filter(Boolean).join(' und ');
+      postResult = { ok: false, message: result.simulated ? `Simulation: ${what} nicht übertragen.` : `${what} nicht übertragen (keine Shopify-Admin-App verbunden).` };
     }
     // Erfolg nur, wenn der Anbieter bestätigt; „angenommen, Shop-Bestätigung ausstehend“ → prüfen
     const finalStatus = result.confirmed ? STATUS.SUCCESS : STATUS.CHECK;
-    const resultObj = { provider: draft.provider, remoteId: result.remoteId, shops: result.shops, listingImages: result.listingImages || [], links, postSteps: postResult, simulated: Boolean(result.simulated), shopifyProductId: shopifyProduct?.id || null, message: result.message || null, marketprint: draft.provider === 'marketprint' ? { draftId: result.remoteId, listingImages: result.listingImages } : undefined };
+    const resultObj = { provider: draft.provider, remoteId: result.remoteId, shops: result.shops, listingImages: result.listingImages || [], links, postSteps: postResult, images: imagesResult, simulated: Boolean(result.simulated), shopifyProductId: shopifyProduct?.id || null, message: result.message || null, marketprint: draft.provider === 'marketprint' ? { draftId: result.remoteId, listingImages: result.listingImages } : undefined };
     store().products.update(id, (d) => { d.status = finalStatus; d.publish = { ...d.publish, state: result.confirmed ? 'done' : 'unknown', finishedAt: nowIso(), result: resultObj }; return d; });
     finishJob(jobId, finalStatus, { result: resultObj, msg: result.simulated ? 'Simulation abgeschlossen (nichts angelegt)' : result.confirmed ? `Von ${prov.meta.name} bestätigt` : 'Angenommen – Bestätigung ausstehend' });
     return { status: finalStatus, result: resultObj };

@@ -16,11 +16,32 @@ export function createMockShopify() {
     pages: new Map([['gid://shopify/Page/10', { id: 'gid://shopify/Page/10', title: 'Über uns', handle: 'ueber-uns', body: '<p>Alt</p>', isPublished: true, updatedAt: '2026-10-01T10:00:00Z', templateSuffix: null }]]),
     calls: [],
     nextId: 100,
+    media: new Map(), // Produkt → [{ id, alt }]
+    uploads: 0,
+    reorders: [],
+    base: '',
   };
   const fileNode = (name, content) => ({ filename: name, size: content.length, checksumMd5: md5(content), contentType: name.endsWith('.json') ? 'application/json' : 'text/plain', updatedAt: new Date().toISOString(), body: { __typename: 'OnlineStoreThemeFileBodyText', content } });
 
   function handle(query, v) {
     state.calls.push(query.replace(/\s+/g, ' ').slice(0, 60));
+    if (/stagedUploadsCreate/.test(query)) {
+      const n = ++state.uploads;
+      return { stagedUploadsCreate: { stagedTargets: [{ url: `${state.base}/staged-upload`, resourceUrl: `${state.base}/res/${n}`, parameters: [{ name: 'key', value: `k${n}` }] }], userErrors: [] } };
+    }
+    if (/productUpdate\(product: \$p, media: \$m\)/.test(query)) {
+      const list = state.media.get(v.p.id) || [];
+      for (const m of v.m) list.push({ id: `gid://shopify/MediaImage/${state.nextId++}`, alt: m.alt, src: m.originalSource });
+      state.media.set(v.p.id, list);
+      return { productUpdate: { product: { id: v.p.id, media: { nodes: list.map(({ id, alt }) => ({ id, alt })) } }, userErrors: [] } };
+    }
+    if (/product\(id: \$id\) \{ media/.test(query)) return { product: { media: { nodes: (state.media.get(v.id) || []).map(({ id, alt }) => ({ id, alt })) } } };
+    if (/productReorderMedia/.test(query)) {
+      state.reorders.push(v.moves);
+      const list = state.media.get(v.id) || [];
+      for (const mv of v.moves) { const i = list.findIndex((x) => x.id === mv.id); const [it] = list.splice(i, 1); list.splice(Number(mv.newPosition), 0, it); }
+      return { productReorderMedia: { job: { id: 'job1' }, mediaUserErrors: [] } };
+    }
     if (/themeFilesUpsert/.test(query)) {
       const t = state.themes.get(v.id);
       for (const f of v.files) t.files.set(f.filename, f.body.type === 'BASE64' ? Buffer.from(f.body.value, 'base64').toString('latin1') : f.body.value);
@@ -66,6 +87,7 @@ export function createMockShopify() {
     req.on('data', (c) => { body += c; });
     req.on('end', () => {
       res.setHeader('Content-Type', 'application/json');
+      if (req.url === '/staged-upload') { res.statusCode = 204; return res.end(); }
       if (req.url.endsWith('/admin/oauth/access_token')) return res.end(JSON.stringify({ access_token: 'test-token', scope: 'read_themes,write_themes,read_content,write_content,read_products,write_products', expires_in: 86399 }));
       try {
         const { query, variables } = JSON.parse(body);
@@ -75,7 +97,7 @@ export function createMockShopify() {
   });
   return {
     state,
-    start: () => new Promise((r) => { server.keepAliveTimeout = 60_000; server.listen(0, '127.0.0.1', () => r(`http://127.0.0.1:${server.address().port}`)); }),
+    start: () => new Promise((r) => { server.keepAliveTimeout = 60_000; server.listen(0, '127.0.0.1', () => { state.base = `http://127.0.0.1:${server.address().port}`; r(state.base); }); }),
     stop: () => new Promise((r) => server.close(r)),
     live: () => state.themes.get('gid://shopify/OnlineStoreTheme/1'),
   };

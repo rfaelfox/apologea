@@ -87,6 +87,15 @@ Die Oberfläche blendet Funktionen anhand von `meta.capabilities` ein oder aus (
   `/design/<id>` lädt MarketPrint nicht (endlose Ladeanzeige, getestet 2026-10-16); ein gewähltes Kleidungsstück wird
   daher als Hinweis angezeigt und sein Name in die Zwischenablage kopiert. Gestaltung und Veröffentlichung erfolgen dort; das Programm protokolliert diese Produkte nicht.
 - Der Foto-Platzier-Editor (1.3.x) wurde verworfen: MarketPrint liefert die Lage der Druckfläche auf dem Foto nicht.
+**Bilder mit dem Claude-Auftrag (ab 1.5.0)**
+- Website-Editor: Im Auftragsfeld Bilder anhängen (Schaltfläche, Ziehen & Ablegen, Strg+V). Sie werden als Anhänge des
+  Entwurfs gespeichert und im Auftrag als „Bild 1, Bild 2 …“ benannt; Claude setzt sie ein (z. B. Banner) –
+  über Shopify-Dateien (Bild-Einstellungen, Admin-App nötig) oder als Theme-Datei mit eigenem Abschnitt.
+- Produkte, Schritt „Eigene Bilder (Mockups, Fotos)“: Bilder hochladen, Anweisung schreiben, „Mit Claude einplanen“ →
+  Plan (vorne/hinten, Reihenfolge, Alternativtexte, verwenden ja/nein), von Hand änderbar, Teil der Freigabe.
+  Nach dem Veröffentlichen lädt das Programm die Bilder ins Shopify-Produkt (`productUpdate` mit `media`) und stellt
+  vordere Bilder vor die Mockups (`productReorderMedia`; das erste wird Hauptbild). Ohne Plan: hinten anfügen.
+  Shopify-Admin-App nötig; Prüfsumme je Bild sichert, dass genau das freigegebene Bild hochgeladen wird.
 **DPI-Prüfung (wie im MarketPrint-Editor)**
 - Effektive DPI = Pixelbreite des Motivs ÷ gedruckte Breite (Zoll). Annahme: Druckflächen-Pixel von MarketPrint
   ≙ 300 DPI (4677 × 5881 px ≙ ca. 39,6 × 49,8 cm); die Schnittstelle nennt keine Zentimeter.

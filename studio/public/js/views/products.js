@@ -1,5 +1,5 @@
-import { h, clear, get, post, put, del, badge, fmtDate, fmtEuro, fmtUsd, showError, toast, modal, confirmDialog, autosaver, busy, extLink, ornament, userError } from '../core.js';
-import { confirmAiCall, issuesList, fileNotes, htmlPreview } from './shared.js';
+import { shrinkImage, upload, h, clear, get, post, put, del, badge, fmtDate, fmtEuro, fmtUsd, showError, toast, modal, confirmDialog, autosaver, busy, extLink, ornament, userError } from '../core.js';
+import { confirmAiCall, issuesList, fileNotes, htmlPreview, imageAttachments } from './shared.js';
 import { pickDesign } from './library.js';
 import { setCleanup, state } from '../app.js';
 import { fitToArea, dpiInfo, dpiText, areaCm, motifMaxCm, fmtCm } from './placement.js';
@@ -166,7 +166,7 @@ export async function renderProductEditor(main, id) {
   const statusBox2 = h('span');
   const simBanner = h('div');
   const sec = {
-    base: h('div'), variants: h('div'), print: h('div'), texts: h('div'), price: h('div'), check: h('div'), result: h('div'),
+    base: h('div'), variants: h('div'), print: h('div'), texts: h('div'), images: h('div'), price: h('div'), check: h('div'), result: h('div'),
   };
 
   function renderStatus() { for (const b of [statusBox, statusBox2]) clear(b, badge(draft.status, { simulated: draft.publish?.result?.simulated })); }
@@ -406,6 +406,68 @@ export async function renderProductEditor(main, id) {
       design ? h('div', h('div.field-label', 'Prüfung der Druckdatei'), notesBox) : null);
   }
 
+  // ---------- Eigene Bilder für die Produktseite (Mockups, Fotos) – per Anweisung an Claude eingeplant
+  function renderImages() {
+    const dis = locked();
+    const imgs = draft.extraImages || [];
+    const plan = draft.imagePlan;
+    const instr = h('textarea', { rows: 3, disabled: dis, placeholder: 'Wie sollen die Bilder eingesetzt werden? z. B. „Bild 1 als Hauptbild vor den MarketPrint-Mockups, Bild 2 und 3 als Detailansichten ganz hinten.“' });
+    instr.value = draft.imageInstruction || '';
+    instr.addEventListener('input', () => set({ imageInstruction: instr.value }));
+    const att = imageAttachments({ label: 'Bilder hinzufügen' });
+    const addBtn = h('button.small.primary', { type: 'button', disabled: dis }, 'Hochladen');
+    addBtn.addEventListener('click', () => busy(addBtn, async () => {
+      const files = att.files();
+      if (!files.length) return showError(userError('Bitte zuerst Bilder auswählen, hineinziehen oder einfügen.'));
+      try {
+        for (const f of files) {
+          draft = await upload(`/api/upload?kind=product-image&product=${id}`, f);
+          const img = draft.extraImages[draft.extraImages.length - 1];
+          const prev = await shrinkImage(f, 1568, 'image/jpeg', 0.85);
+          if (prev) draft = await upload(`/api/upload?kind=product-image-preview&product=${id}&img=${img.id}`, new File([prev], 'vorschau.jpg', { type: 'image/jpeg' }));
+        }
+        att.reset();
+        renderStatus(); renderImages();
+      } catch (err) { showError(err); }
+    }));
+    const box = h('div.stack', { style: { gap: '10px' } });
+    const planFor = (imgId) => plan?.items?.find((x) => x.imageId === imgId);
+    const savePlan = async (items) => { try { draft = await put(`/api/products/${id}/image-plan`, { items }); renderStatus(); renderImages(); } catch (err) { showError(err); } };
+    const currentItems = () => imgs.map((im, n) => planFor(im.id) || { imageId: im.id, use: true, position: 'hinten', order: n + 1, alt: '' });
+    const planBtn = h('button.primary', { type: 'button', disabled: dis || !imgs.length }, plan ? 'Plan mit Claude neu erstellen' : 'Mit Claude einplanen');
+    planBtn.addEventListener('click', () => busy(planBtn, async () => {
+      await saver.flush();
+      const c = await confirmAiCall(`/api/products/${id}/image-plan/estimate`, {}, 'das Einplanen der Bilder');
+      if (!c) return;
+      try { draft = await post(`/api/products/${id}/image-plan`, { confirmPaid: c.confirmPaid }); toast('Plan erstellt – bitte prüfen. Hochgeladen wird erst nach deiner Freigabe.', 'ok'); renderStatus(); renderImages(); } catch (err) { showError(err); }
+    }));
+    clear(sec.images,
+      h('p.muted', 'Eigene Mockups oder Fotos für die Shopify-Produktseite. Beschreibe, wie sie eingesetzt werden sollen – Claude plant Reihenfolge, Position (vor/hinter den Mockups des Druckdienstleisters) und Alternativtexte. Hochgeladen wird erst nach deiner Freigabe beim Veröffentlichen (Shopify-Admin-App nötig).'),
+      dis ? null : h('div.frame.stack', att.el, h('div.row', addBtn)),
+      imgs.length ? h('div.img-plan', imgs.map((im, n) => {
+        const it = planFor(im.id) || { use: true, position: 'hinten', order: n + 1, alt: '' };
+        const alt = h('input', { type: 'text', value: it.alt || '', disabled: dis, placeholder: 'Alternativtext (was ist zu sehen?)' });
+        alt.addEventListener('change', () => savePlan(currentItems().map((x) => (x.imageId === im.id ? { ...x, alt: alt.value } : x))));
+        return h(`div.img-card${it.use === false ? '.off' : ''}`,
+          h('img', { src: `/files/product-image/${id}/${im.id}?preview=1`, alt: '' }),
+          h('div.stack', { style: { gap: '6px', flex: '1 1 220px' } },
+            h('div', h('strong', `Bild ${n + 1}`), h('small.muted', ` ${im.name} · ${im.width || '?'} × ${im.height || '?'} px`)),
+            h('div.row',
+              h('select', { disabled: dis, onchange: (e) => savePlan(currentItems().map((x) => (x.imageId === im.id ? { ...x, position: e.target.value, use: e.target.value !== 'aus' } : x)).map((x) => (x.position === 'aus' ? { ...x, position: 'hinten', use: false } : x))) },
+                h('option', { value: 'vorne', selected: it.use !== false && it.position === 'vorne' }, 'Vorne (vor den Mockups)'),
+                h('option', { value: 'hinten', selected: it.use !== false && it.position === 'hinten' }, 'Hinten (nach den Mockups)'),
+                h('option', { value: 'aus', selected: it.use === false }, 'Nicht verwenden')),
+              h('label.mini', h('span', 'Reihenfolge'), h('input', { type: 'number', min: 1, step: 1, value: it.order, disabled: dis, style: { width: '64px' }, onchange: (e) => savePlan(currentItems().map((x) => (x.imageId === im.id ? { ...x, order: Number(e.target.value) || 1 } : x))) }))),
+            alt),
+          dis ? null : h('button.small.ghost', { type: 'button', onclick: async () => { try { draft = await del(`/api/products/${id}/images/${im.id}`); renderStatus(); renderImages(); } catch (err) { showError(err); } } }, 'Entfernen'));
+      })) : h('div.empty', 'Noch keine eigenen Bilder.'),
+      imgs.length ? h('label.field', h('span', 'Anweisung für Claude'), instr) : null,
+      imgs.length ? h('div.row', planBtn, plan?.summary ? h('small.muted', `Plan von ${plan.source === 'claude' ? 'Claude' : 'dir'} · ${fmtDate(plan.at)}`) : h('small.muted', 'Ohne Plan werden die Bilder in dieser Reihenfolge hinter den Mockups angefügt.')) : null,
+      plan?.summary ? h('div.inline-msg.info', plan.summary) : null,
+      (plan?.questions || []).map((q) => h('div.inline-msg.warn', q)),
+      plan?.stale ? h('div.inline-msg.warn', 'Seit dem Plan sind Bilder dazugekommen – neue Bilder werden hinten angefügt, oder Plan neu erstellen.') : null);
+  }
+
   /** Wie groß das Motiv auf dieser Fläche maximal sein darf (in cm). */
   function maxSizeBox(area, design) {
     const m = motifMaxCm(area, design);
@@ -595,7 +657,7 @@ export async function renderProductEditor(main, id) {
   function renderAll() {
     renderStatus();
     clear(simBanner, draft.publish?.result?.simulated ? h('div.sim-banner', `Dieser Entwurf wurde nur im Simulationsmodus „veröffentlicht“. Bei ${PN()} wurde nichts angelegt.`) : null);
-    renderResult(); renderBase(); renderVariants(); renderPrint(); renderTexts(); renderPrice(); renderCheck();
+    renderResult(); renderBase(); renderVariants(); renderPrint(); renderTexts(); renderImages(); renderPrice(); renderCheck();
     for (const b of actionButtons) b.disabled = locked() && !b.dataset.always;
     mockupBtn.classList.toggle('hidden', !caps().realMockups);
   }
@@ -687,6 +749,7 @@ export async function renderProductEditor(main, id) {
           h('dt', 'Varianten'), h('dd', `${s.variantCount} Varianten`, s.variants.map((v) => h('div', h('span', { style: { display: 'inline-block', width: '12px', height: '12px', background: v.hex, border: '1px solid #fff4', marginRight: '6px' } }), `${v.color}: ${v.sizes.join(', ')}`))),
           h('dt', 'Verkaufspreis'), h('dd', h('strong', fmtEuro(s.price)), h('div.muted', s.catalogueMin !== null ? `${s.priceLabel || 'Katalogpreis'}: ${fmtEuro(s.catalogueMin)} – ${fmtEuro(s.catalogueMax)}` : (s.priceLabel || ''))),
           h('dt', 'Dateien'), h('dd', s.files.map((f) => h('div', `${f.printArea}: ${f.design} (${f.file}) · ${f.placement}${f.dpi ? ` · ca. ${f.dpi.dpi} DPI (${f.dpi.rating})` : ''}`, f.alternative ? h('div.muted', `Alternativ: ${f.alternative.design} für ${f.alternative.colors.length} Farbe(n)`) : null))),
+          s.images?.length ? [h('dt', 'Eigene Bilder'), h('dd', s.images.map((i, n) => h('div', `${n + 1}. ${i.name} · ${i.position === 'vorne' ? 'vorne' : 'hinten'}${i.alt ? ` · „${i.alt}“` : ''}`)))] : null,
           s.neckPrint ? [h('dt', 'Nackendruck'), h('dd', `${s.neckPrint.light}${s.neckPrint.dark ? ` (dunkle Textilien: ${s.neckPrint.dark})` : ''}`)] : null,
           h('dt', 'Anbieter'), h('dd', s.provider),
           h('dt', 'Produktbilder'), h('dd', s.mockups),
@@ -714,6 +777,7 @@ export async function renderProductEditor(main, id) {
     ['step-variants', 'Farben & Größen', sec.variants],
     ['step-print', 'Druck & Motive', sec.print],
     ['step-texts', 'Namen & Texte', sec.texts],
+    ['step-images', 'Eigene Bilder (Mockups, Fotos)', sec.images],
     ['step-price', 'Preis, Shop & Kollektion', sec.price],
     ['step-check', 'Prüfen', sec.check],
   ];

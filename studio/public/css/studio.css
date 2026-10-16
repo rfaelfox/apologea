@@ -357,3 +357,16 @@ button.linkish { border: 0; padding: 0; min-height: 0; text-transform: none; let
 .mp-item img { width: 40px; height: 40px; object-fit: contain; background: #f1ede6; }
 .mp-item .t { flex: 1 1 100px; }
 .mp-item .badge-neck { flex-basis: 100%; color: var(--gold-2); font-size: .7rem; }
+/* Bilder an Aufträge anhängen */
+.att-box { margin-top: 8px; }
+.att-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.att-thumbs:empty { display: none; }
+.att-thumb { position: relative; width: 92px; height: 92px; border: 1px solid var(--line); background: #f1ede6; }
+.att-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.att-no { position: absolute; left: 0; bottom: 0; background: #0b0a09cc; color: var(--ivory); font-size: .68rem; padding: 1px 6px; }
+.att-x { position: absolute; right: 2px; top: 2px; min-height: 0; padding: 0 6px; background: #0b0a09cc; border: 0; font-size: .9rem; }
+.drop-on { outline: 2px dashed var(--gold); outline-offset: 2px; }
+.img-plan { display: flex; flex-direction: column; gap: 10px; }
+.img-card { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; border: 1px solid var(--line-soft); padding: 10px; }
+.img-card.off { opacity: .55; }
+.img-card > img { width: 110px; height: 110px; object-fit: contain; background: #f1ede6; }

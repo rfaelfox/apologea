@@ -332,6 +332,41 @@ export async function updateProduct(product) {
   return data.productUpdate.product;
 }
 
+/** Lädt eine Datei in Shopifys Zwischenspeicher (staged upload) und liefert die resourceUrl. */
+async function stageImage({ filename, mimeType, buffer }) {
+  const staged = await gql(`mutation($input: [StagedUploadInput!]!) { stagedUploadsCreate(input: $input) { stagedTargets { url resourceUrl parameters { name value } } userErrors { field message } } }`,
+    { input: [{ resource: 'IMAGE', filename, mimeType, httpMethod: 'POST', fileSize: String(buffer.length) }] });
+  userErrors(staged.stagedUploadsCreate, 'Upload konnte nicht vorbereitet werden');
+  const target = staged.stagedUploadsCreate.stagedTargets[0];
+  const form = new FormData();
+  for (const p of target.parameters) form.append(p.name, p.value);
+  form.append('file', new Blob([buffer], { type: mimeType }), filename);
+  const up = await fetchWithTimeout(target.url, { method: 'POST', body: form }, 120_000);
+  if (!up.ok && up.status !== 201 && up.status !== 204) throw new UserError(`Upload zu Shopify fehlgeschlagen (${up.status}).`, { status: 502 });
+  return target.resourceUrl;
+}
+
+/** Hängt Bilder an ein Produkt an (hinten). Liefert die neu angelegten Medien in Upload-Reihenfolge. */
+export async function addProductImages(productId, images) {
+  const before = await gql('query($id: ID!) { product(id: $id) { media(first: 250) { nodes { id } } } }', { id: productId });
+  const known = new Set((before.product?.media?.nodes || []).map((m) => m.id));
+  const media = [];
+  for (const img of images) media.push({ originalSource: await stageImage(img), alt: img.alt || '', mediaContentType: 'IMAGE' });
+  const data = await gql('mutation($p: ProductUpdateInput!, $m: [CreateMediaInput!]) { productUpdate(product: $p, media: $m) { product { id media(first: 250) { nodes { id alt } } } userErrors { field message } } }', { p: { id: productId }, m: media });
+  userErrors(data.productUpdate, 'Bilder konnten nicht angelegt werden');
+  const added = data.productUpdate.product.media.nodes.filter((n) => !known.has(n.id));
+  if (added.length !== images.length) throw new UserError(`Shopify meldet ${added.length} statt ${images.length} neue Bilder – bitte im Shopify-Admin prüfen.`, { status: 502, code: 'network' });
+  return added;
+}
+
+/** Medien eines Produkts umsortieren (z. B. eigene Bilder nach vorne). */
+export async function reorderProductMedia(productId, moves) {
+  const data = await gql('mutation($id: ID!, $moves: [MoveInput!]!) { productReorderMedia(id: $id, moves: $moves) { job { id } mediaUserErrors { field message } } }', { id: productId, moves });
+  const errs = data.productReorderMedia?.mediaUserErrors || [];
+  if (errs.length) throw new UserError('Reihenfolge der Bilder: ' + errs.map((e) => e.message).join('; '), { status: 502 });
+  return true;
+}
+
 /** Lädt eine Bilddatei in „Inhalte → Dateien“ hoch und liefert die shopify://shop_images/… Referenz. */
 export async function uploadShopImage({ filename, mimeType, buffer, alt }) {
   const staged = await gql(`mutation($input: [StagedUploadInput!]!) { stagedUploadsCreate(input: $input) { stagedTargets { url resourceUrl parameters { name value } } userErrors { field message } } }`,

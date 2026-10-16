@@ -200,6 +200,14 @@ await modalBtn('Speichern').click();
 await page.waitForSelector('.toast:has-text("Vorlage gespeichert")');
 check('Vorlage gespeichert', true);
 
+// Eigene Bilder (Mockups) für die Produktseite
+await page.locator('#step-images').scrollIntoViewIfNeeded();
+await page.locator('#step-images input[type=file]').setInputFiles(path.join(filesDir, 'klein-ohne-transparenz.jpg'));
+await page.waitForSelector('#step-images .att-thumb');
+await page.locator('#step-images button:has-text("Hochladen")').click();
+await page.waitForSelector('#step-images .img-card');
+check('Eigene Bilder: hochgeladen, mit Position und Alternativtext', await page.locator('#step-images .img-card select').count() === 1 && await page.locator('#step-images textarea').count() === 1);
+await shot('07b-eigene-bilder');
 // Vorschau
 await btn('Vorschau anzeigen').click();
 await page.waitForSelector('.overlay .card .dpi-line');
@@ -303,6 +311,9 @@ await page.waitForSelector('h1:has-text("Website")');
 await page.waitForSelector('.tree .inline-msg.error');
 check('Website-Editor: ohne Shopify-Zugang verständliche Meldung', /Shopify-Zugang/.test(await page.locator('.tree').innerText()));
 check('Website-Editor: Auftrag an Claude steht oben', await page.locator('.ask-claude textarea').count() === 1);
+await page.locator('.ask-claude input[type=file]').setInputFiles(path.join(filesDir, 'theotokos-hell.png'));
+await page.waitForSelector('.ask-claude .att-thumb');
+check('Website-Editor: Bilder an den Claude-Auftrag anhängen', (await page.locator('.ask-claude .att-thumb').innerText()).includes('Bild 1'));
 await shot('10-website-editor');
 await page.click('a.btn:has-text("Änderungen & Verlauf")');
 await page.waitForSelector('h1:has-text("Änderungen & Verlauf")');

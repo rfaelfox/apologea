@@ -33,6 +33,7 @@ before(async () => {
     util: await import('../src/server/util.js'),
     themeEditor: await import('../src/server/services/themeEditor.js'),
     storefront: await import('../src/server/services/storefront.js'),
+    productImages: await import('../src/server/services/productImages.js'),
   };
   store.saveSettings({ marketprint: { mode: 'simulation' } });
   await S.secrets.setSecret('shopify.clientId', 'test-id');
@@ -344,4 +345,34 @@ test('MarketPrint-Website: Produktliste sofort verfügbar (ohne Abfrage über Cl
   const c = mp.websiteCatalog();
   assert.ok(c.items.length >= 10);
   assert.ok(c.items.every((i) => /^[a-f0-9]{24}$/.test(i.id) && i.title));
+});
+
+test('Produkt: eigene Bilder (Mockups) – Claude plant, Freigabe enthält Plan, Einpflegen in Shopify mit Hauptbild vorne', async () => {
+  const id = await readyProduct();
+  const { PNG } = await import('pngjs');
+  const add = (name) => { const img = new PNG({ width: 800, height: 800 }); img.data.fill(120); const f = path.join(tmp, '.studio', 'tmp', `pi-${name}-${Date.now()}`); fs.writeFileSync(f, PNG.sync.write(img)); return S.productImages.addImage(id, { tmpPath: f, originalName: `${name}.png`, mime: 'image/png' }); };
+  add('mockup-vorne');
+  const d = add('detail');
+  const [a, b] = d.extraImages;
+  await assert.rejects(() => S.productImages.planWithClaude(id, {}), /beschreiben/);
+  S.products.saveProduct(id, { imageInstruction: 'Bild 1 als Hauptbild, Bild 2 hinten.' });
+  fs.writeFileSync(aiFile, JSON.stringify({ summary: 'Bild 1 vorne als Hauptbild, Bild 2 hinten.', items: [{ image_id: a.id, use: true, position: 'vorne', order: 1, alt: 'Shirt von vorne' }, { image_id: b.id, use: true, position: 'hinten', order: 1, alt: 'Detail' }, { image_id: 'erfunden', use: true, position: 'vorne', order: 2, alt: 'x' }], questions: [] }));
+  const planned = await S.productImages.planWithClaude(id, {});
+  assert.equal(planned.imagePlan.items.length, 2, 'unbekannte Bild-IDs werden verworfen');
+  const r = await S.products.reviewProduct(id);
+  assert.equal(r.ok, true, JSON.stringify(r.issues));
+  assert.deepEqual(r.summary.images.map((i) => i.position), ['vorne', 'hinten']);
+  // Plan ändern → Freigabe-Hash ändert sich
+  S.productImages.setPlan(id, { items: [{ imageId: a.id, position: 'vorne', order: 1, alt: 'Neu' }, { imageId: b.id, use: false }] });
+  const r2 = await S.products.reviewProduct(id);
+  assert.notEqual(r2.approvalHash, r.approvalHash);
+  assert.equal(r2.summary.images.length, 1, 'nicht verwendetes Bild fehlt');
+  // Einpflegen: vorhandene Mockups + eigene Bilder, vorderes Bild an Position 0
+  const pid = 'gid://shopify/Product/900';
+  mock.state.media.set(pid, [{ id: 'gid://shopify/MediaImage/m1', alt: 'Mockup MarketPrint' }]);
+  const plan = S.productImages.effectivePlan(S.store.store().products.get(id));
+  const res = await S.productImages.applyToShopify(pid, S.store.store().products.get(id), plan, S.jobs.createJob({ type: 't', title: 't' }).id);
+  assert.equal(res.count, 1);
+  assert.equal(mock.state.media.get(pid)[0].alt, 'Neu', 'eigenes Bild ist jetzt Hauptbild');
+  assert.equal(mock.state.media.get(pid).length, 2);
 });

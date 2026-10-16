@@ -183,6 +183,12 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - „Neues Produkt erstellen“: Weg 1 im Programm über MCP, Weg 2 direkt in den MarketPrint-Designer (Website).
 - Tests: `npm test` grün, Oberflächen-Durchlauf 55/55.
 
+## Sitzung 5, Teil 7 (2026-10-16) — Studio 1.5.0: Bilder mit dem Claude-Auftrag
+- Website-Editor: Bilder direkt im Auftragsfeld anhängen; Claude setzt sie ein (z. B. Banner).
+- Produkte: eigene Mockups/Fotos hochladen, Claude plant Einsatz, nach Freigabe ins Shopify-Produkt.
+- Weg 2 (MarketPrint-Website): Direktlinks laden dort nicht → Startseite + Wegbeschreibung (1.4.3).
+- Tests: `npm test` 41/41, Oberflächen-Durchlauf 58/58.
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“

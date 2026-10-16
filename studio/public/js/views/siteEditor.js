@@ -1,5 +1,6 @@
-import { h, clear, get, post, upload, showError, toast, busy, userError } from '../core.js';
+import { h, clear, get, post, upload, showError, toast, busy, userError, shrinkImage } from '../core.js';
 import { setCleanup } from '../app.js';
+import { imageAttachments } from './shared.js';
 
 /**
  * Website-Editor im Stil des Shopify-Theme-Editors:
@@ -28,9 +29,11 @@ export async function renderSiteEditor(main, query = {}) {
   let domIds = [];
 
   // ---------- Grundgerüst
+  let askBox = null;
   const prompt = h('textarea.big', { rows: 2, placeholder: 'Beschreibe, was Claude an deiner Website ändern soll – z. B. „Ersetze das Bild oben auf der Startseite durch das angehängte und schreibe eine ruhigere Überschrift.“' });
   const contextChip = h('span.chip');
   const askBtn = h('button.primary', { type: 'button' }, 'Vorschlag mit Claude erstellen');
+  const askFiles = imageAttachments({ label: 'Bilder anhängen (z. B. Banner)' });
   const iframe = h('iframe.site-frame', { title: 'Live-Ansicht des Shops', sandbox: 'allow-scripts' });
   const frameWrap = h('div.site-frame-wrap', iframe);
   const pathLabel = h('span.path');
@@ -47,10 +50,11 @@ export async function renderSiteEditor(main, query = {}) {
   clear(main,
     h('div.page-head', h('div', h('div.eyebrow', 'Website bearbeiten'), h('h1', 'Website')),
       h('div.actions', h('a.btn.small', { href: '#/website/liste' }, 'Änderungen & Verlauf'))),
-    h('div.ask-claude',
+    askBox = h('div.ask-claude',
       h('div.ask-head', h('span.eyebrow', 'Mit Claude ändern'), contextChip),
       h('div.ask-row', prompt, askBtn),
-      h('small.muted', 'Claude erstellt einen Vorschlag mit Vorher-nachher-Ansicht. Im Shop ändert sich erst nach deiner Freigabe etwas. Bilder kannst du im nächsten Schritt anhängen.')),
+      askFiles.el,
+      h('small.muted', 'Beispiel: „Setze Bild 1 als großes Banner oben auf die Startseite, mit der Überschrift ‚Licht in der Dunkelheit‘.“ Claude erstellt einen Vorschlag mit Vorher-nachher-Ansicht; im Shop ändert sich erst nach deiner Freigabe etwas.')),
     pendingBar,
     h('div.site-editor',
       h('aside.site-left', h('label.field', h('span', 'Seite'), pageSelect), tree),
@@ -63,6 +67,8 @@ export async function renderSiteEditor(main, query = {}) {
         frameWrap),
       h('aside.site-right', inspector)));
   markSeg(modeBtns, mode);
+  askFiles.bindDrop(askBox);
+  askFiles.bindPaste(prompt);
   markSeg(devBtns, device);
 
   // ---------- Live-Ansicht
@@ -319,7 +325,18 @@ export async function renderSiteEditor(main, query = {}) {
     if (!text) return showError(userError('Bitte zuerst beschreiben, was geändert werden soll.'));
     const where = selected ? `\n\nBetroffener Bereich (im Editor ausgewählt): Abschnitt „${selected.section.name}“ (id ${selected.sectionId}, Typ ${selected.section.type}) in ${selected.file}${selected.blockPath.length ? `, Block ${selected.blockPath.join(' › ')}` : ''}.` : '';
     try {
-      const d = await post('/api/website/drafts', { title: text.slice(0, 60), areaKey: `theme:${selected?.file?.startsWith('templates/') ? selected.file : template}`, request: text + where });
+      const files = askFiles.files();
+      const imgNote = files.length ? `\n\nAngehängte Bilder (in dieser Reihenfolge): ${files.map((f, n) => `Bild ${n + 1} = „${f.name}“`).join(', ')}.` : '';
+      let d = await post('/api/website/drafts', { title: text.slice(0, 60), areaKey: `theme:${selected?.file?.startsWith('templates/') ? selected.file : template}`, request: text + where + imgNote });
+      for (const f of files) {
+        d = await upload(`/api/upload?kind=website&draft=${d.id}`, f);
+        const att = d.attachments[d.attachments.length - 1];
+        if (/^image\/(png|jpeg|webp|gif)$/.test(f.type)) {
+          const prev = await shrinkImage(f, 1568, 'image/jpeg', 0.85);
+          if (prev) d = await upload(`/api/upload?kind=website-preview&draft=${d.id}&att=${att.id}`, new File([prev], 'vorschau.jpg', { type: 'image/jpeg' }));
+        }
+      }
+      askFiles.reset();
       location.hash = `#/website/${d.id}?start=1`;
     } catch (err) { showError(err); }
   }));
