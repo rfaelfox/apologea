@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="1816 1272 1392 1384" role="img" aria-labelledby="apg-gold-emblem-t">
   <title id="apg-gold-emblem-t">APOLOGEA Emblem</title>
   <defs>
-    <linearGradient id="apg-gold-emblem" gradientUnits="userSpaceOnUse" x1="0" y1="1272" x2="0" y2="2656">
+    <linearGradient id="apg-gold-emblem" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#EDC889"/>
       <stop offset=".5" stop-color="#CFA05C"/>
       <stop offset="1" stop-color="#A06F33"/>

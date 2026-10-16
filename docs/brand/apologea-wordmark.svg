@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="260 2840 4496 612" role="img" aria-labelledby="apg-gold-wordmark-t">
   <title id="apg-gold-wordmark-t">APOLOGEA</title>
   <defs>
-    <linearGradient id="apg-gold-wordmark" gradientUnits="userSpaceOnUse" x1="0" y1="2840" x2="0" y2="3452">
+    <linearGradient id="apg-gold-wordmark" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#EDC889"/>
       <stop offset=".5" stop-color="#CFA05C"/>
       <stop offset="1" stop-color="#A06F33"/>

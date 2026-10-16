@@ -79,7 +79,7 @@ Original vom Inhaber geliefert (2026-10-16): Flechtkreuz-Emblem über Schriftzug
 Ablage: `docs/brand/apologea-logo-original.webp` (Rasteroriginal, maßgeblich).
 
 **SVG-Fassungen** (Vektorisierung des Originals per Konturnachzeichnung, Flächendeckung ≈ 97,6 % mit dem Original;
-das geprägte 3D-Relief des Originals ist als vertikaler Goldverlauf `#EDC889 → #CFA05C → #A06F33` umgesetzt,
+das geprägte 3D-Relief des Originals ist als vertikaler Goldverlauf `#EDC889 → #CFA05C → #A06F33` je Form (Buchstabe/Kreuzteil) umgesetzt,
 Form und Proportionen unverändert, Hintergrund transparent):
 
 | Datei | Inhalt | Seitenverhältnis | Einsatz |

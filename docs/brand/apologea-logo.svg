@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="260 1272 4496 2180" role="img" aria-labelledby="apg-gold-lockup-t">
   <title id="apg-gold-lockup-t">APOLOGEA</title>
   <defs>
-    <linearGradient id="apg-gold-lockup" gradientUnits="userSpaceOnUse" x1="0" y1="1272" x2="0" y2="3452">
+    <linearGradient id="apg-gold-lockup" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#EDC889"/>
       <stop offset=".5" stop-color="#CFA05C"/>
       <stop offset="1" stop-color="#A06F33"/>
