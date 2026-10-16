@@ -75,6 +75,19 @@ Preis, Badge, Ornament-Trenner, Eyebrow, Formfelder, Drawer-Navigation, Scriptur
 + Referenz, vom Händler einzutragen — das Theme liefert **keine** vorgefertigten Zitate).
 
 ## 7. Logo
-Bis das Original-Logo vorliegt, zeigt der Header einen **klar markierten Platzhalter**
-(Wortmarke „APOLOGEA“ in Display-Schrift + Hinweis im Theme-Editor). Das Original wird unverändert
-als SVG/PNG über **Header → Logo** hochgeladen.
+Original vom Inhaber geliefert (2026-10-16): Flechtkreuz-Emblem über Schriftzug „APOLOGEA“ (O mit Raute), Gold auf Schwarz.
+Ablage: `docs/brand/apologea-logo-original.webp` (Rasteroriginal, maßgeblich).
+
+**SVG-Fassungen** (Vektorisierung des Originals per Konturnachzeichnung, Flächendeckung ≈ 97,6 % mit dem Original;
+das geprägte 3D-Relief des Originals ist als vertikaler Goldverlauf `#EDC889 → #CFA05C → #A06F33` umgesetzt,
+Form und Proportionen unverändert, Hintergrund transparent):
+
+| Datei | Inhalt | Seitenverhältnis | Einsatz |
+|---|---|---|---|
+| `apologea-logo.svg` | Kreuz + Schriftzug (Original-Anordnung) | 2,06 : 1 | Footer, Passwortseite |
+| `apologea-wordmark.svg` | nur Schriftzug | 7,35 : 1 | Header (Standard) |
+| `apologea-emblem.svg` | nur Kreuz | 1 : 1 | Favicon, kleine Flächen |
+
+Liegen in `shopify-theme/assets/` und `docs/brand/`. Header-Variante im Theme-Editor wählbar
+(**Header → Logo-Variante**); ein hochgeladenes Logo-Bild hat Vorrang. Regeln: nicht verzerren, nicht umfärben
+außer Gold/Elfenbein auf dunklem Grund, Schutzraum ≥ Höhe des O rundum, Mindestbreite Schriftzug 96 px.

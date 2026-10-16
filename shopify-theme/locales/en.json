@@ -9,7 +9,6 @@
     "cart": "Cart",
     "cart_count": { "one": "{{ count }} item", "other": "{{ count }} items" },
     "announcement": "Announcement",
-    "logo_placeholder": "Logo placeholder",
     "view_all": "View all",
     "discover": "Discover",
     "continue_shopping": "Continue shopping",

@@ -2,6 +2,7 @@
   Bibelstelle. Das Theme liefert bewusst KEINE vorgefertigten Zitate:
   Text und Referenz trägt der Händler selbst ein (Übersetzung angeben).
 {%- endcomment -%}
+{%- if section.settings.text != blank or request.design_mode -%}
 <section class="section" style="{% render 'section-spacing', s: section.settings %}">
   <div class="container">
     <div class="scripture">
@@ -20,6 +21,7 @@
     </div>
   </div>
 </section>
+{%- endif -%}
 
 {% schema %}
 {

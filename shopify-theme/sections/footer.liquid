@@ -2,7 +2,9 @@
   <div class="container">
     <div class="footer__grid">
       <div>
-        <span class="logo__wordmark">{{ shop.name | upcase }}</span>
+        <a class="footer__logo" href="{{ routes.root_url }}">
+          <img src="{{ 'apologea-logo.svg' | asset_url }}" alt="{{ shop.name | escape }}" width="180" height="87" loading="lazy">
+        </a>
         {%- if settings.brand_claim != blank -%}
           <p class="muted small" style="margin-top: 12px;">{{ settings.brand_claim | escape }}</p>
         {%- endif -%}

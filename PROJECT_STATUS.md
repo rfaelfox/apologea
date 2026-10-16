@@ -3,7 +3,7 @@
 > Diese Datei ist der Einstiegspunkt für jede neue Claude-Sitzung.
 > Neue Sitzung: „Weiter laut PROJECT_STATUS.md“.
 
-Stand: 2026-10-16 (Sitzung 3) · Branch: `claude/apologea-shopify-theme-9kvfrj`
+Stand: 2026-10-16 (Sitzung 3, Teil 2) · Branch: `claude/apologea-shopify-theme-9kvfrj`
 
 ## Auftrag (Kurzfassung)
 Eigenes Shopify-Online-Store-2.0-Theme „NOCTURNE“ für APOLOGEA (Luxury Christian Streetwear),
@@ -13,7 +13,7 @@ Dokumentation. Vollständiger Master-Prompt: liegt beim Nutzer; Kernregeln siehe
 ## Harte Regeln
 - Live-Theme **niemals** veröffentlichen, ersetzen oder ändern. Nur unveröffentlichte Entwicklungs-Themes.
 - Keine kostenpflichtigen Aktionen, keine echten POD-Aufträge, keine Löschungen ohne Freigabe.
-- Original-Logo nicht verändern; bis zur Bereitstellung klar markierter Platzhalter.
+- Original-Logo nicht verändern (liegt jetzt vor, siehe `docs/brand/`).
 - Keine erfundenen Tool-Ergebnisse, Bibelzitate, theologischen/historischen Fakten, Rechtsaussagen.
 - Die bestehende **APOLOGEA Handy-App** (PWA im Repo-Root: index.html, app.js, …) bleibt unangetastet.
   Theme-Code kommt nach `shopify-theme/`, Doku nach `docs/`.
@@ -33,7 +33,7 @@ Dokumentation. Vollständiger Master-Prompt: liegt beim Nutzer; Kernregeln siehe
 | Setup-Skript | `npm install -g @shopify/cli` |
 | Shopify CLI | 4.9.4 installierbar ✔ |
 | MarketPrint | Status unbekannt — Nutzer fragen, ob App im Shop installiert ist |
-| Logo / Assets | noch nicht bereitgestellt |
+| Logo / Assets | Logo geliefert ✔ → `docs/brand/` (Original + 3 SVGs) |
 
 ### Wichtiger technischer Hinweis
 Node-`fetch` ignoriert den Proxy. Shopify-CLI-Befehle **immer** mit `NODE_USE_ENV_PROXY=1` ausführen, z. B.:
@@ -92,8 +92,24 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - Künftige Updates ins selbe Dev-Theme: `NODE_USE_ENV_PROXY=1 shopify theme push --path shopify-theme
   --theme 202489921871 --password shptka_placeholder` (nie `--publish`/`--live`).
 
+### Sitzung 3, Teil 2 — Logo + Render-Test
+- Logo vom Nutzer erhalten (1254×1254 WebP, Gold auf Schwarz). Vektorisiert (vtracer, 4× hochskaliert,
+  Schwelle auf Helligkeit) → `apologea-logo.svg` / `-wordmark.svg` / `-emblem.svg`, Abgleich mit Original ≈ 97,6 % IoU.
+  Relief → Goldverlauf. Details: `docs/DESIGN_SYSTEM.md` §7.
+- Eingebaut: Header (Variante wählbar, Standard Schriftzug 170 px, mobil ≤ 128 px), Footer (Kreuz + Schriftzug),
+  Passwortseite (Kreuz + Schriftzug statt Text-H1), Favicon (Kreuz, falls kein eigenes gesetzt).
+  Platzhalter-Logik + Übersetzungsschlüssel `general.logo_placeholder` entfernt.
+- Render-Test mit Storefront-Passwort (Passwort NICHT im Repo; Nutzer gibt es bei Bedarf erneut an):
+  Startseite, Kollektionsliste, Kollektion, Produkt, Warenkorb, Suche, 404 — Desktop 1440 px + Mobil 390 px:
+  keine Liquid-Fehler, keine Theme-JS-Fehler, kein horizontales Scrollen.
+- Dabei behoben: Produkttitel lief am Desktop rechts aus dem Bild (kleinere Größe + Umbruch);
+  `body { overflow-x: clip }` gegen Körnungs-Overlay; Logo-H1 hatte Überschriften-Abstand (Versatz);
+  Header-Raster mittig (minmax), mobile Icons 36 px; leere Bibelstelle wird im Shop ausgeblendet (nur im Editor Hinweis).
+- Shop enthält nur Beispielprodukte (Horizon-Demo) → „Ausgewählte Kollektion“ zeigt Platzhalter, bis eine Kollektion gewählt ist.
+- Theme-Check: 57 Dateien, 0 Befunde. Alles in Dev-Theme #202489921871 gepusht (unveröffentlicht).
+
 ## Nächste Schritte
-1. **Nutzer:** Vorschau-Link öffnen, Eindruck/Fehler melden.
-2. **Logo** (Nutzer liefert es) → Platzhalter ersetzen, unverändert einbinden, erneut in Dev-Theme #202489921871 pushen.
-3. Für Render-Tests aller Seiten: Storefront-Passwort vom Nutzer (oder Nutzer prüft selbst eingeloggt).
-4. MarketPrint-Status klären (App im Shop installiert?).
+1. **Nutzer:** Vorschau ansehen (Admin → Onlineshop → NOCTURNE → „…“ → Vorschau), Feedback geben.
+2. Inhalte im Theme-Editor: Hero-Bild, Kollektion für „Die Kollektion“, Markengeschichte, Manifest, Bibelstelle (Nutzer wählt Vers + Übersetzung).
+3. MarketPrint-Status klären (App im Shop installiert?) → Produktimport-Workflow (`docs/POD_DATA_MODEL.md`).
+4. Echte Produkte anlegen/importieren, dann Produkt- und Kollektionsseiten erneut prüfen.

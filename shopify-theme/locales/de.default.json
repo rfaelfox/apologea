@@ -9,7 +9,6 @@
     "cart": "Warenkorb",
     "cart_count": { "one": "{{ count }} Artikel", "other": "{{ count }} Artikel" },
     "announcement": "Ankündigung",
-    "logo_placeholder": "Logo-Platzhalter",
     "view_all": "Alle ansehen",
     "discover": "Entdecken",
     "continue_shopping": "Weiter einkaufen",
