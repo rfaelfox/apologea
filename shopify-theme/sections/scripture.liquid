@@ -1,0 +1,37 @@
+{%- comment -%}
+  Bibelstelle. Das Theme liefert bewusst KEINE vorgefertigten Zitate:
+  Text und Referenz trägt der Händler selbst ein (Übersetzung angeben).
+{%- endcomment -%}
+{%- if section.settings.text != blank or request.design_mode -%}
+<section class="section" style="{% render 'section-spacing', s: section.settings %}">
+  <div class="container">
+    <div class="scripture">
+      {% render 'ornament' %}
+      {%- if section.settings.text != blank -%}
+        <blockquote class="reveal" style="margin: 0;">
+          <p class="scripture__text">{{ section.settings.text | escape | newline_to_br }}</p>
+          {%- if section.settings.reference != blank -%}
+            <cite class="scripture__ref" style="font-style: normal;">{{ section.settings.reference | escape }}</cite>
+          {%- endif -%}
+        </blockquote>
+      {%- elsif request.design_mode -%}
+        <p class="placeholder-note">{{ 'sections.scripture.empty' | t }}</p>
+      {%- endif -%}
+      {% render 'ornament' %}
+    </div>
+  </div>
+</section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Bibelstelle",
+  "settings": [
+    { "type": "textarea", "id": "text", "label": "Vers", "info": "Wortlaut aus einer Bibelübersetzung übernehmen und Urheberrecht der Übersetzung beachten." },
+    { "type": "text", "id": "reference", "label": "Referenz", "info": "z. B. Buch Kapitel,Vers (Übersetzung)" },
+    { "type": "range", "id": "padding_top", "label": "Abstand oben", "min": 0, "max": 160, "step": 8, "unit": "px", "default": 112 },
+    { "type": "range", "id": "padding_bottom", "label": "Abstand unten", "min": 0, "max": 160, "step": 8, "unit": "px", "default": 112 }
+  ],
+  "presets": [{ "name": "Bibelstelle" }]
+}
+{% endschema %}

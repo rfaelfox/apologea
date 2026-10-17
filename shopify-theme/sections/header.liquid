@@ -1,0 +1,90 @@
+{%- liquid
+  assign menu = section.settings.menu
+  assign transparent = false
+  if section.settings.transparent_on_home and template.name == 'index'
+    assign transparent = true
+  endif
+  assign logo_tag = 'div'
+  if template.name == 'index'
+    assign logo_tag = 'h1'
+  endif
+-%}
+<div class="header-wrapper{% if transparent %} header-wrapper--transparent{% endif %}">
+  <header class="header container">
+    <div class="header__left">
+      <button type="button" class="icon-btn header__menu-toggle" data-drawer-open="MenuDrawer" aria-controls="MenuDrawer" aria-expanded="false">
+        {% render 'icon', name: 'menu' %}
+        <span class="visually-hidden">{{ 'general.menu' | t }}</span>
+      </button>
+      <nav class="header__nav" aria-label="{{ 'general.main_menu' | t }}">
+        {%- for link in menu.links -%}
+          <a href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+        {%- endfor -%}
+      </nav>
+    </div>
+
+    {% render 'logo', logo: section.settings.logo, width: section.settings.logo_width, tag: logo_tag, variant: section.settings.logo_variant %}
+
+    <div class="header__right">
+      <a class="icon-btn" href="{{ routes.search_url }}">
+        {% render 'icon', name: 'search' %}
+        <span class="visually-hidden">{{ 'general.search' | t }}</span>
+      </a>
+      {%- if shop.customer_accounts_enabled -%}
+        <a class="icon-btn" href="{% if customer %}{{ routes.account_url }}{% else %}{{ routes.account_login_url }}{% endif %}">
+          {% render 'icon', name: 'account' %}
+          <span class="visually-hidden">{{ 'general.account' | t }}</span>
+        </a>
+      {%- endif -%}
+      <a class="icon-btn" href="{{ routes.cart_url }}">
+        {% render 'icon', name: 'cart' %}
+        <span class="visually-hidden">{{ 'general.cart' | t }}</span>
+        {%- if cart.item_count > 0 -%}
+          <span class="cart-count" aria-label="{{ 'general.cart_count' | t: count: cart.item_count }}">{{ cart.item_count }}</span>
+        {%- endif -%}
+      </a>
+    </div>
+  </header>
+</div>
+
+<div class="drawer" id="MenuDrawer" aria-hidden="true">
+  <div class="drawer__overlay" data-drawer-close></div>
+  <div class="drawer__panel" role="dialog" aria-modal="true" aria-label="{{ 'general.menu' | t }}">
+    <button type="button" class="icon-btn drawer__close" data-drawer-close>
+      {% render 'icon', name: 'close' %}
+      <span class="visually-hidden">{{ 'general.close' | t }}</span>
+    </button>
+    <ul class="drawer__nav">
+      {%- for link in menu.links -%}
+        <li>
+          <a href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+          {%- if link.links.size > 0 -%}
+            <ul class="drawer__sub">
+              {%- for child in link.links -%}
+                <li><a href="{{ child.url }}">{{ child.title | escape }}</a></li>
+              {%- endfor -%}
+            </ul>
+          {%- endif -%}
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Header",
+  "class": "section-header",
+  "settings": [
+    { "type": "select", "id": "logo_variant", "label": "Logo-Variante", "default": "wordmark", "options": [
+      { "value": "wordmark", "label": "Schriftzug" },
+      { "value": "lockup", "label": "Kreuz + Schriftzug" },
+      { "value": "emblem", "label": "Nur Kreuz" }
+    ] },
+    { "type": "range", "id": "logo_width", "label": "Logobreite", "min": 40, "max": 300, "step": 10, "unit": "px", "default": 170 },
+    { "type": "image_picker", "id": "logo", "label": "Eigenes Logo-Bild (optional)", "info": "Ersetzt das eingebaute APOLOGEA-SVG-Logo." },
+    { "type": "link_list", "id": "menu", "label": "Menü", "default": "main-menu" },
+    { "type": "checkbox", "id": "transparent_on_home", "label": "Auf der Startseite transparent über dem Hero", "default": true }
+  ]
+}
+{% endschema %}

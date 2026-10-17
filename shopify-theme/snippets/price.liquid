@@ -1,0 +1,20 @@
+{%- comment -%} Parameter: product, variant (optional), data (bool, für JS-Aktualisierung) {%- endcomment -%}
+{%- liquid
+  assign target = variant | default: product.selected_or_first_available_variant
+  assign on_sale = false
+  if target.compare_at_price > target.price
+    assign on_sale = true
+  endif
+-%}
+<div class="price{% if on_sale %} price--sale{% endif %}"{% if data %} data-price data-currency="{{ cart.currency.iso_code }}"{% endif %}>
+  {%- if on_sale -%}
+    <s><span class="visually-hidden">{{ 'products.price.regular' | t }}</span>{{ target.compare_at_price | money }}</s>
+  {%- endif -%}
+  <span class="price__current">
+    {%- if variant == blank and product.price_varies -%}
+      {{ 'products.price.from' | t: price: product.price_min | money }}
+    {%- else -%}
+      {{ target.price | money }}
+    {%- endif -%}
+  </span>
+</div>

@@ -1,0 +1,21 @@
+APOLOGEA STUDIO – Installation
+================================
+
+1. Diese ZIP-Datei entpacken (Rechtsklick → „Alle extrahieren …“).
+2. Im entpackten Ordner doppelt auf „Installieren.cmd“ klicken.
+   Falls Windows warnt („Der Computer wurde durch Windows geschützt“):
+   „Weitere Informationen“ → „Trotzdem ausführen“.
+3. Fertig. Auf dem Desktop liegt jetzt „APOLOGEA Studio“. Das Programm öffnet sich
+   nach der Installation automatisch.
+
+Es werden keine Administratorrechte benötigt.
+
+Wo liegt was?
+- Programm:      %LOCALAPPDATA%\Programs\APOLOGEA Studio
+- Deine Daten:   Dokumente\APOLOGEA Studio  (Designs, Exporte, Sicherungen)
+- Verknüpfungen: Desktop und Startmenü („APOLOGEA Studio“)
+
+Deinstallieren: Startmenü → APOLOGEA Studio → „APOLOGEA Studio deinstallieren“.
+Deine Daten bleiben dabei erhalten.
+
+Erste Schritte im Programm: „Einstellungen“ öffnen und Shopify, MarketPrint und Claude verbinden.

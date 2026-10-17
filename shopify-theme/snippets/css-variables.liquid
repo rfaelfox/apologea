@@ -1,0 +1,27 @@
+{%- comment -%}
+  NOCTURNE: Händler-editierbare Design-Tokens. Feste Tokens stehen in assets/nocturne.css.
+{%- endcomment -%}
+{%- liquid
+  assign heading_font = settings.type_header_font
+  assign body_font = settings.type_body_font
+  assign body_font_bold = body_font | font_modify: 'weight', 'bold'
+-%}
+<style>
+  {{ heading_font | font_face: font_display: 'swap' }}
+  {{ body_font | font_face: font_display: 'swap' }}
+  {{ body_font_bold | font_face: font_display: 'swap' }}
+
+  :root {
+    --n-night: {{ settings.color_background }};
+    --n-gold: {{ settings.color_accent }};
+    --n-gold-2: {{ settings.color_accent | color_lighten: 12 }};
+    --n-gold-dim: {{ settings.color_accent | color_darken: 18 }};
+    --n-gold-wash: {{ settings.color_accent | color_modify: 'alpha', 0.12 }};
+    --n-ivory: {{ settings.color_text }};
+    --n-font-display: {{ heading_font.family }}, {{ heading_font.fallback_families }};
+    --n-font-display-weight: {{ heading_font.weight }};
+    --n-font-body: {{ body_font.family }}, {{ body_font.fallback_families }};
+    --n-font-body-weight: {{ body_font.weight }};
+    --n-heading-tracking: {{ settings.heading_letter_spacing | divided_by: 100.0 }}em;
+  }
+</style>

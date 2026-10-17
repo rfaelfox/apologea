@@ -1,0 +1,32 @@
+{%- paginate blog.articles by 9 -%}
+  <section class="collection-hero container reveal">
+    <p class="eyebrow">{{ 'blogs.eyebrow' | t }}</p>
+    <h1>{{ blog.title | escape }}</h1>
+    {% render 'ornament' %}
+  </section>
+  <section class="section" style="--pt: 0px; --pt-d: 0px;">
+    <div class="container grid grid--3 reveal--stagger">
+      {%- for article in blog.articles -%}
+        <article class="card">
+          <div class="card__media" style="--card-ratio: 3 / 2;">
+            {%- if article.image -%}
+              {{ article.image | image_url: width: 900 | image_tag: loading: 'lazy', widths: '400,600,900', sizes: '(min-width: 750px) 33vw, 50vw', alt: article.image.alt | default: article.title }}
+            {%- else -%}
+              {{ 'lifestyle-1' | placeholder_svg_tag }}
+            {%- endif -%}
+          </div>
+          <p class="eyebrow" style="margin: 0;">{{ article.published_at | time_tag: format: 'date' }}</p>
+          <h2 class="card__title"><a class="card__link" href="{{ article.url }}">{{ article.title | escape }}</a></h2>
+          <p class="muted small">{{ article.excerpt_or_content | strip_html | truncatewords: 24 }}</p>
+        </article>
+      {%- else -%}
+        <p class="muted">{{ 'blogs.empty' | t }}</p>
+      {%- endfor -%}
+    </div>
+    <div class="container">{% render 'pagination', paginate: paginate %}</div>
+  </section>
+{%- endpaginate -%}
+
+{% schema %}
+{ "name": "Blog", "settings": [] }
+{% endschema %}

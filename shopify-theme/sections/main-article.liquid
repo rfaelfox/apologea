@@ -1,0 +1,20 @@
+<article class="section" style="--pt: 48px; --pt-d: 96px;">
+  <div class="container container--narrow">
+    <header class="center reveal">
+      <p class="eyebrow">{{ article.published_at | time_tag: format: 'date' }}</p>
+      <h1>{{ article.title | escape }}</h1>
+      {% render 'ornament' %}
+    </header>
+    {%- if article.image -%}
+      <div class="reveal-fade" style="margin-bottom: 48px;">
+        {{ article.image | image_url: width: 1600 | image_tag: loading: 'eager', widths: '800,1200,1600', sizes: '(min-width: 820px) 820px, 100vw', alt: article.image.alt | default: article.title }}
+      </div>
+    {%- endif -%}
+    <div class="rte">{{ article.content }}</div>
+    <p style="margin-top: 48px;"><a class="link-arrow" href="{{ blog.url }}">{{ 'blogs.back' | t }}</a></p>
+  </div>
+</article>
+
+{% schema %}
+{ "name": "Beitrag", "settings": [] }
+{% endschema %}

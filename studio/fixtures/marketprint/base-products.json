@@ -1,0 +1,72 @@
+[
+ {
+  "id": "6391c767702e1dea29b936ed",
+  "title": "VACANCY Oversized Shirt",
+  "image": "https://cdn.marketprint.de/storage/products/6391c767702e1dea29b936ed_front_3d3d3d_designer.png",
+  "hasNeckPrint": true,
+  "hasAlternativeDesign": true
+ },
+ {
+  "id": "6391c45e702e1dea29b936e1",
+  "title": "VACANCY Oversized Hoodie",
+  "image": "https://cdn.marketprint.de/storage/products/6391c45e702e1dea29b936e1_front_131313_designer.png",
+  "hasNeckPrint": false,
+  "hasAlternativeDesign": true
+ },
+ {
+  "id": "66215c4ac7be538a2491108d",
+  "title": "HigherBlanks Premium T-Shirt",
+  "image": "https://cdn.marketprint.de/storage/products/66215c4ac7be538a2491108d_front_021b3d_designer.png",
+  "hasNeckPrint": true,
+  "hasAlternativeDesign": true
+ },
+ {
+  "id": "64809085300f9afb69a1d834",
+  "title": "HigherBlanks Premium Hoodie",
+  "image": "https://cdn.marketprint.de/storage/products/64809085300f9afb69a1d834_front_000000_designer.png",
+  "hasNeckPrint": false,
+  "hasAlternativeDesign": true
+ },
+ {
+  "id": "6a8ebc0cc3342759737cc6d5",
+  "title": "Regular Fit T-Shirt",
+  "image": "https://cdn.marketprint.de/storage/products/66215c4ac7be538a2491108d_front_021b3d_designer.png",
+  "hasNeckPrint": true,
+  "hasAlternativeDesign": true
+ },
+ {
+  "id": "5f049448cae6841951b8f34d",
+  "title": "Premium Organic Shirt",
+  "image": "https://cdn.marketprint.de/storage/products/5f049448cae6841951b8f34d_front_ffffff_6102be4a4fda7_designer_v2.png",
+  "hasNeckPrint": true,
+  "hasAlternativeDesign": true
+ },
+ {
+  "id": "5f1007a1884cfe3080acd2e3",
+  "title": "Premium Organic Hoodie",
+  "image": "https://cdn.marketprint.de/storage/products/5f1007a1884cfe3080acd2e3_front_69262f_designer.png",
+  "hasNeckPrint": false,
+  "hasAlternativeDesign": true
+ },
+ {
+  "id": "687fad7c8c4d7bbb3b3103cc",
+  "title": "Sleeveless Oversized Tee",
+  "image": "https://cdn.marketprint.de/storage/products/687fad7c8c4d7bbb3b3103cc_front_d8ceb5_designer_v2.png",
+  "hasNeckPrint": false,
+  "hasAlternativeDesign": true
+ },
+ {
+  "id": "614491c923efe8c73ecc1c5f",
+  "title": "Beanie",
+  "image": "https://cdn.marketprint.de/storage/products/614491c923efe8c73ecc1c5f_front_ffffff_designer.png",
+  "hasNeckPrint": false,
+  "hasAlternativeDesign": true
+ },
+ {
+  "id": "5fae97c5d3f01b1643125a65",
+  "title": "Poster 3:4",
+  "image": "https://cdn.marketprint.de/storage/products/canvas_product_image_3_4.png",
+  "hasNeckPrint": false,
+  "hasAlternativeDesign": true
+ }
+]

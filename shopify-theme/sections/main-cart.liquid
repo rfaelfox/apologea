@@ -1,0 +1,92 @@
+<section class="section" style="--pt: 48px; --pt-d: 72px;">
+  <div class="container">
+    <h1 class="center reveal">{{ 'cart.title' | t }}</h1>
+    {% render 'ornament' %}
+
+    {%- if cart.item_count > 0 -%}
+      <form action="{{ routes.cart_url }}" method="post" novalidate>
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th scope="col">{{ 'cart.product' | t }}</th>
+              <th scope="col">{{ 'cart.quantity' | t }}</th>
+              <th scope="col" style="text-align: right;">{{ 'cart.total' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {%- for item in cart.items -%}
+              <tr>
+                <td>
+                  <div class="cart-item">
+                    <a class="cart-item__img" href="{{ item.url }}">
+                      {%- if item.image -%}
+                        {{ item.image | image_url: width: 240 | image_tag: loading: 'lazy', alt: item.product.title }}
+                      {%- endif -%}
+                    </a>
+                    <div>
+                      <a class="card__title" href="{{ item.url }}">{{ item.product.title | escape }}</a>
+                      {%- unless item.product.has_only_default_variant -%}
+                        <p class="muted small" style="margin: 4px 0 0;">{{ item.variant.title | escape }}</p>
+                      {%- endunless -%}
+                      {%- for p in item.properties -%}
+                        {%- assign first = p.first | slice: 0 -%}
+                        {%- unless p.last == blank or first == '_' -%}
+                          <p class="muted small" style="margin: 2px 0 0;">{{ p.first | escape }}: {{ p.last | escape }}</p>
+                        {%- endunless -%}
+                      {%- endfor -%}
+                      <p class="small" style="margin: 6px 0 0;">{{ item.final_price | money }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="qty">
+                    <button type="button" data-qty="minus" aria-label="{{ 'products.decrease' | t }}">−</button>
+                    <input type="number" name="updates[]" value="{{ item.quantity }}" min="0" aria-label="{{ 'cart.quantity' | t }}">
+                    <button type="button" data-qty="plus" aria-label="{{ 'products.increase' | t }}">+</button>
+                  </div>
+                  <p style="margin: 8px 0 0;"><a class="muted small" href="{{ item.url_to_remove }}">{{ 'cart.remove' | t }}</a></p>
+                </td>
+                <td style="text-align: right;">{{ item.final_line_price | money }}</td>
+              </tr>
+            {%- endfor -%}
+          </tbody>
+        </table>
+
+        <div class="cart-footer">
+          <div>
+            {%- if section.settings.show_note -%}
+              <div class="field">
+                <label for="CartNote">{{ 'cart.note' | t }}</label>
+                <textarea class="input" id="CartNote" name="note" rows="3">{{ cart.note }}</textarea>
+              </div>
+            {%- endif -%}
+            <button class="btn btn--ghost" type="submit" name="update">{{ 'cart.update' | t }}</button>
+          </div>
+          <div class="cart-summary">
+            {%- for discount in cart.cart_level_discount_applications -%}
+              <div class="cart-summary__row muted"><span>{{ discount.title | escape }}</span><span>−{{ discount.total_allocated_amount | money }}</span></div>
+            {%- endfor -%}
+            <div class="cart-summary__row"><strong>{{ 'cart.subtotal' | t }}</strong><strong>{{ cart.total_price | money_with_currency }}</strong></div>
+            <p class="muted small">{{ 'cart.taxes_shipping' | t }}</p>
+            <button class="btn btn--solid btn--full" type="submit" name="checkout">{{ 'cart.checkout' | t }}</button>
+            {%- if additional_checkout_buttons -%}
+              <div style="margin-top: 12px;">{{ content_for_additional_checkout_buttons }}</div>
+            {%- endif -%}
+          </div>
+        </div>
+      </form>
+    {%- else -%}
+      <div class="empty-state">
+        <p class="muted">{{ 'cart.empty' | t }}</p>
+        <a class="btn" href="{{ routes.all_products_collection_url }}">{{ 'general.continue_shopping' | t }}</a>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Warenkorb",
+  "settings": [{ "type": "checkbox", "id": "show_note", "label": "Bestellnotiz erlauben", "default": false }]
+}
+{% endschema %}

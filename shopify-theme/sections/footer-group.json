@@ -1,0 +1,17 @@
+{
+  "type": "footer",
+  "name": "Footer-Gruppe",
+  "sections": {
+    "newsletter": { "type": "newsletter", "settings": {} },
+    "footer": {
+      "type": "footer",
+      "blocks": {
+        "menu_shop": { "type": "menu", "settings": { "heading": "Shop", "menu": "main-menu" } },
+        "menu_info": { "type": "menu", "settings": { "heading": "Service", "menu": "footer" } }
+      },
+      "block_order": ["menu_shop", "menu_info"],
+      "settings": { "show_payment_icons": true }
+    }
+  },
+  "order": ["newsletter", "footer"]
+}

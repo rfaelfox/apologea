@@ -1,0 +1,55 @@
+{%- paginate collection.products by section.settings.per_page -%}
+  <section class="collection-hero container reveal">
+    <p class="eyebrow">{{ 'collections.eyebrow' | t }}</p>
+    <h1>{{ collection.title | escape }}</h1>
+    {%- if collection.description != blank -%}
+      <div class="collection-hero__desc rte">{{ collection.description }}</div>
+    {%- endif -%}
+    {% render 'ornament' %}
+  </section>
+
+  <section class="section" style="--pt: 0px; --pt-d: 0px;">
+    <div class="container">
+      <div class="toolbar">
+        <span class="muted">{{ 'collections.count' | t: count: collection.products_count }}</span>
+        {%- if section.settings.show_sort -%}
+          <label class="visually-hidden" for="SortBy">{{ 'collections.sort_by' | t }}</label>
+          {%- assign sort_by = collection.sort_by | default: collection.default_sort_by -%}
+          <select class="select" id="SortBy" data-sort>
+            {%- for option in collection.sort_options -%}
+              <option value="{{ option.value | escape }}"{% if option.value == sort_by %} selected{% endif %}>{{ option.name | escape }}</option>
+            {%- endfor -%}
+          </select>
+        {%- endif -%}
+      </div>
+
+      {%- if collection.products.size > 0 -%}
+        <div class="grid grid--{{ section.settings.columns }} reveal--stagger">
+          {%- for product in collection.products -%}
+            {%- assign eager = false -%}
+            {%- if forloop.index <= 4 -%}{%- assign eager = true -%}{%- endif -%}
+            {% render 'product-card', product: product, eager: eager %}
+          {%- endfor -%}
+        </div>
+      {%- else -%}
+        <div class="empty-state">
+          <p class="muted">{{ 'collections.empty' | t }}</p>
+          <a class="btn" href="{{ routes.all_products_collection_url }}">{{ 'general.continue_shopping' | t }}</a>
+        </div>
+      {%- endif -%}
+
+      {% render 'pagination', paginate: paginate %}
+    </div>
+  </section>
+{%- endpaginate -%}
+
+{% schema %}
+{
+  "name": "Kollektion",
+  "settings": [
+    { "type": "range", "id": "per_page", "label": "Produkte pro Seite", "min": 8, "max": 48, "step": 4, "default": 24 },
+    { "type": "select", "id": "columns", "label": "Spalten (Desktop)", "options": [{ "value": "3", "label": "3" }, { "value": "4", "label": "4" }], "default": "4" },
+    { "type": "checkbox", "id": "show_sort", "label": "Sortierung anzeigen", "default": true }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,42 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero-sacred",
+      "blocks": {
+        "eyebrow": { "type": "eyebrow", "settings": { "text": "Neue Kollektion" } },
+        "heading": { "type": "heading", "settings": { "text": "Light in the Dark" } },
+        "text": { "type": "text", "settings": { "text": "<p>Luxury Christian Streetwear.</p>" } },
+        "buttons": { "type": "buttons", "settings": { "label_1": "Kollektion entdecken", "label_2": "Unsere Geschichte" } }
+      },
+      "block_order": ["eyebrow", "heading", "text", "buttons"],
+      "settings": { "height": "full", "overlay": 55, "rays": true, "kenburns": true, "scroll_hint": true }
+    },
+    "featured": {
+      "type": "featured-collection",
+      "settings": { "eyebrow": "Drop 01", "heading": "Die Kollektion", "limit": 4, "columns": "4", "alt_bg": false, "padding_top": 112, "padding_bottom": 112 }
+    },
+    "scripture": {
+      "type": "scripture",
+      "settings": { "text": "", "reference": "", "padding_top": 96, "padding_bottom": 96 }
+    },
+    "story": {
+      "type": "image-with-text",
+      "settings": { "eyebrow": "Unsere Geschichte", "heading": "Glaube, getragen", "text": "<p>Hier die Markengeschichte von APOLOGEA eintragen.</p>", "button_label": "Mehr erfahren", "reverse": false, "alt_bg": true, "padding_top": 112, "padding_bottom": 112 }
+    },
+    "collections": {
+      "type": "collection-list",
+      "blocks": {
+        "c1": { "type": "collection", "settings": {} },
+        "c2": { "type": "collection", "settings": {} },
+        "c3": { "type": "collection", "settings": {} }
+      },
+      "block_order": ["c1", "c2", "c3"],
+      "settings": { "eyebrow": "Entdecken", "heading": "Kollektionen", "padding_top": 112, "padding_bottom": 112 }
+    },
+    "manifest": {
+      "type": "rich-text",
+      "settings": { "eyebrow": "Manifest", "heading": "Mehr als Kleidung", "text": "<p>Hier das Marken-Manifest eintragen.</p>", "alt_bg": false, "padding_top": 112, "padding_bottom": 112 }
+    }
+  },
+  "order": ["hero", "featured", "scripture", "story", "collections", "manifest"]
+}

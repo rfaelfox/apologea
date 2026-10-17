@@ -1,0 +1,9 @@
+{
+  "type": "header",
+  "name": "Header-Gruppe",
+  "sections": {
+    "announcement": { "type": "announcement-bar", "settings": { "text": "" } },
+    "header": { "type": "header", "settings": { "logo_variant": "wordmark", "logo_width": 170, "menu": "main-menu", "transparent_on_home": true } }
+  },
+  "order": ["announcement", "header"]
+}

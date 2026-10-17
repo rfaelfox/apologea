@@ -1,0 +1,35 @@
+{%- comment -%}
+  Logo. Hochgeladenes Bild hat Vorrang; sonst das APOLOGEA-Original-Logo als SVG aus assets/
+  (Vektorisierung des vom Inhaber gelieferten Logos, siehe docs/brand/).
+  Parameter: logo (image), width (number), tag ('h1' oder 'div'), variant ('wordmark' | 'lockup' | 'emblem')
+{%- endcomment -%}
+{%- liquid
+  assign tag = tag | default: 'div'
+  assign variant = variant | default: 'wordmark'
+  case variant
+    when 'lockup'
+      assign svg_file = 'apologea-logo.svg'
+      assign svg_ratio = 2.0624
+    when 'emblem'
+      assign svg_file = 'apologea-emblem.svg'
+      assign svg_ratio = 1.0058
+    else
+      assign svg_file = 'apologea-wordmark.svg'
+      assign svg_ratio = 7.3464
+  endcase
+  assign svg_height = width | divided_by: svg_ratio | round
+-%}
+<{{ tag }} class="logo logo--{{ variant }}">
+  <a href="{{ routes.root_url }}">
+    {%- if logo != blank -%}
+      {%- liquid
+        assign w2 = width | times: 2
+        assign logo_sizes = width | append: 'px'
+        assign logo_widths = width | append: ',' | append: w2
+      -%}
+      {{ logo | image_url: width: w2 | image_tag: width: width, alt: shop.name, loading: 'eager', sizes: logo_sizes, widths: logo_widths }}
+    {%- else -%}
+      <img src="{{ svg_file | asset_url }}" alt="{{ shop.name | escape }}" width="{{ width }}" height="{{ svg_height }}" loading="eager">
+    {%- endif -%}
+  </a>
+</{{ tag }}>
