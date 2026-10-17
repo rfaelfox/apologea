@@ -208,6 +208,12 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - Tests: `npm test` 55/55 (neu: cloudflare.test.mjs mit simuliertem Cloudflare), Oberflächen-Durchlauf 58/58,
   Assistent im Browser durchgeklickt. Gegen echtes Cloudflare noch ungetestet.
 
+## Sitzung 6, Teil 3 (2026-10-17) — Studio 2.1.1: MarketPrint-Fehlermeldung
+- Nutzer sah „Werkzeug get_base_product_details ist in Claude Code nicht verfügbar“. Ursache sehr wahrscheinlich: Anmeldung des
+  claude.ai-Connectors MarketPrint abgelaufen (auch in der Cloud-Sitzung meldete sich MarketPrint als „Anmeldung erforderlich“).
+- Studio liest jetzt den Connector-Status aus dem Claude-Code-Start (needs-auth / failed / fehlt) und nennt Ursache + Lösung.
+- Tests: `npm test` grün (neu: needs-auth-Fall in bridge.test.mjs).
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Ersatz für die Claude-Code-Kommandozeile in Tests. Verhalten über FAKE_CLAUDE_MODE: ok | alter | twice | notool
+// Ersatz für die Claude-Code-Kommandozeile in Tests. Verhalten über FAKE_CLAUDE_MODE: ok | alter | twice | notool | needsauth
 import fs from 'node:fs';
 const args = process.argv.slice(2);
 const prefix = 'mcp__claude_ai_MarketPrint__Print_On_Demand__';
@@ -10,13 +10,13 @@ const emit = (o) => process.stdout.write(JSON.stringify(o) + '\n');
 const tools = ['get_account_info', 'list_base_products', 'get_base_product_details', 'list_my_images', 'upload_image', 'create_shop_product'].map((t) => prefix + t);
 const mode0 = process.env.FAKE_CLAUDE_MODE || 'ok';
 // „deferred“: Werkzeuge werden (wie bei vielen Connectoren) erst bei Bedarf geladen und stehen nicht in der Startliste.
-emit({ type: 'system', subtype: 'init', tools: mode0 === 'deferred' ? ['ToolSearch'] : tools, mcp_servers: [{ name: 'claude.ai MarketPrint: Print On Demand', status: 'connected' }], model: 'test' });
+emit({ type: 'system', subtype: 'init', tools: mode0 === 'deferred' ? ['ToolSearch'] : tools, mcp_servers: [{ name: 'claude.ai MarketPrint: Print On Demand', status: mode0 === 'needsauth' ? 'needs-auth' : 'connected' }], model: 'test' });
 const allowedIdx = args.indexOf('--allowedTools');
 const allowed = allowedIdx >= 0 ? args[allowedIdx + 1].split(',') : [];
 const toolMatch = input.match(/Werkzeug `([a-z_]+)`/);
 const jsonMatch = input.match(/```json\n([\s\S]*?)\n```/);
 const mode = process.env.FAKE_CLAUDE_MODE || 'ok';
-if (toolMatch && mode !== 'notool' && allowed.includes(prefix + toolMatch[1])) {
+if (toolMatch && mode !== 'notool' && mode !== 'needsauth' && allowed.includes(prefix + toolMatch[1])) {
   const tool = toolMatch[1];
   let callArgs = JSON.parse(jsonMatch[1]);
   if (mode === 'alter') callArgs = { ...callArgs, price: 1 };

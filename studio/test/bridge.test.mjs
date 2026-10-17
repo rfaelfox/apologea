@@ -58,6 +58,15 @@ test('Mehrfachaufruf wird erkannt → Ergebnis prüfen', async () => {
   await assert.rejects(() => mp.createShopProduct({ baseProductId: 'a'.repeat(24), variantIds: ['v1'], addToShops: ['x'], images: [], mockups: 'all', price: 40 }), (e) => e.code === 'needs_check');
 });
 
+test('Abgelaufene Connector-Anmeldung (needs-auth) → klare Ursache und Lösung, nichts ausgeführt', async () => {
+  process.env.FAKE_CLAUDE_MODE = 'needsauth';
+  await assert.rejects(() => mp.call('get_base_product_details', { id: 'a'.repeat(24) }), (e) => e.code === 'mp_connector' && /abgelaufen/.test(e.message) && /claude\.ai/.test(e.message) && /nichts ausgeführt/.test(e.message));
+  delete process.env.FAKE_CLAUDE_MODE;
+  assert.equal(mp.connectorProblem({ mcpServers: [{ name: 'claude.ai MarketPrint: Print On Demand', status: 'connected' }] }), null);
+  assert.match(mp.connectorProblem({ mcpServers: [] }), /nicht geladen/);
+  assert.match(mp.connectorProblem({ mcpServers: [{ name: 'claude.ai MarketPrint: Print On Demand', status: 'failed' }] }), /nicht starten/);
+});
+
 test('Kein Werkzeugaufruf → eindeutig „nichts ausgeführt“', async () => {
   process.env.FAKE_CLAUDE_MODE = 'notool';
   await assert.rejects(() => mp.createShopProduct({ baseProductId: 'a'.repeat(24), variantIds: ['v1'], addToShops: ['x'], images: [], mockups: 'all', price: 40 }), (e) => e.code === 'tool_not_called');

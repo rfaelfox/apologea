@@ -1,10 +1,10 @@
 {
  "app": "APOLOGEA Studio",
- "version": "2.1.0",
+ "version": "2.1.1",
  "depsHash": "36fc190ea6c1798cc6ad1912ad09dd03fd32a76ddf8e8ee3bd2f46990a13f964",
  "files": {
   "launcher.js": "67cc63583282b9a9a7abdfd2cb61983f98dedd537d7560d05ad4dc0b5b702ed7",
-  "package.json": "5160fddff054a368f2274492c78430624b3dd4768cd7aba39275b0ee86c2252b",
+  "package.json": "ec10300ec7559fccc0e413e7f03267b32fa8bfd1c804a0d84b2bf1142c282560",
   "package-lock.json": "dbd74ff76027d5c9f030067c966b541e93d76570be295cddf0cad835cf26e2e3",
   "src/collector/core.js": "2f56ccab747490fc2689160afb1fd5137a61653e5d0ff4de08c5e61f5deb4295",
   "src/collector/pixel.js": "830789790115c98cc6737f7ce2c0c856646560dd0c38dfcfd2641356f3f6d1a0",
@@ -27,7 +27,7 @@
   "src/server/claudeCli.js": "0b7053deef719847f1ff158e007794a00de70fcfb2f967304502754a7d839866",
   "src/server/images.js": "b83f08b3293bf7cb8d03f4b0031ff024d6f5bf0d6a7949a7a13b7bb483bd651a",
   "src/server/index.js": "745658ad89b7b55f5fc9a0a70c0dca370618db042a6afac3f77eb8740d519795",
-  "src/server/integrations/marketprint.js": "b808ab1a40113d355e984ac6770b9cf8a9ade2e099ce15998391886937ae15a7",
+  "src/server/integrations/marketprint.js": "d2b43bc8da21df89161adb8e489cb1c4f0ddf079a0c92cefe879ec7ec71f34ff",
   "src/server/integrations/shopify.js": "3d0866009f6efba9155b59c9cf14269553739b8e6d228d375d1e15d46c6b773a",
   "src/server/opener.js": "8517236ede718c50df90981d0cda3ac1598747c6d59358d68f0e5b0ef908b502",
   "src/server/paths.js": "9a845909cc8296f3f6dd3785be904f6bd24092434c67f607d1e600d82c9e07ad",

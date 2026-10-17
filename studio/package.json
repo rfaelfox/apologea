@@ -1,6 +1,6 @@
 {
   "name": "apologea-studio",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "private": true,
   "description": "APOLOGEA Studio – lokale Arbeitsoberfläche für Shopify-Website und MarketPrint-Produkte",
   "type": "module",

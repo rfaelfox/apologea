@@ -73,6 +73,22 @@ function bridgePrompt(tool, args) {
   ].join('\n');
 }
 
+/**
+ * Liest den Connector-Status aus dem Startereignis von Claude Code (mcp_servers: [{ name, status }]) und liefert
+ * eine verständliche Meldung samt Lösung – oder null, wenn der Connector verbunden ist.
+ */
+export function connectorProblem(init) {
+  if (!init) return null;
+  const mp = (init.mcpServers || []).filter((s) => /marketprint/i.test(s.name || ''));
+  const fix = 'So behebst du es: claude.ai im Browser öffnen → Einstellungen → Connectoren → „MarketPrint“ → „Verbinden“ bzw. „Erneut verbinden“ und bei MarketPrint anmelden. Danach im Studio unter Einstellungen → MarketPrint „Verbindung prüfen“.';
+  if (!mp.length) return `Claude Code hat den MarketPrint-Connector nicht geladen. ${fix}`;
+  if (mp.some((s) => s.status === 'connected')) return null;
+  const st = mp.map((s) => s.status).join(', ');
+  if (/needs-auth/i.test(st)) return `Die MarketPrint-Anmeldung in deinem Claude-Konto ist abgelaufen (Status „needs-auth“). ${fix}`;
+  if (/fail/i.test(st)) return `Der MarketPrint-Connector konnte nicht starten (Status „${st}“). Meist ist MarketPrint kurz nicht erreichbar – in ein paar Minuten erneut versuchen. Hilft das nicht: ${fix}`;
+  return `Der MarketPrint-Connector ist nicht bereit (Status „${st}“). ${fix}`;
+}
+
 async function callViaClaudeCode(tool, args) {
   const prefix = serverPrefix();
   const fullName = `${prefix}${tool}`;
@@ -81,6 +97,8 @@ async function callViaClaudeCode(tool, args) {
   const calls = extractToolCalls(events).filter((c) => c.name === fullName);
   if (calls.length === 0) {
     const init = initInfo(events);
+    const problem = connectorProblem(init);
+    if (problem) throw new UserError(`${problem} (Es wurde nichts ausgeführt.)`, { status: 502, code: 'mp_connector' });
     const available = init?.tools?.some((t) => t === fullName);
     throw new UserError(available
       ? `Claude Code hat das MarketPrint-Werkzeug „${tool}“ nicht aufgerufen. Es wurde nichts ausgeführt.`
@@ -326,6 +344,8 @@ export async function testConnection() {
     const call = extractToolCalls(events).find((c) => /marketprint/i.test(c.name || '') && c.name.endsWith('__get_account_info'));
     const listed = (init?.tools || []).find((t) => /marketprint/i.test(t) && t.endsWith('__get_account_info'));
     const toolName = call?.name || listed;
+    const problem = connectorProblem(init);
+    if (!toolName && problem) return { ...out, message: problem };
     if (!toolName) return { ...out, message: 'Der MarketPrint-Connector ist in Claude Code sichtbar, aber Claude Code konnte seine Werkzeuge nicht aufrufen. Bitte Claude Code einmal im Terminal starten („claude“), dort „/mcp“ eingeben und prüfen, ob „MarketPrint“ verbunden ist. Status: ' + servers.map((s) => s.status).join(', ') };
     const prefix = toolName.slice(0, -'get_account_info'.length);
     saveSettings({ marketprint: { claudeCodeServer: prefix } });
