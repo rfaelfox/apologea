@@ -238,3 +238,6 @@ select.input { padding-right: 34px; background-image: url("data:image/svg+xml,%3
 .imp-files .filerow { gap: 10px; }
 .imp-files .fn { word-break: break-all; }
 .imp-role { width: auto; min-width: 128px; max-width: 46%; padding: 8px 10px; font-size: 13.5px; flex: none; }
+.imp-focus { margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.imp-focus.done { border-color: #3d5232; background: var(--ok-bg); color: var(--ok); }
+.imp-focus .btn { margin-left: auto; }

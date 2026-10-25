@@ -229,6 +229,8 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   Einzeldateien – Erkennung, Anlage, Nummern, neue Kleidungstypen korrekt, keine JS-Fehler. Mit echtem OneDrive **ungetestet**.
 - Mit Freigabe des Nutzers **nur die 6 App-Dateien** nach `main` übernommen (Commit `635889d`). Ob die Auslieferung (vermutlich GitHub Pages)
   aktualisiert hat, konnte aus der Cloud nicht geprüft werden (github.io gesperrt) → Rückmeldung des Nutzers abwarten.
+- 1.1.1: Fehlt beim Tippen auf „importieren“ der Kleidungstyp, zeigt die Vorschau nur noch diese Pieces (Hinweisleiste mit
+  Restanzahl, „Alle anzeigen“). Getestet im Demo-Modus.
 - PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
