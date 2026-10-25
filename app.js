@@ -1,7 +1,7 @@
 /* APOLOGEA Handy-App – Oberfläche */
 'use strict';
 
-const VERSION = '1.2.1';
+const VERSION = '1.3.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -385,6 +385,7 @@ function openMenu() {
   const segs = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" class="${v === cur ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   body.innerHTML = `
     <button class="menu-item" data-a="sync">${icon('refresh')}Jetzt aktualisieren</button>
+    <button class="menu-item" data-a="catalog">${icon('file')}Katalog erstellen …<span class="sub">PDF zum Teilen</span></button>
     <button class="menu-item" data-a="import">${icon('import')}Pieces importieren …<span class="sub">ZIP, Ordner</span></button>
     <button class="menu-item" data-a="newcat">${icon('plus')}Neuer Kleidungstyp …</button>
     <button class="menu-item" data-a="status">${icon('shield')}Nach Status filtern<span class="sub">${esc({ '': 'Alle', vollstaendig: 'Vollständig', entwurf: 'Entwürfe', unvollstaendig: 'Unvollständig', hinweise: 'Mit Hinweisen' }[S.filter.status])}</span></button>
@@ -416,6 +417,7 @@ function openMenu() {
       if (act === 'sync') sync(false);
       if (act === 'newcat') createCategory();
       if (act === 'import') openImport();
+      if (act === 'catalog') openCatalog();
       if (act === 'check') openCheck();
       if (act === 'trash') openTrash();
       if (act === 'status') {

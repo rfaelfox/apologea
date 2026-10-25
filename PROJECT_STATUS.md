@@ -241,6 +241,14 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   automatisch warten, bis App sichtbar + online, Stand prüfen (Kennung), dasselbe Piece erneut (max. 8 Versuche, dann
   Fortsetzen später). Zwischenordner wird bei Fehlern nicht mehr gelöscht (hätte ein bereits verschobenes, fertiges Piece
   löschen können). Getestet: Abbruch im Hintergrund + Rückkehr; Abbruch direkt nach dem Speichern → keine Doppelten.
+- 1.3.0: Menü → „Katalog erstellen …“ → gestaltete PDF (A4) mit Deckblatt, Kapiteln je Kleidungstyp (fließend, mit
+  „Fortsetzung“), Bildkarten (Nummer, Name, Motiv, Serie, Entwurf-Kennzeichen), optional Verzeichnis, Rückseite.
+  Varianten „Übersicht“ (9/Seite) und „Groß“ (4/Seite mit Beschreibung); Umfang alle/ohne Entwürfe/aktueller Filter.
+  Umsetzung `catalog.js`: Canvas je Seite (1654×2339) → JPEG → eigener PDF-Schreiber, keine Bibliothek. Bilder seitenweise
+  (OneDrive-Vorschaubild „large“, sonst Originaldatei). Schriften OFL in `catalog/fonts/` (Cormorant Garamond, Inter,
+  JetBrains Mono, Lizenzen beiliegend), Logo-Kopien in `catalog/` (nur width/height ergänzt). Teilen/Speichern/Ansehen.
+  Getestet im Demo-Modus (10 und 40 Pieces, beide Varianten; PDF mit pypdf/pdftoppm geprüft). Mit echtem OneDrive ungetestet
+  (offen: ob OneDrive-Vorschaubilder per fetch ladbar sind – sonst automatisch Originaldatei, langsamer).
 - PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
