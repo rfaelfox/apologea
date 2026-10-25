@@ -384,9 +384,9 @@ const Store = (() => {
       id: old ? old.id : newId(), nummer: f.nummer, name, motivtitel: f.motivtitel.trim(), kategorie: cat.name, serie: f.serie.trim(),
       beschreibung: f.beschreibung.replace(/\r\n/g, '\n').trim(), schlagwoerter: f.schlagwoerter, entwurf: !!f.entwurf,
       erstellt: old ? old.erstellt : now, geaendert: now,
-      herkunft: old ? old.herkunft : 'Am Handy erstellt am ' + new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + (tpl ? ' nach Vorlage ' + pad3(tpl.nummer) + ' · ' + tpl.name + '.' : '.'),
+      herkunft: old ? old.herkunft : f.herkunft || 'Am Handy erstellt am ' + new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + (tpl ? ' nach Vorlage ' + pad3(tpl.nummer) + ' · ' + tpl.name + '.' : '.'),
       vorlage_von: old ? old.vorlage_von : (tpl ? tpl.id : null),
-      extra: old ? old.raw : {}, bilder: {}, arbeitsdateien: []
+      extra: old ? old.raw : f.extra || {}, bilder: {}, arbeitsdateien: []
     };
     // Kopien aus einer Vorlage zuerst in den Zwischenordner holen
     const all = ROLES.map(r => f.slots[r]).concat(f.work).filter(Boolean);

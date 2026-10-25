@@ -15,7 +15,8 @@ Dokumentation. Vollständiger Master-Prompt: liegt beim Nutzer; Kernregeln siehe
 - Keine kostenpflichtigen Aktionen, keine echten POD-Aufträge, keine Löschungen ohne Freigabe.
 - Original-Logo nicht verändern (liegt jetzt vor, siehe `docs/brand/`).
 - Keine erfundenen Tool-Ergebnisse, Bibelzitate, theologischen/historischen Fakten, Rechtsaussagen.
-- Die bestehende **APOLOGEA Handy-App** (PWA im Repo-Root: index.html, app.js, …) bleibt unangetastet.
+- Die **APOLOGEA Handy-App** (PWA im Repo-Root: index.html, app.js, …) nur auf ausdrücklichen Wunsch ändern
+  (ab 2026-10-25: Import-Funktion vom Nutzer beauftragt). Datenformat muss mit dem PC-Programm kompatibel bleiben.
   Theme-Code kommt nach `shopify-theme/`, Doku nach `docs/`.
 
 ## Phase 1 — Technical Discovery (Ergebnis)
@@ -213,6 +214,21 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   claude.ai-Connectors MarketPrint abgelaufen (auch in der Cloud-Sitzung meldete sich MarketPrint als „Anmeldung erforderlich“).
 - Studio liest jetzt den Connector-Status aus dem Claude-Code-Start (needs-auth / failed / fehlt) und nennt Ursache + Lösung.
 - Tests: `npm test` grün (neu: needs-auth-Fall in bridge.test.mjs).
+
+## Sitzung 7 (2026-10-25) — Handy-App 1.1.0: Pieces importieren (ohne KI)
+- Wunsch: neue Pieces als ZIP/Ordner auf einmal in App + Sammlung übernehmen. KI-Anbindung ausdrücklich **nicht** gewünscht.
+- Neu `import.js` (+ Einbindung in `index.html`, `sw.js`, Knopf in der Kopfleiste und im Menü „Pieces importieren …“).
+  - ZIP-Leser ohne Bibliothek (DecompressionStream, ZIP64, UTF-8/CP437-Namen, verschlüsselt → klare Meldung).
+  - Regeln: Ordner mit `Produktdaten.json` (PC-Format, Zusatzfelder bleiben) · `Kleidungstyp/Piece/…` · `Piece/…` ·
+    lose Dateien nach Namen gruppiert (Rollenwörter wie Design/Mockup/Ansicht entfernt). `Arbeitsdateien/` → Arbeitsdateien.
+    Nummer aus Ordnernamen (`180_NAME`), wenn frei, sonst nächste freie. Mehrere ZIPs werden getrennt ausgewertet.
+  - Vorschau: je Piece an/aus, Name, Kleidungstyp (inkl. neu anlegen), Rolle je Datei, Bild-Vorschau; mögliche Duplikate
+    (gleicher Name im selben Kleidungstyp) sind abgewählt. Standard: als Entwurf speichern.
+  - Speichern über `Store.save` (neu: optionale Felder `herkunft`, `extra`) → exakt das Format des PC-Programms.
+- Tests (Demo-Modus, Playwright, 390 px): 2 ZIPs (Struktur + lose Dateien, CP437-Name, Duplikat, PC-Format) und
+  Einzeldateien – Erkennung, Anlage, Nummern, neue Kleidungstypen korrekt, keine JS-Fehler. Mit echtem OneDrive **ungetestet**.
+- **Noch nicht live:** Die App wird vermutlich aus `main` ausgeliefert → wirkt erst nach Übernahme in `main` (Freigabe Nutzer).
+- PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
