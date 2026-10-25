@@ -471,6 +471,7 @@ function openCatalog() {
     <div class="field"><label>Umfang</label><div id="c-scope-box">${scopeSeg()}</div></div>
     <div id="c-pick" class="${o.scope === 'auswahl' ? '' : 'hidden'}">
       <div class="search cat-search">${icon('search')}<input class="input" id="c-q" type="search" placeholder="Name, Nummer, Motiv, Serie …" autocomplete="off" enterkeyhint="search"></div>
+      <label class="imp-check cat-allbox"><input type="checkbox" id="c-allp"><span>Alle Pieces <span class="faint">(${m.pieces.length})</span></span></label>
       <div class="cat-tools"><span id="c-selcount" class="hint"></span><button type="button" class="btn small ghost" id="c-all">Treffer wählen</button><button type="button" class="btn small ghost" id="c-none">Leeren</button></div>
       <div class="cat-list" id="c-list"></div>
     </div>
@@ -484,7 +485,10 @@ function openCatalog() {
   const renderList = () => {
     const list = hits();
     $('#c-list', body).innerHTML = list.length ? list.slice(0, 400).map(p => `<label class="cat-row"><input type="checkbox" data-id="${esc(p.id)}" ${sel.has(p.id) ? 'checked' : ''}><span class="nr">${pad3(p.nummer)}</span><span class="nm">${esc(p.name)}<small>${esc(p.kategorie)}${p.motivtitel ? ' · ' + esc(p.motivtitel) : ''}${p.entwurf ? ' · Entwurf' : ''}</small></span></label>`).join('') + (list.length > 400 ? `<p class="hint">… und ${list.length - 400} weitere – bitte Suche verfeinern.</p>` : '') : '<p class="hint">Keine Treffer.</p>';
-    $('#c-selcount', body).textContent = `${sel.size} ausgewählt${q ? ' · ' + list.length + ' Treffer' : ''}`;
+    $('#c-selcount', body).textContent = `${sel.size} von ${m.pieces.length} ausgewählt${q ? ' · ' + list.length + ' Treffer' : ''}`;
+    const all = $('#c-allp', body);
+    all.checked = sel.size === m.pieces.length;
+    all.indeterminate = sel.size > 0 && sel.size < m.pieces.length;
   };
   const refreshScope = () => { $('#c-scope-box', body).innerHTML = scopeSeg(); };
   sheet({
@@ -503,6 +507,7 @@ function openCatalog() {
       $('#c-q', body).addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
       $('#c-all', body).onclick = () => { hits().forEach(p => sel.add(p.id)); renderList(); refreshScope(); };
       $('#c-none', body).onclick = () => { sel.clear(); renderList(); refreshScope(); };
+      $('#c-allp', body).onchange = e => { if (e.target.checked) m.pieces.forEach(p => sel.add(p.id)); else sel.clear(); renderList(); refreshScope(); };
       $('#c-list', body).addEventListener('change', e => { const c = e.target.closest('input[data-id]'); if (!c) return; if (c.checked) sel.add(c.dataset.id); else sel.delete(c.dataset.id); renderList(); refreshScope(); });
       body.addEventListener('click', e => {
         const b = e.target.closest('.seg button'); if (!b) return;
