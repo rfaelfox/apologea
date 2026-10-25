@@ -391,6 +391,25 @@ const ImportJob = (() => {
   };
 })();
 
+/** Vorübergehende Störungen: kein Netz, App war im Hintergrund, OneDrive kurz überlastet */
+const isTransient = e => !!e && (e.code === 'offline' || e.status === 0 || e instanceof TypeError || e.status === 429 || e.status >= 500 || !navigator.onLine);
+
+/** Wartet, bis die App sichtbar und online ist (danach kurz mit wachsender Pause) */
+function waitUntilReady(attempt) {
+  return new Promise(resolve => {
+    let t = null;
+    const check = () => {
+      if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+      document.removeEventListener('visibilitychange', check); window.removeEventListener('online', check); clearInterval(t);
+      setTimeout(resolve, Math.min(1500 * attempt, 10000));
+    };
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('online', check);
+    t = setInterval(check, 3000);
+    check();
+  });
+}
+
 const jobTag = (job, i) => `Import ${job.id.slice(0, 8)}/${i + 1}`;
 
 async function executeJob(job, entries) {
@@ -425,38 +444,50 @@ async function executeJob(job, entries) {
       // Schon gespeichert, aber vor dem Abhaken unterbrochen? Dann nicht doppelt anlegen.
       const already = M().pieces.find(x => (x.herkunft || '').includes(tag));
       if (already) { p.done = true; p.result = { nummer: already.nummer, ordner: already.kategorie + '/' + already.folderName, entwurf: already.entwurf }; await ImportJob.put(job); continue; }
-      let stagingId = null;
-      try {
-        if (!M().categories.some(c => c.id === p.cat)) throw new Error('Der Kleidungstyp wurde inzwischen umbenannt oder gelöscht.');
-        busy(head + ' – Ordner wird vorbereitet …');
-        stagingId = (await Store.createStaging()).id;
-        const slots = { design: null, kleidungsansicht: null, mockup: null }, work = [];
-        for (let k = 0; k < p.files.length; k++) {
-          const f = p.files[k], fname = f.rel.split('/').pop(), entry = entries.get(f.src + '|' + f.key);
-          if (!entry) throw new Error(`Die Datei „${f.rel}“ ist nicht mehr verfügbar.`);
-          busy(`${head} – Datei ${k + 1} von ${p.files.length}: ${fname}`);
-          const blob = await entry.getBlob();
-          const up = await Store.uploadToStaging(stagingId, new File([blob], fname, { type: blob.type || '' }));
-          if (ROLES.includes(f.role)) slots[f.role] = { art: 'upload', item: up.item, ext: up.ext };
-          else work.push({ art: 'upload', item: up.item, origName: fname });
+      // Bei Verbindungsabbruch (z. B. App kurz im Hintergrund) automatisch warten und dasselbe Piece erneut versuchen
+      for (let attempt = 1; ; attempt++) {
+        let stagingId = null;
+        try {
+          if (!M().categories.some(c => c.id === p.cat)) throw new Error('Der Kleidungstyp wurde inzwischen umbenannt oder gelöscht.');
+          busy(head + ' – Ordner wird vorbereitet …');
+          stagingId = (await Store.createStaging()).id;
+          const slots = { design: null, kleidungsansicht: null, mockup: null }, work = [];
+          for (let k = 0; k < p.files.length; k++) {
+            const f = p.files[k], fname = f.rel.split('/').pop(), entry = entries.get(f.src + '|' + f.key);
+            if (!entry) throw new Error(`Die Datei „${f.rel}“ ist nicht mehr verfügbar.`);
+            busy(`${head} – Datei ${k + 1} von ${p.files.length}: ${fname}`);
+            const blob = await entry.getBlob();
+            const up = await Store.uploadToStaging(stagingId, new File([blob], fname, { type: blob.type || '' }));
+            if (ROLES.includes(f.role)) slots[f.role] = { art: 'upload', item: up.item, ext: up.ext };
+            else work.push({ art: 'upload', item: up.item, origName: fname });
+          }
+          const missing = ROLES.filter(r => !slots[r]);
+          const nummer = p.wantNr && !Store.numberOwner(p.wantNr) ? p.wantNr : Store.nextNumber();
+          const saved = await Store.save({
+            mode: 'neu', key: null, stagingId, nummer, name: p.name, motivtitel: p.motivtitel, catId: p.cat, serie: p.serie,
+            beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter, entwurf: job.entwurf || missing.length > 0, vorlage_von: null,
+            slots, work, extra: Object.assign({}, p.extra), herkunft: `Am Handy importiert am ${label} aus „${job.sourceName}“ (${p.source}; ${tag}).`
+          }, msg => busy(head + ' – ' + msg));
+          p.done = true;
+          p.result = saved ? { nummer: saved.nummer, ordner: saved.kategorie + '/' + saved.folderName, entwurf: saved.entwurf } : { nummer, ordner: '', entwurf: true };
+          await ImportJob.put(job);
+          break;
+        } catch (e) {
+          // Zwischenordner NICHT löschen: Er könnte schon als fertiger Produktordner verschoben sein (Abbruch kurz nach dem Speichern).
+          // Reste im internen Ordner .apologea räumt Store.cleanupStaging nach einem Tag auf.
+          void stagingId;
+          if (e && (e.code === 'login_required' || e.status === 401)) { interrupted = true; errors.push({ name: p.name, msg: e.message || String(e) }); break; }
+          if (!isTransient(e)) { p.done = true; p.error = e && e.message ? e.message : String(e); await ImportJob.put(job); break; }
+          if (attempt >= 8) { interrupted = true; errors.push({ name: p.name, msg: e.message || String(e) }); break; }
+          busy(`${head} – Verbindung unterbrochen. Geht automatisch weiter, sobald die App wieder offen und online ist. (Sie können die App auch schließen und den Import später fortsetzen.)`);
+          await waitUntilReady(attempt);
+          busy(head + ' – Stand wird geprüft …');
+          try { await Store.refresh(); } catch (x) { /* beim nächsten Versuch erneut */ }
+          const now = M().pieces.find(x => (x.herkunft || '').includes(tag));
+          if (now) { p.done = true; p.result = { nummer: now.nummer, ordner: now.kategorie + '/' + now.folderName, entwurf: now.entwurf }; await ImportJob.put(job); break; }
         }
-        const missing = ROLES.filter(r => !slots[r]);
-        const nummer = p.wantNr && !Store.numberOwner(p.wantNr) ? p.wantNr : Store.nextNumber();
-        const saved = await Store.save({
-          mode: 'neu', key: null, stagingId, nummer, name: p.name, motivtitel: p.motivtitel, catId: p.cat, serie: p.serie,
-          beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter, entwurf: job.entwurf || missing.length > 0, vorlage_von: null,
-          slots, work, extra: Object.assign({}, p.extra), herkunft: `Am Handy importiert am ${label} aus „${job.sourceName}“ (${p.source}; ${tag}).`
-        }, msg => busy(head + ' – ' + msg));
-        p.done = true;
-        p.result = saved ? { nummer: saved.nummer, ordner: saved.kategorie + '/' + saved.folderName, entwurf: saved.entwurf } : { nummer: nummer, ordner: '', entwurf: true };
-        await ImportJob.put(job);
-      } catch (e) {
-        if (stagingId) await Store.discardStaging(stagingId);
-        // Ohne Anmeldung oder Netz lohnt es nicht weiterzumachen → später fortsetzen
-        if (e && (e.code === 'login_required' || e.status === 401 || e instanceof TypeError || !navigator.onLine)) { interrupted = true; errors.push({ name: p.name, msg: e.message || String(e) }); break; }
-        p.done = true; p.error = e && e.message ? e.message : String(e);
-        await ImportJob.put(job);
       }
+      if (interrupted) break;
     }
   } catch (e) {
     interrupted = true;

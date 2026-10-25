@@ -237,6 +237,10 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   `herkunft`. Netz-/Anmeldefehler → Abbruch mit Fortsetzen; sonstige Fehler → Piece übersprungen und gemeldet.
   Bildschirmsperre (Wake Lock) wird nach Rückkehr neu angefordert. Getestet: simulierter Netzabbruch, Fortsetzen,
   „gespeichert aber nicht abgehakt“ (keine Doppelten), Auftrag übersteht Neuladen.
+- 1.2.1: Verbindungsabbruch (DriveError status 0/„offline“, 429, 5xx – vorher fälschlich als Piece-Fehler gewertet) →
+  automatisch warten, bis App sichtbar + online, Stand prüfen (Kennung), dasselbe Piece erneut (max. 8 Versuche, dann
+  Fortsetzen später). Zwischenordner wird bei Fehlern nicht mehr gelöscht (hätte ein bereits verschobenes, fertiges Piece
+  löschen können). Getestet: Abbruch im Hintergrund + Rückkehr; Abbruch direkt nach dem Speichern → keine Doppelten.
 - PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
