@@ -38,6 +38,10 @@ const Catalog = (() => {
     return assets;
   }
 
+  // ---------------------------------------------------------------- Durchsuchbarer Text (unsichtbar über dem Seitenbild)
+  let notes = [];
+  const note = (text, x, y, size) => { text = String(text || '').replace(/\s+/g, ' ').trim(); if (text) notes.push({ text, x, y, size }); };
+
   // ---------------------------------------------------------------- Zeichenhilfen
   const setFont = (g, weight, size, fam) => { g.font = `${weight} ${size}px ${fam}`; };
   /** Text mit Laufweite (manuell, da letterSpacing nicht überall unterstützt wird) */
@@ -134,6 +138,7 @@ const Catalog = (() => {
     tracked(g, s.label, nx, y + 52, 6, 'left');
     const f = fit(g, s.name.toUpperCase(), W - M - nx - 260, 84, 48, 600, F.serif, 10);
     g.fillStyle = C.ivory; tracked(g, f.text, nx, y + 138, f.track, 'left');
+    note(`${s.name} (${s.count} ${s.count === 1 ? 'Piece' : 'Pieces'})`, nx, y + 138, f.size);
     setFont(g, 500, 21, F.mono); g.fillStyle = C.muted;
     tracked(g, `${s.count} ${s.count === 1 ? 'PIECE' : 'PIECES'}`, W - M, y + 138, 5, 'right');
     line(g, M, y + 172, W - M, y + 172, C.line, 1.5);
@@ -170,11 +175,12 @@ const Catalog = (() => {
     ty += 52;
     const f = fit(g, (p.name || '').toUpperCase(), w, L.desc ? 46 : 38, L.desc ? 30 : 26, 600, F.serif, 3);
     g.fillStyle = C.ivory; tracked(g, f.text, x, ty, f.track, 'left');
+    note(`N° ${String(p.nummer).padStart(3, '0')} ${p.name}${p.motivtitel ? ' – ' + p.motivtitel : ''} · ${p.kategorie}${p.serie ? ' · ' + p.serie : ''}${p.entwurf ? ' · Entwurf' : ''}`, x, ty, f.size);
     if (p.motivtitel) { ty += 36; setFont(g, 400, L.desc ? 23 : 21, F.sans); g.fillStyle = C.muted; g.fillText(ellipsize(g, p.motivtitel, w), x, ty); }
     if (L.desc && p.beschreibung) {
       ty += 22; line(g, x, ty, x + 60, ty, C.line, 1.5);
       setFont(g, 400, 21, F.sans); g.fillStyle = 'rgba(230,213,184,.82)';
-      wrap(g, p.beschreibung, w, p.motivtitel ? 4 : 5).forEach(l => { ty += 31; g.fillText(l, x, ty); });
+      wrap(g, p.beschreibung, w, p.motivtitel ? 4 : 5).forEach(l => { ty += 31; g.fillText(l, x, ty); note(l, x, ty, 21); });
     }
   }
 
@@ -205,6 +211,7 @@ const Catalog = (() => {
     else { setFont(g, 600, 120, F.serif); g.fillStyle = C.goldL; tracked(g, 'APOLOGEA', cx, 1540, 28, 'center'); }
     const t = fit(g, o.title.toUpperCase(), W - 2 * M, 60, 36, 500, F.serif, 16);
     g.fillStyle = C.ivory; tracked(g, t.text, cx, 1660, t.track, 'center');
+    note('APOLOGEA ' + o.title + ' · ' + o.edition, M, 1660, t.size);
     setFont(g, 500, 24, F.mono); g.fillStyle = C.gold;
     tracked(g, 'FAITH IS NOT SILENT.', cx, 1730, 10, 'center');
     // Kennzahlen
@@ -248,6 +255,7 @@ const Catalog = (() => {
     rows.forEach((p, i) => {
       if (i % 2 === 0) { g.fillStyle = 'rgba(255,255,255,.022)'; g.fillRect(M, y, W - 2 * M, 46); }
       const by = y + 31;
+      note(`${String(p.nummer).padStart(3, '0')} ${p.name} ${p.motivtitel || ''} ${p.kategorie} ${p.status}`, cols[0], by, 22);
       setFont(g, 500, 19, F.mono); g.fillStyle = C.gold; g.fillText(String(p.nummer).padStart(3, '0'), cols[0], by);
       setFont(g, 600, 26, F.serif); g.fillStyle = C.ivory; g.fillText(ellipsize(g, (p.name || '').toUpperCase(), 470), cols[1], by);
       setFont(g, 400, 19, F.sans); g.fillStyle = C.muted; g.fillText(ellipsize(g, p.motivtitel || '–', 440), cols[2], by);
@@ -323,27 +331,65 @@ const Catalog = (() => {
 
   // ---------------------------------------------------------------- PDF zusammensetzen (JPEG je Seite)
   function pdfString(s) { let h = 'FEFF'; for (const c of String(s)) { const u = c.codePointAt(0); if (u > 0xFFFF) { const v = u - 0x10000; h += (0xD800 + (v >> 10)).toString(16).padStart(4, '0') + (0xDC00 + (v & 1023)).toString(16).padStart(4, '0'); } else h += u.toString(16).padStart(4, '0'); } return '<' + h.toUpperCase() + '>'; }
+  // Text für die PDF in WinAnsi kodieren (deckt deutsche Umlaute, ß und typografische Zeichen ab)
+  const WIN = { 0x20AC: 0x80, 0x201A: 0x82, 0x201E: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2030: 0x89, 0x0160: 0x8A, 0x0152: 0x8C, 0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97, 0x2122: 0x99, 0x0161: 0x9A, 0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F };
+  function winAnsi(s) {
+    let out = '';
+    for (const ch of String(s)) {
+      let c = ch.codePointAt(0);
+      if (WIN[c]) c = WIN[c]; else if (c > 255 || (c >= 0x80 && c < 0xA0)) c = 63;
+      if (c === 40 || c === 41 || c === 92) out += '\\' + String.fromCharCode(c);
+      else if (c < 32 || c > 126) out += '\\' + c.toString(8).padStart(3, '0');
+      else out += String.fromCharCode(c);
+    }
+    return '(' + out + ')';
+  }
   function buildPdf(pages, title) {
     const enc = new TextEncoder(), parts = [], offs = [];
     let len = 0;
     const add = x => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); len += b.length; };
     const obj = (n, fn) => { offs[n] = len; add(`${n} 0 obj\n`); fn(); add('\nendobj\n'); };
-    const pw = 595.28, ph = 841.89, d = new Date(), p2 = n => String(n).padStart(2, '0');
+    const pw = 595.28, ph = 841.89, k = pw / W, d = new Date(), p2 = n => String(n).padStart(2, '0');
+    const first = 5;
     add('%PDF-1.4\n%âãÏÓ\n');
     obj(1, () => add('<< /Type /Catalog /Pages 2 0 R >>'));
-    obj(2, () => add(`<< /Type /Pages /Count ${pages.length} /Kids [${pages.map((_, i) => (4 + 3 * i) + ' 0 R').join(' ')}] >>`));
+    obj(2, () => add(`<< /Type /Pages /Count ${pages.length} /Kids [${pages.map((_, i) => (first + 3 * i) + ' 0 R').join(' ')}] >>`));
     obj(3, () => add(`<< /Title ${pdfString(title)} /Author ${pdfString('APOLOGEA')} /Producer ${pdfString('APOLOGEA Handy-App')} /CreationDate (D:${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}) >>`));
+    obj(4, () => add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'));
     pages.forEach((p, i) => {
-      const n = 4 + 3 * i, cs = `q ${pw} 0 0 ${ph} 0 0 cm /Im${i} Do Q`;
-      obj(n, () => add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im${i} ${n + 2} 0 R >> >> /Contents ${n + 1} 0 R >>`));
+      const n = first + 3 * i;
+      // Seitenbild + unsichtbarer Text (Darstellungsmodus 3) → im PDF-Programm durchsuchbar und kopierbar
+      let cs = `q ${pw} 0 0 ${ph} 0 0 cm /Im${i} Do Q\nBT 3 Tr\n`;
+      (p.notes || []).forEach(t => { cs += `/F1 ${(t.size * k).toFixed(2)} Tf 1 0 0 1 ${(t.x * k).toFixed(2)} ${(ph - t.y * k).toFixed(2)} Tm ${winAnsi(t.text)} Tj\n`; });
+      cs += 'ET';
+      obj(n, () => add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im${i} ${n + 2} 0 R >> /Font << /F1 4 0 R >> >> /Contents ${n + 1} 0 R >>`));
       obj(n + 1, () => { add(`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`); });
       obj(n + 2, () => { add(`<< /Type /XObject /Subtype /Image /Width ${p.w} /Height ${p.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.jpeg.length} >>\nstream\n`); add(p.jpeg); add('\nendstream'); });
     });
-    const xref = len, size = 4 + 3 * pages.length;
+    const xref = len, size = first + 3 * pages.length;
     let x = `xref\n0 ${size}\n0000000000 65535 f \n`;
-    for (let k = 1; k < size; k++) x += String(offs[k]).padStart(10, '0') + ' 00000 n \n';
+    for (let n = 1; n < size; n++) x += String(offs[n]).padStart(10, '0') + ' 00000 n \n';
     add(x + `trailer\n<< /Size ${size} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
     return new Blob(parts, { type: 'application/pdf' });
+  }
+
+  /** Seite als JPEG, so gut wie möglich innerhalb des Byte-Budgets (erst Qualität senken, dann Auflösung) */
+  let small = null;
+  async function encode(canvas, budget, high) {
+    const toBytes = async (c, q) => { const b = await new Promise(res => c.toBlob(res, 'image/jpeg', q)); if (!b) throw new Error('Die Seite konnte nicht erzeugt werden (zu wenig Speicher?).'); return { jpeg: new Uint8Array(await b.arrayBuffer()), w: c.width, h: c.height }; };
+    const steps = [[1, high ? [0.92, 0.86, 0.8] : [0.86, 0.78, 0.7, 0.62, 0.55]], [0.8, [0.7, 0.6, 0.5]], [0.65, [0.6, 0.5, 0.42]]];
+    let last = null;
+    for (const [scale, qs] of steps) {
+      let c = canvas;
+      if (scale < 1) {
+        small = small || document.createElement('canvas');
+        small.width = Math.round(W * scale); small.height = Math.round(H * scale);
+        const sg = small.getContext('2d'); sg.imageSmoothingQuality = 'high'; sg.drawImage(canvas, 0, 0, small.width, small.height);
+        c = small;
+      }
+      for (const q of qs) { last = await toBytes(c, q); if (last.jpeg.length <= budget) return last; }
+    }
+    return last;
   }
 
   // ---------------------------------------------------------------- Erstellen
@@ -356,10 +402,13 @@ const Catalog = (() => {
     canvas.width = W; canvas.height = H;
     const g = canvas.getContext('2d');
     const out = [];
+    const maxBytes = (o.quality === 'hoch' ? 40 : 10) * 1048576 * 0.96 - 40000;
+    let used = 0;
     const stats = { pieces: pieces.length, cats: cats.length, date: new Date().toLocaleDateString('de-DE', { month: '2-digit', year: 'numeric' }).replace('.', ' / ') };
     for (let n = 0; n < pages.length; n++) {
       const pg = pages[n];
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+      notes = [];
       if (pg.type === 'cover') { progress(`Seite ${n + 1} von ${pages.length}: Deckblatt …`); cover(g, o, stats); }
       else if (pg.type === 'back') { progress(`Seite ${n + 1} von ${pages.length}: Rückseite …`); backCover(g, o); }
       else {
@@ -386,12 +435,15 @@ const Catalog = (() => {
           indexRows(g, pg.top, pg.rows);
         }
       }
-      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.88));
-      if (!blob) throw new Error('Die Seite konnte nicht erzeugt werden (zu wenig Speicher?).');
-      out.push({ jpeg: new Uint8Array(await blob.arrayBuffer()), w: W, h: H });
+      // Gleichmäßig verteiltes Budget; was eine Seite nicht braucht, bekommen die übrigen
+      const budget = (maxBytes - used) / (pages.length - n);
+      const page = await encode(canvas, budget, o.quality === 'hoch');
+      used += page.jpeg.length + 2000;
+      page.notes = notes;
+      out.push(page);
     }
     progress('PDF wird zusammengesetzt …');
-    return buildPdf(out, 'APOLOGEA – ' + o.title);
+    return { blob: buildPdf(out, 'APOLOGEA – ' + o.title), pages: out.length };
   }
 
   return { create, plan, LAYOUTS };
@@ -401,48 +453,82 @@ const Catalog = (() => {
 function openCatalog() {
   const m = M();
   if (!m.pieces.length) { toast('Die Sammlung enthält noch keine Pieces.', 'err'); return; }
-  const o = Object.assign({ title: 'Kollektion', edition: '', contact: 'apologea.eu', scope: 'alle', role: S.cardImg || 'mockup', layout: 'kompakt', index: true }, prefs.get('catalog', {}));
+  const o = Object.assign({ title: 'Kollektion', contact: 'apologea.eu', scope: 'alle', role: S.cardImg || 'mockup', layout: 'kompakt', index: true, quality: 'klein' }, prefs.get('catalog', {}));
   o.edition = new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  const sel = new Set(prefs.get('catalogSel', []).filter(id => m.pieces.some(p => p.id === id)));
   const filterActive = !!(S.filter.q || S.filter.cat || S.filter.status);
   if (o.scope === 'filter' && !filterActive) o.scope = 'alle';
+  let q = '';
   const segs = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === cur ? 'on' : ''}">${l}</button>`).join('')}</div>`;
-  const count = scope => scope === 'fertig' ? m.pieces.filter(p => !p.entwurf).length : scope === 'filter' ? filtered().length : m.pieces.length;
+  const count = scope => scope === 'fertig' ? m.pieces.filter(p => !p.entwurf).length : scope === 'filter' ? filtered().length : scope === 'auswahl' ? sel.size : m.pieces.length;
+  const scopeSeg = () => segs('c-scope', [['alle', `Alle (${count('alle')})`], ['fertig', `Ohne Entwürfe (${count('fertig')})`]].concat(filterActive ? [['filter', `Filter (${count('filter')})`]] : []).concat([['auswahl', `Auswahl (${count('auswahl')})`]]), o.scope);
+  const sorted = m.pieces.slice().sort((a, b) => a.kategorie.localeCompare(b.kategorie, 'de') || a.nummer - b.nummer);
+  const hay = p => norm([p.nummer, pad3(p.nummer), p.name, p.motivtitel, p.serie, p.kategorie, p.schlagwoerter.join(' ')].join(' '));
+  const hits = () => { const t = norm(q).split(/\s+/).filter(Boolean); return t.length ? sorted.filter(p => { const h = hay(p); return t.every(x => h.includes(x)); }) : sorted; };
   const body = document.createElement('div');
   body.innerHTML = `
-    <p class="hint" style="margin-top:0">Ein gestalteter Katalog als PDF mit Bild, Nummer und Namen aller Pieces – zum Teilen mit Partnern, Sponsoren, Freunden oder Claude.</p>
+    <p class="hint" style="margin-top:0">Ein gestalteter Katalog als PDF mit Bild, Nummer und Namen der Pieces – zum Teilen mit Partnern, Sponsoren, Freunden oder Claude.</p>
+    <div class="field"><label>Umfang</label><div id="c-scope-box">${scopeSeg()}</div></div>
+    <div id="c-pick" class="${o.scope === 'auswahl' ? '' : 'hidden'}">
+      <div class="search cat-search">${icon('search')}<input class="input" id="c-q" type="search" placeholder="Name, Nummer, Motiv, Serie …" autocomplete="off" enterkeyhint="search"></div>
+      <div class="cat-tools"><span id="c-selcount" class="hint"></span><button type="button" class="btn small ghost" id="c-all">Treffer wählen</button><button type="button" class="btn small ghost" id="c-none">Leeren</button></div>
+      <div class="cat-list" id="c-list"></div>
+    </div>
     <div class="field"><label for="c-title">Titel</label><input class="input" id="c-title" maxlength="40" value="${esc(o.title)}"></div>
     <div class="field"><label for="c-ed">Ausgabe</label><input class="input" id="c-ed" maxlength="40" value="${esc(o.edition)}"></div>
     <div class="field"><label for="c-contact">Kontakt <span class="faint">(optional, z. B. Website oder Instagram)</span></label><input class="input" id="c-contact" maxlength="60" value="${esc(o.contact)}"></div>
-    <div class="field"><label>Umfang</label>${segs('c-scope', [['alle', `Alle (${count('alle')})`], ['fertig', `Ohne Entwürfe (${count('fertig')})`]].concat(filterActive ? [['filter', `Aktueller Filter (${count('filter')})`]] : []), o.scope)}</div>
     <div class="field"><label>Bild</label>${segs('c-role', [['mockup', 'Mockup'], ['design', 'Design'], ['kleidungsansicht', 'Ansicht']], o.role)}<span class="hint">Fehlt das Bild, wird ein anderes des Pieces genommen.</span></div>
     <div class="field"><label>Darstellung</label>${segs('c-layout', [['kompakt', 'Übersicht · 9/Seite'], ['gross', 'Groß · 4/Seite']], o.layout)}<span class="hint">„Groß“ zeigt zusätzlich Serie und Beschreibung.</span></div>
+    <div class="field"><label>Dateigröße</label>${segs('c-quality', [['klein', 'Max. 10 MB'], ['hoch', 'Hohe Qualität']], o.quality)}<span class="hint">„Max. 10 MB“ lässt sich problemlos per Messenger, Mail oder an Claude schicken. „Hohe Qualität“ (bis 40 MB) für den Druck.</span></div>
     <label class="imp-check"><input type="checkbox" id="c-index" ${o.index ? 'checked' : ''}><span>Verzeichnis aller Pieces am Ende</span></label>`;
+  const renderList = () => {
+    const list = hits();
+    $('#c-list', body).innerHTML = list.length ? list.slice(0, 400).map(p => `<label class="cat-row"><input type="checkbox" data-id="${esc(p.id)}" ${sel.has(p.id) ? 'checked' : ''}><span class="nr">${pad3(p.nummer)}</span><span class="nm">${esc(p.name)}<small>${esc(p.kategorie)}${p.motivtitel ? ' · ' + esc(p.motivtitel) : ''}${p.entwurf ? ' · Entwurf' : ''}</small></span></label>`).join('') + (list.length > 400 ? `<p class="hint">… und ${list.length - 400} weitere – bitte Suche verfeinern.</p>` : '') : '<p class="hint">Keine Treffer.</p>';
+    $('#c-selcount', body).textContent = `${sel.size} ausgewählt${q ? ' · ' + list.length + ' Treffer' : ''}`;
+  };
+  const refreshScope = () => { $('#c-scope-box', body).innerHTML = scopeSeg(); };
   sheet({
     title: 'Katalog erstellen', body,
     buttons: [{ label: 'Abbrechen' }, { label: 'PDF erstellen', cls: 'primary', value: 'go', run: () => {
+      if (o.scope === 'auswahl' && !sel.size) { toast('Bitte mindestens ein Piece auswählen (Suche oben).', 'err'); return false; }
       o.title = $('#c-title', body).value.trim() || 'Kollektion';
       o.edition = $('#c-ed', body).value.trim() || new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
       o.contact = $('#c-contact', body).value.trim();
       o.index = $('#c-index', body).checked;
+      o.sel = [...sel];
     } }],
-    onOpen: () => body.addEventListener('click', e => {
-      const b = e.target.closest('.seg button'); if (!b) return;
-      $$('button', b.parentElement).forEach(x => x.classList.toggle('on', x === b));
-      ({ 'c-scope': v => { o.scope = v; }, 'c-role': v => { o.role = v; }, 'c-layout': v => { o.layout = v; } })[b.parentElement.id](b.dataset.v);
-    })
+    onOpen: () => {
+      renderList();
+      $('#c-q', body).addEventListener('input', e => { q = e.target.value; renderList(); });
+      $('#c-q', body).addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+      $('#c-all', body).onclick = () => { hits().forEach(p => sel.add(p.id)); renderList(); refreshScope(); };
+      $('#c-none', body).onclick = () => { sel.clear(); renderList(); refreshScope(); };
+      $('#c-list', body).addEventListener('change', e => { const c = e.target.closest('input[data-id]'); if (!c) return; if (c.checked) sel.add(c.dataset.id); else sel.delete(c.dataset.id); renderList(); refreshScope(); });
+      body.addEventListener('click', e => {
+        const b = e.target.closest('.seg button'); if (!b) return;
+        const id = b.parentElement.id;
+        $$('button', b.parentElement).forEach(x => x.classList.toggle('on', x === b));
+        if (id === 'c-scope') { o.scope = b.dataset.v; $('#c-pick', body).classList.toggle('hidden', o.scope !== 'auswahl'); if (o.scope === 'auswahl') setTimeout(() => $('#c-q', body).focus(), 50); }
+        if (id === 'c-role') o.role = b.dataset.v;
+        if (id === 'c-layout') o.layout = b.dataset.v;
+        if (id === 'c-quality') o.quality = b.dataset.v;
+      });
+    }
   }).then(v => { if (v === 'go') makeCatalog(o); });
 }
 
 async function makeCatalog(o) {
-  prefs.set('catalog', { title: o.title, contact: o.contact, scope: o.scope, role: o.role, layout: o.layout, index: o.index });
-  const m = M();
-  const list = o.scope === 'fertig' ? m.pieces.filter(p => !p.entwurf) : o.scope === 'filter' ? filtered() : m.pieces.slice();
+  prefs.set('catalog', { title: o.title, contact: o.contact, scope: o.scope, role: o.role, layout: o.layout, index: o.index, quality: o.quality });
+  prefs.set('catalogSel', o.sel || []);
+  const m = M(), chosen = new Set(o.sel || []);
+  const list = o.scope === 'fertig' ? m.pieces.filter(p => !p.entwurf) : o.scope === 'filter' ? filtered() : o.scope === 'auswahl' ? m.pieces.filter(p => chosen.has(p.id)) : m.pieces.slice();
   if (!list.length) { toast('Für diese Auswahl gibt es keine Pieces.', 'err'); return; }
   let lock = null;
   try { if (navigator.wakeLock) lock = await navigator.wakeLock.request('screen'); } catch (e) { /* optional */ }
   busy('Katalog wird vorbereitet …');
   try {
-    const blob = await Catalog.create(list, o, msg => busy(msg));
+    const res = await Catalog.create(list, o, msg => busy(msg));
+    const blob = res.blob;
     unbusy();
     const day = new Date().toISOString().slice(0, 10);
     const name = `APOLOGEA_Katalog_${Names.segment(o.title, 30) || 'Kollektion'}_${day}.pdf`;
@@ -451,7 +537,9 @@ async function makeCatalog(o) {
     const canShare = navigator.canShare && navigator.canShare({ files: [file] });
     const v = await sheet({
       title: 'Katalog fertig',
-      body: `<p><b>${list.length} Pieces</b> · ${fmtBytes(blob.size)}</p><p class="hint">${esc(name)}</p>`,
+      body: `<p><b>${list.length} ${list.length === 1 ? 'Piece' : 'Pieces'}</b> · ${res.pages} Seiten · ${fmtBytes(blob.size)}</p><p class="hint">${esc(name)}</p>
+        <p class="hint">Durchsuchbar: Namen und Nummern lassen sich im PDF-Programm suchen und kopieren.</p>
+        ${res.pages > 100 ? '<p class="hint warn">Hinweis: Claude liest PDFs bis etwa 100 Seiten. Für Claude besser „Übersicht“ wählen oder die Auswahl eingrenzen.</p>' : ''}`,
       buttons: [{ label: 'Ansehen', value: 'view' }].concat(canShare ? [{ label: 'Teilen …', cls: 'primary', value: 'share' }] : []).concat([{ label: 'Speichern', cls: canShare ? '' : 'primary', value: 'save' }])
     });
     if (v === 'share') { try { await navigator.share({ files: [file], title: 'APOLOGEA – ' + o.title }); } catch (e) { if (e && e.name !== 'AbortError') fail(e, 'Teilen nicht möglich'); } }
