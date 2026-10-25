@@ -1,7 +1,7 @@
 /* APOLOGEA Handy-App – Oberfläche */
 'use strict';
 
-const VERSION = '1.5.1';
+const VERSION = '1.5.2';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -513,18 +513,61 @@ function slideHtml(p, r) {
   const b = p.bilder[r];
   const it = b && b.item;
   const stage = it
-    ? `<div class="slide-stage ${r === 'design' ? 'bg-' + S.designBg : ''}" data-view="${r}"><img data-slide="${it.id}" data-role="${r}" alt=""><div class="spinner" style="position:absolute"></div></div>`
+    ? `<div class="slide-stage ${r === 'design' ? 'bg-' + S.designBg : ''}" data-view="${r}"><img data-slide="${it.id}" data-role="${r}" data-name="${esc(it.name)}" alt=""><div class="spinner" style="position:absolute"></div></div>`
     : `<div class="slide-stage"><div class="missing-img">${icon('warn')}${b ? 'Datei fehlt:<br>' + esc(b.rel) : 'Kein ' + ROLE_LABEL[r] + ' hinterlegt'}</div></div>`;
   return `<div class="slide">${stage}<div class="slide-label"><span class="role">${ROLE_LABEL[r]}</span><span>${it ? esc(it.name) + ' · ' + fmtBytes(it.size) : ''}</span></div></div>`;
 }
 
+let slideUrls = [];
+/**
+ * Bild erst vollständig laden und dekodieren, dann – falls größer als nötig – auf Bildschirmgröße verkleinern.
+ * Große Originale direkt im Karussell zeichnet Safari auf dem iPhone sonst nur streifenweise.
+ * Die Vollbildansicht verwendet weiterhin das Original.
+ */
+async function slideSrc(url, keepAlpha) {
+  // Erst herunterladen (wie Store.blobOf), dann lokal verarbeiten – so blockiert der Browser die Zeichenfläche nicht
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('Bild nicht ladbar');
+  const local = URL.createObjectURL(await r.blob());
+  slideUrls.push(local);
+  const im = new Image();
+  im.decoding = 'async';
+  im.src = local;
+  await (im.decode ? im.decode() : new Promise((res, rej) => { im.onload = res; im.onerror = rej; }));
+  const max = Math.round(Math.min(2400, Math.max(1200, window.innerWidth * (window.devicePixelRatio || 1) * 1.5)));
+  const w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+  if (k >= 1) return local;
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  const g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(im, 0, 0, c.width, c.height);
+  const blob = await new Promise(res => c.toBlob(res, keepAlpha ? 'image/png' : 'image/jpeg', 0.92));
+  c.width = c.height = 0; // Speicher sofort freigeben
+  if (!blob) return local;
+  URL.revokeObjectURL(local); slideUrls = slideUrls.filter(x => x !== local);
+  const u = URL.createObjectURL(blob);
+  slideUrls.push(u);
+  return u;
+}
+
 async function loadSlideImages(p, v) {
+  slideUrls.forEach(u => URL.revokeObjectURL(u)); slideUrls = [];
   const imgs = $$('img[data-slide]', v);
-  const done = img => { img.onload = () => { const sp = img.parentElement.querySelector('.spinner'); if (sp) sp.remove(); }; img.onerror = img.onload; };
-  // Originalbilder laden: gestochen scharf auf dem iPhone, Transparenz bleibt erhalten
-  try {
-    await Promise.all(imgs.map(async i => { done(i); const u = await Store.drive.fileUrl(i.dataset.slide); if (u) i.src = u; else i.onload(); }));
-  } catch (e) { fail(e, 'Bilder konnten nicht geladen werden'); }
+  const ready = img => { const sp = img.parentElement && img.parentElement.querySelector('.spinner'); if (sp) sp.remove(); };
+  // Nacheinander statt gleichzeitig: schont den Speicher des iPhones bei großen Dateien
+  for (const i of imgs) {
+    try {
+      const u = await Store.drive.fileUrl(i.dataset.slide);
+      if (!u) { ready(i); continue; }
+      const alpha = i.dataset.role === 'design' || /^(png|webp|gif|svg|tif|tiff)$/i.test(extOf(i.dataset.name || ''));
+      let src = u;
+      try { src = await slideSrc(u, alpha); } catch (e) { src = u; }
+      if (!i.isConnected) return;
+      i.onload = i.onerror = () => ready(i);
+      i.src = src;
+    } catch (e) { ready(i); fail(e, 'Bilder konnten nicht geladen werden'); return; }
+  }
 }
 
 function fileRow(a, unassigned, p) {
@@ -561,7 +604,7 @@ async function assign(p, rel, role, sel) {
   catch (e) { unbusy(); sel.value = ''; fail(e); }
 }
 
-function closeDetail() { const v = $('#detail'); if (v) v.remove(); S.detail = null; }
+function closeDetail() { const v = $('#detail'); if (v) v.remove(); S.detail = null; slideUrls.forEach(u => URL.revokeObjectURL(u)); slideUrls = []; }
 
 async function trashPiece(p) {
   if (!(await confirmSheet('In den Papierkorb?', `<b>${esc(pad3(p.nummer) + ' · ' + p.name)}</b> wird mit dem ganzen Produktordner in den Papierkorb der Sammlung verschoben und kann dort wiederhergestellt werden.`, 'In den Papierkorb', true))) return;

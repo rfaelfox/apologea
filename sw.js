@@ -1,7 +1,7 @@
 /* APOLOGEA Handy-App – Service Worker
    Hält nur die Programmdateien für den schnellen Start bereit. Daten und Bilder kommen immer aus OneDrive.
    Programmdateien werden bei jedem Start beim Server nachgefragt, damit Aktualisierungen sofort ankommen. */
-const CACHE = 'apologea-app-1.5.1';
+const CACHE = 'apologea-app-1.5.2';
 const SHELL = ['./', './index.html', './app.css', './app.js', './store.js', './import.js', './catalog.js', './collections.js', './drive.js', './auth.js', './config.js', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
