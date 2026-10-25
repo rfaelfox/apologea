@@ -253,6 +253,7 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   „Leeren“; Auswahl wird gemerkt). PDF durchsuchbar (unsichtbare Textebene, Helvetica/WinAnsi). Dateigröße: Standard
   max. 10 MB (Budget je Seite, erst JPEG-Qualität, dann Auflösung), „Hohe Qualität“ max. 40 MB. Härtetest 120 Pieces mit
   Rauschbildern: 8,9 MB / 36 Seiten. Hinweis ab >100 Seiten (Lesegrenze für Claude).
+- 1.4.1: Katalog-Auswahl mit Checkbox „Alle Pieces (n)“ (an/aus/teilweise), Zähler „x von n ausgewählt“.
 - PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
