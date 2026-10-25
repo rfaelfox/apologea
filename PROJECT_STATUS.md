@@ -266,6 +266,9 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - 1.5.2: Detailansicht zeigte auf dem iPhone nur einen Streifen des Bildes (Vollbild ok). Jetzt: Datei laden, vollständig
   dekodieren, auf Bildschirmgröße (max. 1,5× Displaypixel, 1200–2400 px) verkleinern (PNG bei Transparenz), dann anzeigen;
   nacheinander statt parallel. Vollbild weiter mit Original. Im Chromium getestet – auf echtem iPhone vom Nutzer zu bestätigen.
+- 1.5.3: Streifen blieb auf dem iPhone (auch bei 200-KB-Bildern → keine Größenfrage; Streifen sitzt an der korrekten
+  Bildoberkante = Safari-Zeichenfehler mit <img> im Karussell). Karussell zeigt Bilder jetzt als Hintergrundbild (`.slide-pic`,
+  background-size: contain) statt <img>. Auf echtem iPhone vom Nutzer zu bestätigen.
 - PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
