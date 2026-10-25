@@ -181,14 +181,22 @@ const Imp = { st: null };
 function openImport() {
   const body = document.createElement('div');
   const dirOk = 'webkitdirectory' in document.createElement('input');
-  body.innerHTML = `<p class="hint" style="margin-top:0">Mehrere neue Pieces auf einmal hinzufügen. Am besten <b>ein Ordner pro Piece</b> (z. B. <span class="mono">SERAPHIM/Design.png, Mockup.jpg …</span>), gern auch in Kleidungstyp-Ordnern. Vor dem Speichern sehen Sie eine Vorschau.</p>
+  body.innerHTML = `<div id="i-resume"></div><p class="hint" style="margin-top:0">Mehrere neue Pieces auf einmal hinzufügen. Am besten <b>ein Ordner pro Piece</b> (z. B. <span class="mono">SERAPHIM/Design.png, Mockup.jpg …</span>), gern auch in Kleidungstyp-Ordnern. Vor dem Speichern sehen Sie eine Vorschau.</p>
     <label class="menu-item">${icon('folder')}<span>ZIP-Datei wählen</span><input type="file" accept=".zip,application/zip,application/x-zip-compressed" multiple class="hidden" data-src="zip"></label>
     ${dirOk ? `<label class="menu-item">${icon('folder')}<span>Ordner wählen</span><span class="sub">am PC / Android</span><input type="file" webkitdirectory multiple class="hidden" data-src="dir"></label>` : ''}
     <label class="menu-item">${icon('image')}<span>Einzelne Dateien wählen</span><input type="file" multiple class="hidden" data-src="files"></label>`;
   sheet({ title: 'Pieces importieren', body, buttons: [{ label: 'Abbrechen' }], onOpen: (back, close) => {
     $$('input[data-src]', body).forEach(inp => inp.onchange = () => { const fl = Array.from(inp.files || []); inp.value = ''; if (!fl.length) return; close(); analyzeImport(fl); });
+    ImportJob.get().then(job => {
+      if (!job || job.rootId !== Store.drive.rootId || !back.isConnected) return;
+      const done = job.pieces.filter(p => p.done).length;
+      $('#i-resume', body).innerHTML = `<button class="menu-item" id="i-resume-go">${icon('restore')}<span>Unterbrochenen Import fortsetzen</span><span class="sub">${done} von ${job.pieces.length} fertig</span></button>`;
+      $('#i-resume-go', body).onclick = () => { close(); checkImportResume(true); };
+    });
   } });
 }
+
+const plainEntries = files => files.map((f, i) => ({ path: f.webkitRelativePath || f.name, size: f.size, key: i, getBlob: async () => f }));
 
 async function analyzeImport(fileList) {
   busy('Dateien werden gelesen …');
@@ -197,8 +205,10 @@ async function analyzeImport(fileList) {
     const zips = fileList.filter(f => extOf(f.name) === 'zip');
     const plain = fileList.filter(f => extOf(f.name) !== 'zip');
     const sources = [];
-    for (const z of zips) { busy(`„${z.name}“ wird geöffnet …`); sources.push({ label: z.name, entries: await Zip.read(z) }); }
-    if (plain.length) sources.push({ label: plain[0].webkitRelativePath ? plain[0].webkitRelativePath.split('/')[0] : 'Auswahl', entries: plain.map(f => ({ path: f.webkitRelativePath || f.name, size: f.size, getBlob: async () => f })) });
+    for (const z of zips) { busy(`„${z.name}“ wird geöffnet …`); sources.push({ kind: 'zip', file: z, label: z.name, entries: await Zip.read(z) }); }
+    if (plain.length) sources.push({ kind: 'files', files: plain, label: plain[0].webkitRelativePath ? plain[0].webkitRelativePath.split('/')[0] : 'Auswahl', entries: plainEntries(plain) });
+    // Jede Datei kennt ihre Quelle, damit ein unterbrochener Import sie später wiederfindet
+    sources.forEach((s, i) => s.entries.forEach(e => { e.src = i; if (e.key === undefined) e.key = e.path; }));
     const multi = sources.length > 1;
     const groups = [];
     let fileCount = 0;
@@ -209,7 +219,7 @@ async function analyzeImport(fileList) {
     const usedNr = new Set();
     for (const g of groups) {
       let data = null;
-      if (g.json) { try { data = JSON.parse((await (await g.json.getBlob()).text()).replace(/^﻿/, '')); } catch (e) { data = null; } }
+      if (g.json) { try { data = JSON.parse((await (await g.json.getBlob()).text()).replace(/^\uFEFF/, '')); } catch (e) { data = null; } }
       const lab = ImportRules.parseLabel(g.label);
       const name = String((data && data.name) || lab.name || 'Ohne Namen').trim().slice(0, 60);
       const catName = String((data && data.kategorie) || g.catName || '').trim();
@@ -228,7 +238,7 @@ async function analyzeImport(fileList) {
     }
     pieces.sort((a, b) => a.source.localeCompare(b.source, 'de', { numeric: true }) || a.name.localeCompare(b.name, 'de'));
     unbusy();
-    Imp.st = { pieces, entwurf: true, sourceName: sources.map(s => s.label).join(', ').slice(0, 120), fileCount, urls: [] };
+    Imp.st = { pieces, entwurf: true, sources, sourceName: sources.map(s => s.label).join(', ').slice(0, 120), fileCount, urls: [] };
     S.imp = true;
     renderImport();
   } catch (e) { unbusy(); fail(e, 'Import nicht möglich'); }
@@ -333,66 +343,167 @@ async function runImport() {
     return;
   }
   if (noName.length) { toast('Jedes Piece braucht einen Produktnamen mit mindestens einem Buchstaben oder einer Ziffer.', 'err', { title: 'Bitte ergänzen' }); return; }
-  if (!(await confirmSheet(`${list.length} ${list.length === 1 ? 'Piece' : 'Pieces'} importieren?`, `Die Pieces werden in Ihrem OneDrive in die Sammlung eingefügt${st.entwurf ? ' (als Entwurf)' : ''}. Bitte die App währenddessen geöffnet und den Bildschirm an lassen.`, 'Importieren'))) return;
+  if (!(await confirmSheet(`${list.length} ${list.length === 1 ? 'Piece' : 'Pieces'} importieren?`, `Die Pieces werden in Ihrem OneDrive in die Sammlung eingefügt${st.entwurf ? ' (als Entwurf)' : ''}. Am schnellsten geht es, wenn die App geöffnet bleibt. Wird sie geschlossen, setzen Sie den Import beim nächsten Öffnen fort.`, 'Importieren'))) return;
 
+  const job = {
+    id: newId(), rootId: Store.drive.rootId, created: Date.now(), sourceName: st.sourceName, entwurf: st.entwurf,
+    sources: st.sources.map(s => s.kind === 'zip' ? { kind: 'zip', label: s.label, file: s.file } : { kind: 'files', label: s.label, files: s.files }),
+    pieces: list.map(p => ({
+      name: p.name.trim(), motivtitel: p.motivtitel, serie: p.serie, beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter, extra: p.extra,
+      cat: p.cat, wantNr: p.wantNr, source: p.source, done: false, result: null,
+      files: p.files.filter(f => f.role !== 'weg').map(f => ({ src: f.entry.src, key: f.entry.key, rel: f.rel, role: f.role }))
+    }))
+  };
+  const entries = new Map();
+  st.sources.forEach((s, i) => s.entries.forEach(e => entries.set(i + '|' + e.key, e)));
+  busy('Import wird vorbereitet …');
+  const saved = await ImportJob.put(job);
+  if (!saved) toast('Der Import kann auf diesem Gerät nicht für eine spätere Fortsetzung gesichert werden (Speicher voll oder privater Modus). Bitte die App bis zum Ende geöffnet lassen.', 'err', { title: 'Hinweis', ms: 12000 });
+  await closeImport(true);
+  await executeJob(job, entries);
+}
+
+// ---------------------------------------------------------------- Auftrag ausführen und merken (für Fortsetzen nach Unterbrechung)
+const ImportJob = (() => {
+  const DB = 'apologea-import', STORE = 'jobs', KEY = 'aktuell';
+  function db() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function tx(mode, fn) {
+    const d = await db();
+    try {
+      return await new Promise((res, rej) => {
+        const t = d.transaction(STORE, mode), req = fn(t.objectStore(STORE));
+        t.oncomplete = () => res(req && req.result);
+        t.onerror = t.onabort = () => rej(t.error);
+      });
+    } finally { d.close(); }
+  }
+  return {
+    async get() { try { return await tx('readonly', s => s.get(KEY)); } catch (e) { return null; } },
+    async put(job) { try { await tx('readwrite', s => s.put(job, KEY)); return true; } catch (e) { return false; } },
+    async del() { try { await tx('readwrite', s => s.delete(KEY)); } catch (e) { /* egal */ } }
+  };
+})();
+
+const jobTag = (job, i) => `Import ${job.id.slice(0, 8)}/${i + 1}`;
+
+async function executeJob(job, entries) {
+  S.imp = true;
   let lock = null;
-  try { if (navigator.wakeLock) lock = await navigator.wakeLock.request('screen'); } catch (e) { /* optional */ }
+  const relock = async () => { try { if (navigator.wakeLock && document.visibilityState === 'visible') lock = await navigator.wakeLock.request('screen'); } catch (e) { /* optional */ } };
+  const onVis = () => { if (document.visibilityState === 'visible') relock(); };
+  await relock();
+  document.addEventListener('visibilitychange', onVis);
   const warn = e => { e.preventDefault(); e.returnValue = ''; };
   window.addEventListener('beforeunload', warn);
-  const ok = [], bad = [];
-  const label = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const label = new Date(job.created).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const total = job.pieces.length;
+  const errors = [];
+  let interrupted = false;
   try {
+    busy('Aktuellen Stand aus OneDrive prüfen …');
+    await Store.refresh();
     // Neue Kleidungstypen zuerst anlegen
-    const newCats = [...new Set(list.map(p => p.cat).filter(c => c.startsWith('__neu:')))];
-    for (const nc of newCats) {
+    for (const nc of [...new Set(job.pieces.filter(p => !p.done).map(p => p.cat).filter(c => c.startsWith('__neu:')))]) {
       const n = nc.slice(6);
       busy(`Kleidungstyp „${n}“ wird angelegt …`);
       let c = M().categories.find(x => ImportRules.catKey(x.name) === ImportRules.catKey(n));
       if (!c) c = await Store.createCategory(n);
-      list.forEach(p => { if (p.cat === nc) p.cat = c.id; });
+      job.pieces.forEach(p => { if (p.cat === nc) p.cat = c.id; });
     }
-    for (let i = 0; i < list.length; i++) {
-      const p = list[i], head = `Piece ${i + 1} von ${list.length} · ${p.name}`;
+    await ImportJob.put(job);
+    for (let i = 0; i < total; i++) {
+      const p = job.pieces[i];
+      if (p.done) continue;
+      const head = `Piece ${i + 1} von ${total} · ${p.name}`, tag = jobTag(job, i);
+      // Schon gespeichert, aber vor dem Abhaken unterbrochen? Dann nicht doppelt anlegen.
+      const already = M().pieces.find(x => (x.herkunft || '').includes(tag));
+      if (already) { p.done = true; p.result = { nummer: already.nummer, ordner: already.kategorie + '/' + already.folderName, entwurf: already.entwurf }; await ImportJob.put(job); continue; }
       let stagingId = null;
       try {
+        if (!M().categories.some(c => c.id === p.cat)) throw new Error('Der Kleidungstyp wurde inzwischen umbenannt oder gelöscht.');
         busy(head + ' – Ordner wird vorbereitet …');
         stagingId = (await Store.createStaging()).id;
         const slots = { design: null, kleidungsansicht: null, mockup: null }, work = [];
-        const files = p.files.filter(f => f.role !== 'weg');
-        for (let k = 0; k < files.length; k++) {
-          const f = files[k], fname = f.rel.split('/').pop();
-          busy(`${head} – Datei ${k + 1} von ${files.length}: ${fname}`);
-          const blob = await f.entry.getBlob();
+        for (let k = 0; k < p.files.length; k++) {
+          const f = p.files[k], fname = f.rel.split('/').pop(), entry = entries.get(f.src + '|' + f.key);
+          if (!entry) throw new Error(`Die Datei „${f.rel}“ ist nicht mehr verfügbar.`);
+          busy(`${head} – Datei ${k + 1} von ${p.files.length}: ${fname}`);
+          const blob = await entry.getBlob();
           const up = await Store.uploadToStaging(stagingId, new File([blob], fname, { type: blob.type || '' }));
           if (ROLES.includes(f.role)) slots[f.role] = { art: 'upload', item: up.item, ext: up.ext };
           else work.push({ art: 'upload', item: up.item, origName: fname });
         }
         const missing = ROLES.filter(r => !slots[r]);
         const nummer = p.wantNr && !Store.numberOwner(p.wantNr) ? p.wantNr : Store.nextNumber();
-        const extra = Object.assign({}, p.extra);
         const saved = await Store.save({
-          mode: 'neu', key: null, stagingId, nummer, name: p.name.trim(), motivtitel: p.motivtitel, catId: p.cat, serie: p.serie,
-          beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter, entwurf: st.entwurf || missing.length > 0, vorlage_von: null,
-          slots, work, extra, herkunft: `Am Handy importiert am ${label} aus „${st.sourceName}“ (${p.source}).`
+          mode: 'neu', key: null, stagingId, nummer, name: p.name, motivtitel: p.motivtitel, catId: p.cat, serie: p.serie,
+          beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter, entwurf: job.entwurf || missing.length > 0, vorlage_von: null,
+          slots, work, extra: Object.assign({}, p.extra), herkunft: `Am Handy importiert am ${label} aus „${job.sourceName}“ (${p.source}; ${tag}).`
         }, msg => busy(head + ' – ' + msg));
-        ok.push({ p, saved });
+        p.done = true;
+        p.result = saved ? { nummer: saved.nummer, ordner: saved.kategorie + '/' + saved.folderName, entwurf: saved.entwurf } : { nummer: nummer, ordner: '', entwurf: true };
+        await ImportJob.put(job);
       } catch (e) {
-        bad.push({ p, msg: e && e.message ? e.message : String(e) });
         if (stagingId) await Store.discardStaging(stagingId);
-        if (e && (e.code === 'login_required' || e.status === 401)) break;
+        // Ohne Anmeldung oder Netz lohnt es nicht weiterzumachen → später fortsetzen
+        if (e && (e.code === 'login_required' || e.status === 401 || e instanceof TypeError || !navigator.onLine)) { interrupted = true; errors.push({ name: p.name, msg: e.message || String(e) }); break; }
+        p.done = true; p.error = e && e.message ? e.message : String(e);
+        await ImportJob.put(job);
       }
     }
   } catch (e) {
-    bad.push({ p: { name: 'Kleidungstyp' }, msg: e.message || String(e) });
+    interrupted = true;
+    errors.push({ name: 'Import', msg: e && e.message ? e.message : String(e) });
   } finally {
     unbusy();
     window.removeEventListener('beforeunload', warn);
+    document.removeEventListener('visibilitychange', onVis);
     if (lock) lock.release().catch(() => {});
+    S.imp = false;
   }
-  await closeImport(true);
+  if (!interrupted) await ImportJob.del();
   rerender();
-  const body = `<p><b>${ok.length}</b> von ${list.length} ${list.length === 1 ? 'Piece' : 'Pieces'} importiert.</p>
-    ${ok.length ? '<div class="filelist">' + ok.map(o => `<div class="filerow"><div class="fn">${o.saved ? pad3(o.saved.nummer) + ' · ' : ''}${esc(o.p.name)}<small>${o.saved ? esc(o.saved.kategorie + '/' + o.saved.folderName) + (o.saved.entwurf ? ' · Entwurf' : '') : ''}</small></div></div>`).join('') + '</div>' : ''}
-    ${bad.length ? `<div class="section-title">Nicht importiert (${bad.length})</div>` + bad.map(b => `<p class="hint error"><b>${esc(b.p.name)}:</b> ${esc(b.msg)}</p>`).join('') : ''}`;
-  sheet({ title: 'Import abgeschlossen', body, buttons: [{ label: 'Fertig', cls: 'primary' }] });
+  const ok = job.pieces.filter(p => p.done && !p.error), bad = job.pieces.filter(p => p.error);
+  const body = `<p><b>${ok.length}</b> von ${total} ${total === 1 ? 'Piece' : 'Pieces'} importiert.</p>
+    ${interrupted ? `<div class="notice imp-focus">Der Import wurde unterbrochen (${esc(errors.map(e => e.msg).join(' '))}). Die übrigen Pieces können Sie beim nächsten Öffnen der App oder über „Pieces importieren“ fortsetzen.</div>` : ''}
+    ${ok.length ? '<div class="filelist">' + ok.map(p => `<div class="filerow"><div class="fn">${p.result && p.result.nummer ? pad3(p.result.nummer) + ' · ' : ''}${esc(p.name)}<small>${p.result ? esc(p.result.ordner) + (p.result.entwurf ? ' · Entwurf' : '') : ''}</small></div></div>`).join('') + '</div>' : ''}
+    ${bad.length ? `<div class="section-title">Nicht importiert (${bad.length})</div>` + bad.map(p => `<p class="hint error"><b>${esc(p.name)}:</b> ${esc(p.error)}</p>`).join('') : ''}`;
+  sheet({ title: interrupted ? 'Import unterbrochen' : 'Import abgeschlossen', body, buttons: [{ label: 'Fertig', cls: 'primary' }] });
+}
+
+/** Beim Öffnen der App: gibt es einen unterbrochenen Import für diese Sammlung? */
+async function checkImportResume(fromMenu) {
+  if (S.imp || !window.indexedDB) return false;
+  const job = await ImportJob.get();
+  if (!job || job.rootId !== Store.drive.rootId) { if (fromMenu) toast('Es gibt keinen unterbrochenen Import.', ''); return false; }
+  const done = job.pieces.filter(p => p.done).length, total = job.pieces.length;
+  const v = await sheet({
+    title: 'Import fortsetzen?',
+    body: `<p>Ein Import vom ${new Date(job.created).toLocaleDateString('de-DE')} wurde unterbrochen: <b>${done} von ${total}</b> ${total === 1 ? 'Piece ist' : 'Pieces sind'} schon gespeichert.</p><p class="hint">Quelle: <span class="mono">${esc(job.sourceName)}</span>. Bereits gespeicherte Pieces werden nicht doppelt angelegt.</p>`,
+    buttons: [{ label: 'Verwerfen', value: 'weg' }, { label: 'Später', value: null }, { label: 'Fortsetzen', cls: 'primary', value: 'go' }]
+  });
+  if (v === 'weg') {
+    if (await confirmSheet('Import verwerfen?', `Die ${total - done} noch fehlenden Pieces werden nicht importiert. Bereits gespeicherte bleiben erhalten.`, 'Verwerfen', true)) await ImportJob.del();
+    return true;
+  }
+  if (v !== 'go') return true;
+  busy('Dateien werden wieder geöffnet …');
+  try {
+    const entries = new Map();
+    for (let i = 0; i < job.sources.length; i++) {
+      const s = job.sources[i];
+      const list = s.kind === 'zip' ? await Zip.read(s.file) : plainEntries(s.files);
+      list.forEach(e => entries.set(i + '|' + (s.kind === 'zip' ? e.path : e.key), e));
+    }
+    unbusy();
+    await executeJob(job, entries);
+  } catch (e) { unbusy(); fail(e, 'Fortsetzen nicht möglich'); }
+  return true;
 }
