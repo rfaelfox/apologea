@@ -254,3 +254,30 @@ select.input { padding-right: 34px; background-image: url("data:image/svg+xml,%3
 .cat-row .nm { flex: 1; min-width: 0; font-size: 14.5px; color: var(--ivory); }
 .cat-row .nm small { display: block; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cat-allbox { margin: 2px 0 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+
+/* ---------------------------------------------------------------- Kollektionen */
+.coll-card { display: flex; gap: 14px; width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin: 12px 0; color: inherit; }
+.coll-card:active { background: var(--panel-2); }
+.coll-thumbs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 96px; flex: none; }
+.coll-thumbs .ct { aspect-ratio: 2 / 3; background: #1b1916; border-radius: 3px; overflow: hidden; }
+.coll-thumbs .ct img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .3s; }
+.coll-thumbs .ct img.on { opacity: 1; }
+.coll-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+.coll-name { font-family: var(--serif); font-size: 19px; letter-spacing: .06em; color: var(--ivory); text-transform: uppercase; overflow-wrap: anywhere; }
+.coll-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.coll-meta .badge { position: static; }
+.coll-desc { font-size: 13px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.coll-empty { text-align: center; padding: 50px 10px; color: var(--muted); }
+.coll-empty .btn { margin-top: 14px; }
+.coll-text { margin: 4px 0 6px; }
+
+.coll-miss { margin: 10px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.coll-grid { padding: 8px 0 30px; }
+.coll-order .nr { color: var(--gold); width: 28px; flex: none; font-size: 13px; }
+.coll-chip { cursor: pointer; }
+.coll-chip.add { border-style: dashed; color: var(--gold-2); }
+.coll-chip svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 3px; }
+.coll-chip { padding: 5px 12px; }
+.coll-actions { grid-template-columns: 1fr 1fr; }
+.coll-actions #cv-order { grid-column: 1 / -1; }
+p.coll-text { font-size: 15px; color: var(--ivory-2); line-height: 1.55; margin: 8px 0 4px; }

@@ -40,7 +40,7 @@ const Catalog = (() => {
 
   // ---------------------------------------------------------------- Durchsuchbarer Text (unsichtbar über dem Seitenbild)
   let notes = [];
-  const note = (text, x, y, size) => { text = String(text || '').replace(/\s+/g, ' ').trim(); if (text) notes.push({ text, x, y, size }); };
+  const note = (text, x, y, size, w) => { text = String(text || '').replace(/\s+/g, ' ').trim(); if (text) notes.push({ text, x, y, size, w: w || W - M - x }); };
 
   // ---------------------------------------------------------------- Zeichenhilfen
   const setFont = (g, weight, size, fam) => { g.font = `${weight} ${size}px ${fam}`; };
@@ -175,12 +175,12 @@ const Catalog = (() => {
     ty += 52;
     const f = fit(g, (p.name || '').toUpperCase(), w, L.desc ? 46 : 38, L.desc ? 30 : 26, 600, F.serif, 3);
     g.fillStyle = C.ivory; tracked(g, f.text, x, ty, f.track, 'left');
-    note(`N° ${String(p.nummer).padStart(3, '0')} ${p.name}${p.motivtitel ? ' – ' + p.motivtitel : ''} · ${p.kategorie}${p.serie ? ' · ' + p.serie : ''}${p.entwurf ? ' · Entwurf' : ''}`, x, ty, f.size);
+    note(`N° ${String(p.nummer).padStart(3, '0')} ${p.name}${p.motivtitel ? ' – ' + p.motivtitel : ''} · ${p.kategorie}${p.serie ? ' · ' + p.serie : ''}${p.entwurf ? ' · Entwurf' : ''}`, x, ty, f.size, w);
     if (p.motivtitel) { ty += 36; setFont(g, 400, L.desc ? 23 : 21, F.sans); g.fillStyle = C.muted; g.fillText(ellipsize(g, p.motivtitel, w), x, ty); }
     if (L.desc && p.beschreibung) {
       ty += 22; line(g, x, ty, x + 60, ty, C.line, 1.5);
       setFont(g, 400, 21, F.sans); g.fillStyle = 'rgba(230,213,184,.82)';
-      wrap(g, p.beschreibung, w, p.motivtitel ? 4 : 5).forEach(l => { ty += 31; g.fillText(l, x, ty); note(l, x, ty, 21); });
+      wrap(g, p.beschreibung, w, p.motivtitel ? 4 : 5).forEach(l => { ty += 31; g.fillText(l, x, ty); note(l, x, ty, 21, w); });
     }
   }
 
@@ -203,7 +203,7 @@ const Catalog = (() => {
     drawLogo(g, assets.emblem, cx, cy, 500);
     // Kopfzeile
     setFont(g, 500, 22, F.mono); g.fillStyle = C.gold; g.textBaseline = 'alphabetic';
-    tracked(g, 'APOLOGEA — CATALOGUE', M, M + 30, 8, 'left');
+    tracked(g, o.collection ? 'APOLOGEA — COLLECTION' : 'APOLOGEA — CATALOGUE', M, M + 30, 8, 'left');
     g.fillStyle = C.muted; tracked(g, o.edition.toUpperCase(), W - M, M + 30, 5, 'right');
     tickRule(g, M, W - M, M + 58, C.lineF);
     // Schriftzug, Titel, Leitsatz
@@ -214,8 +214,14 @@ const Catalog = (() => {
     note('APOLOGEA ' + o.title + ' · ' + o.edition, M, 1660, t.size);
     setFont(g, 500, 24, F.mono); g.fillStyle = C.gold;
     tracked(g, 'FAITH IS NOT SILENT.', cx, 1730, 10, 'center');
+    if (o.collection && o.collection.beschreibung) {
+      setFont(g, 400, 26, F.sans); g.fillStyle = C.muted; g.textAlign = 'center';
+      wrap(g, o.collection.beschreibung, W - 2 * M - 200, 3).forEach((l, i) => { g.fillText(l, cx, 1800 + i * 38); note(l, M, 1800 + i * 38, 26); });
+      g.textAlign = 'left';
+    }
     // Kennzahlen
-    const y0 = H - M - 330, cols = [[stats.pieces, stats.pieces === 1 ? 'PIECE' : 'PIECES'], [stats.cats, stats.cats === 1 ? 'KLEIDUNGSTYP' : 'KLEIDUNGSTYPEN'], [stats.date, 'STAND']];
+    const drop = o.collection && o.collection.drop ? new Date(o.collection.drop + 'T12:00:00') : null;
+    const y0 = H - M - 330, cols = [[stats.pieces, stats.pieces === 1 ? 'PIECE' : 'PIECES'], [stats.cats, stats.cats === 1 ? 'KLEIDUNGSTYP' : 'KLEIDUNGSTYPEN'], drop && !isNaN(drop) ? [drop.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }), 'DROP'] : [stats.date, 'STAND']];
     line(g, M, y0, W - M, y0, C.line, 1.5);
     const cw = (W - 2 * M) / 3;
     cols.forEach(([v, l], i) => {
@@ -269,10 +275,13 @@ const Catalog = (() => {
   function plan(pieces, o) {
     const L = LAYOUTS[o.layout] || LAYOUTS.kompakt;
     const rowH = L.imgH + L.textH + L.rowGap;
-    const cats = [];
-    pieces.forEach(p => { let c = cats.find(x => x.name === p.kategorie); if (!c) cats.push(c = { name: p.kategorie, list: [] }); c.list.push(p); });
-    cats.sort((a, b) => a.name.localeCompare(b.name, 'de'));
-    cats.forEach(c => c.list.sort((a, b) => a.nummer - b.nummer));
+    let cats = [];
+    if (o.collection) cats = [{ name: o.collection.name, list: pieces.slice(), label: 'KOLLEKTION' }]; // Reihenfolge der Kollektion beibehalten
+    else {
+      pieces.forEach(p => { let c = cats.find(x => x.name === p.kategorie); if (!c) cats.push(c = { name: p.kategorie, list: [] }); c.list.push(p); });
+      cats.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+      cats.forEach(c => c.list.sort((a, b) => a.nummer - b.nummer));
+    }
     const pages = [{ type: 'cover' }];
     let cur = null, y = 0;
     const newPage = () => { cur = { type: 'grid', blocks: [] }; pages.push(cur); y = CONTENT_Y; };
@@ -282,7 +291,7 @@ const Catalog = (() => {
       const gapBefore = y > CONTENT_Y ? 60 : 0;
       if (!fits(gapBefore + SECTION_H + rowH - L.rowGap)) newPage(); else y += gapBefore;
       const nr = String(ci + 1).padStart(2, '0');
-      cur.blocks.push({ kind: 'section', y, s: { nr, label: `KAPITEL ${nr} / ${String(cats.length).padStart(2, '0')}`, name: c.name, count: c.list.length } });
+      cur.blocks.push({ kind: 'section', y, s: c.label ? { label: c.label, name: c.name, count: c.list.length } : { nr, label: `KAPITEL ${nr} / ${String(cats.length).padStart(2, '0')}`, name: c.name, count: c.list.length } });
       y += SECTION_H;
       for (let i = 0; i < c.list.length; i += L.cols) {
         if (!fits(rowH - L.rowGap)) { newPage(); cur.blocks.push({ kind: 'cont', y, name: c.name }); y += 50; }
@@ -360,7 +369,11 @@ const Catalog = (() => {
       const n = first + 3 * i;
       // Seitenbild + unsichtbarer Text (Darstellungsmodus 3) → im PDF-Programm durchsuchbar und kopierbar
       let cs = `q ${pw} 0 0 ${ph} 0 0 cm /Im${i} Do Q\nBT 3 Tr\n`;
-      (p.notes || []).forEach(t => { cs += `/F1 ${(t.size * k).toFixed(2)} Tf 1 0 0 1 ${(t.x * k).toFixed(2)} ${(ph - t.y * k).toFixed(2)} Tm ${winAnsi(t.text)} Tj\n`; });
+      (p.notes || []).forEach(t => {
+        // Unsichtbaren Text auf die Breite des sichtbaren Bereichs stauchen (Helvetica ≈ 0,55 em je Zeichen), damit er nicht in Nachbarspalten läuft
+        const tz = Math.max(15, Math.min(100, t.w / (t.text.length * 0.55 * t.size) * 100));
+        cs += `/F1 ${(t.size * k).toFixed(2)} Tf ${tz.toFixed(1)} Tz 1 0 0 1 ${(t.x * k).toFixed(2)} ${(ph - t.y * k).toFixed(2)} Tm ${winAnsi(t.text)} Tj\n`;
+      });
       cs += 'ET';
       obj(n, () => add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im${i} ${n + 2} 0 R >> /Font << /F1 4 0 R >> >> /Contents ${n + 1} 0 R >>`));
       obj(n + 1, () => { add(`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`); });
@@ -404,7 +417,7 @@ const Catalog = (() => {
     const out = [];
     const maxBytes = (o.quality === 'hoch' ? 40 : 10) * 1048576 * 0.96 - 40000;
     let used = 0;
-    const stats = { pieces: pieces.length, cats: cats.length, date: new Date().toLocaleDateString('de-DE', { month: '2-digit', year: 'numeric' }).replace('.', ' / ') };
+    const stats = { pieces: pieces.length, cats: new Set(pieces.map(p => p.kategorie)).size, date: new Date().toLocaleDateString('de-DE', { month: '2-digit', year: 'numeric' }).replace('.', ' / ') };
     for (let n = 0; n < pages.length; n++) {
       const pg = pages[n];
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
@@ -450,11 +463,13 @@ const Catalog = (() => {
 })();
 
 // ---------------------------------------------------------------- Oberfläche
-function openCatalog() {
+function openCatalog(preset) {
   const m = M();
+  const coll = preset && preset.collection ? preset : null;
   if (!m.pieces.length) { toast('Die Sammlung enthält noch keine Pieces.', 'err'); return; }
   const o = Object.assign({ title: 'Kollektion', contact: 'apologea.eu', scope: 'alle', role: S.cardImg || 'mockup', layout: 'kompakt', index: true, quality: 'klein' }, prefs.get('catalog', {}));
   o.edition = new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  if (coll) { const dd = coll.collection.drop ? new Date(coll.collection.drop + 'T12:00:00') : null; if (dd && !isNaN(dd)) o.edition = dd.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }); o.title = coll.collection.name; o.collection = { name: coll.collection.name, beschreibung: coll.collection.beschreibung || '', drop: coll.collection.drop || '' }; o.fixed = coll.pieces; }
   const sel = new Set(prefs.get('catalogSel', []).filter(id => m.pieces.some(p => p.id === id)));
   const filterActive = !!(S.filter.q || S.filter.cat || S.filter.status);
   if (o.scope === 'filter' && !filterActive) o.scope = 'alle';
@@ -468,8 +483,8 @@ function openCatalog() {
   const body = document.createElement('div');
   body.innerHTML = `
     <p class="hint" style="margin-top:0">Ein gestalteter Katalog als PDF mit Bild, Nummer und Namen der Pieces – zum Teilen mit Partnern, Sponsoren, Freunden oder Claude.</p>
-    <div class="field"><label>Umfang</label><div id="c-scope-box">${scopeSeg()}</div></div>
-    <div id="c-pick" class="${o.scope === 'auswahl' ? '' : 'hidden'}">
+    ${coll ? `<div class="tpl-note" style="margin-bottom:14px">Kollektion <b>${esc(coll.collection.name)}</b> · ${coll.pieces.length} Pieces in der Reihenfolge der Kollektion.</div>` : `<div class="field"><label>Umfang</label><div id="c-scope-box">${scopeSeg()}</div></div>`}
+    <div id="c-pick" class="${!coll && o.scope === 'auswahl' ? '' : 'hidden'}">
       <div class="search cat-search">${icon('search')}<input class="input" id="c-q" type="search" placeholder="Name, Nummer, Motiv, Serie …" autocomplete="off" enterkeyhint="search"></div>
       <label class="imp-check cat-allbox"><input type="checkbox" id="c-allp"><span>Alle Pieces <span class="faint">(${m.pieces.length})</span></span></label>
       <div class="cat-tools"><span id="c-selcount" class="hint"></span><button type="button" class="btn small ghost" id="c-all">Treffer wählen</button><button type="button" class="btn small ghost" id="c-none">Leeren</button></div>
@@ -490,11 +505,11 @@ function openCatalog() {
     all.checked = sel.size === m.pieces.length;
     all.indeterminate = sel.size > 0 && sel.size < m.pieces.length;
   };
-  const refreshScope = () => { $('#c-scope-box', body).innerHTML = scopeSeg(); };
+  const refreshScope = () => { const b = $('#c-scope-box', body); if (b) b.innerHTML = scopeSeg(); };
   sheet({
     title: 'Katalog erstellen', body,
     buttons: [{ label: 'Abbrechen' }, { label: 'PDF erstellen', cls: 'primary', value: 'go', run: () => {
-      if (o.scope === 'auswahl' && !sel.size) { toast('Bitte mindestens ein Piece auswählen (Suche oben).', 'err'); return false; }
+      if (!coll && o.scope === 'auswahl' && !sel.size) { toast('Bitte mindestens ein Piece auswählen (Suche oben).', 'err'); return false; }
       o.title = $('#c-title', body).value.trim() || 'Kollektion';
       o.edition = $('#c-ed', body).value.trim() || new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
       o.contact = $('#c-contact', body).value.trim();
@@ -523,10 +538,11 @@ function openCatalog() {
 }
 
 async function makeCatalog(o) {
-  prefs.set('catalog', { title: o.title, contact: o.contact, scope: o.scope, role: o.role, layout: o.layout, index: o.index, quality: o.quality });
-  prefs.set('catalogSel', o.sel || []);
+  const keep = prefs.get('catalog', {});
+  prefs.set('catalog', { title: o.fixed ? keep.title || 'Kollektion' : o.title, contact: o.contact, scope: o.fixed ? keep.scope || 'alle' : o.scope, role: o.role, layout: o.layout, index: o.index, quality: o.quality });
+  if (!o.fixed) prefs.set('catalogSel', o.sel || []);
   const m = M(), chosen = new Set(o.sel || []);
-  const list = o.scope === 'fertig' ? m.pieces.filter(p => !p.entwurf) : o.scope === 'filter' ? filtered() : o.scope === 'auswahl' ? m.pieces.filter(p => chosen.has(p.id)) : m.pieces.slice();
+  const list = o.fixed ? o.fixed : o.scope === 'fertig' ? m.pieces.filter(p => !p.entwurf) : o.scope === 'filter' ? filtered() : o.scope === 'auswahl' ? m.pieces.filter(p => chosen.has(p.id)) : m.pieces.slice();
   if (!list.length) { toast('Für diese Auswahl gibt es keine Pieces.', 'err'); return; }
   let lock = null;
   try { if (navigator.wakeLock) lock = await navigator.wakeLock.request('screen'); } catch (e) { /* optional */ }

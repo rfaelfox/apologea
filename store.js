@@ -550,7 +550,53 @@ const Store = (() => {
     await refresh();
   }
 
+  // ---------------------------------------------------------------- Kollektionen (eigene Datei im internen Ordner .apologea)
+  // Die Piece-Ordner und Produktdaten.json bleiben unverändert; Pieces werden über ihre id referenziert.
+  const COLL_FILE = 'kollektionen.json';
+  let collections = [], collTag = null;
+  const collItem = () => { const meta = child(drive.rootId, '.apologea'); return meta ? child(meta.id, COLL_FILE) : null; };
+  async function readCollections() {
+    const f = collItem();
+    if (!f) return { data: { format: 'APOLOGEA-Kollektionen/1', kollektionen: [] }, item: null };
+    const t = (await drive.readTexts([f.id]))[f.id];
+    // Nicht lesbar heißt NICHT leer – sonst würde beim Speichern alles überschrieben
+    if (t == null) throw new DriveError('Die Kollektionen konnten nicht geladen werden. Bitte Verbindung prüfen.', 0, 'offline');
+    let data;
+    try { data = JSON.parse(String(t).replace(/^﻿/, '')); } catch (e) { throw new Error('Die Datei kollektionen.json ist beschädigt und wird nicht überschrieben.'); }
+    if (!Array.isArray(data.kollektionen)) data.kollektionen = [];
+    return { data, item: f };
+  }
+  /** Neu laden, wenn sich die Datei (z. B. an einem anderen Gerät) geändert hat */
+  async function loadCollections(force) {
+    const f = collItem();
+    const tag = f ? f.eTag : null;
+    if (!force && tag === collTag) return collections;
+    const { data } = await readCollections();
+    collections = data.kollektionen; collTag = tag;
+    return collections;
+  }
+  /** Ändern mit Schutz vor gleichzeitigen Änderungen: aktuellen Stand lesen, ändern, nur schreiben wenn unverändert */
+  async function updateCollections(mutate) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await drive.sync(st); indexKids();
+      const { data, item } = await readCollections();
+      const result = mutate(data.kollektionen, data);
+      data.format = 'APOLOGEA-Kollektionen/1'; data.geaendert = isoLocal();
+      const text = JSON.stringify(data, null, 2) + '\n';
+      try {
+        let r;
+        if (item) { r = await drive.replaceText(item.id, text, item.eTag); st.items.set(r.id, Object.assign({}, item, r)); }
+        else { const meta = await ensureFolder(drive.rootId, '.apologea'); r = await drive.writeText(meta.id, COLL_FILE, text); st.items.set(r.id, Object.assign({ parentId: meta.id }, r)); indexKids(); }
+        collections = data.kollektionen; collTag = r.eTag;
+        saveCache();
+        return result;
+      } catch (e) { if (e.code !== 'conflict' && e.code !== 'exists') throw e; }
+    }
+    throw new Error('Die Kollektionen wurden gleichzeitig an einem anderen Gerät geändert. Bitte erneut versuchen.');
+  }
+
   return {
+    loadCollections, updateCollections, get collections() { return collections; },
     open, fromCache, refresh, nextNumber, numberOwner, save, createCategory, assign, trashPiece, restore, deleteForever,
     createStaging, uploadToStaging, discardStaging, cleanupStaging, blobOf,
     get model() { return model; }, get drive() { return drive; }

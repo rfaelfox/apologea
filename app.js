@@ -1,7 +1,7 @@
 /* APOLOGEA Handy-App – Oberfläche */
 'use strict';
 
-const VERSION = '1.4.1';
+const VERSION = '1.5.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -202,7 +202,9 @@ async function sync(silent) {
 }
 function setSyncDot(c) { const d = $('#syncdot'); if (d) d.className = 'sync-dot ' + c; }
 function rerender() {
-  renderChips(); renderGrid();
+  renderChips();
+  if (!$('#coll-view')) renderGrid();
+  if (typeof Coll !== 'undefined') Coll.refresh();
   if (S.detail && !S.form && !$('.viewer')) {
     const p = M().pieces.find(x => x.key === S.detail);
     if (p) openDetail(p.key, true); else closeDetail();
@@ -331,18 +333,19 @@ function renderGrid() {
     grid.innerHTML = total ? '<div class="empty">Keine passenden Pieces.</div>' : '<div class="empty">Noch keine Pieces in dieser Sammlung.</div>';
     return;
   }
-  grid.innerHTML = list.map(p => {
-    const { f, role } = cardItem(p);
-    const missing = ROLES.filter(r => !p.bilder[r] || !p.bilder[r].item);
-    const badges = [];
-    if (p.status === 'Entwurf') badges.push('<span class="badge entwurf">Entwurf</span>');
-    if (missing.length) badges.push(`<span class="badge fehlt">${missing.length === 3 ? 'Keine Bilder' : 'Fehlt: ' + missing.map(r => ROLE_SHORT[r]).join(', ')}</span>`);
-    const isD = role === 'design';
-    return `<article class="card" data-key="${p.key}">
-      <div class="card-img ${isD ? 'design bg-' + S.designBg : ''}">${f ? `<img data-thumb="${f.id}" alt="">` : `<div class="missing-img">${icon('image')}Kein Bild</div>`}<div class="badges">${badges.join('')}</div></div>
-      <div class="card-body"><div class="card-nr">NR. ${pad3(p.nummer)}</div><div class="card-name">${esc(p.name)}</div><div class="card-sub">${esc(p.motivtitel || p.kategorie)}</div></div></article>`;
-  }).join('');
+  grid.innerHTML = list.map(pieceCardHtml).join('');
   observeThumbs(grid);
+}
+function pieceCardHtml(p) {
+  const { f, role } = cardItem(p);
+  const missing = ROLES.filter(r => !p.bilder[r] || !p.bilder[r].item);
+  const badges = [];
+  if (p.status === 'Entwurf') badges.push('<span class="badge entwurf">Entwurf</span>');
+  if (missing.length) badges.push(`<span class="badge fehlt">${missing.length === 3 ? 'Keine Bilder' : 'Fehlt: ' + missing.map(r => ROLE_SHORT[r]).join(', ')}</span>`);
+  const isD = role === 'design';
+  return `<article class="card" data-key="${p.key}">
+    <div class="card-img ${isD ? 'design bg-' + S.designBg : ''}">${f ? `<img data-thumb="${f.id}" alt="">` : `<div class="missing-img">${icon('image')}Kein Bild</div>`}<div class="badges">${badges.join('')}</div></div>
+    <div class="card-body"><div class="card-nr">NR. ${pad3(p.nummer)}</div><div class="card-name">${esc(p.name)}</div><div class="card-sub">${esc(p.motivtitel || p.kategorie)}</div></div></article>`;
 }
 
 // ---------------------------------------------------------------- Vorschaubilder bei Bedarf laden
@@ -385,6 +388,7 @@ function openMenu() {
   const segs = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" class="${v === cur ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   body.innerHTML = `
     <button class="menu-item" data-a="sync">${icon('refresh')}Jetzt aktualisieren</button>
+    <button class="menu-item" data-a="coll">${icon('template')}Kollektionen<span class="sub">${typeof Coll !== 'undefined' && Coll.count ? Coll.count : ''}</span></button>
     <button class="menu-item" data-a="catalog">${icon('file')}Katalog erstellen …<span class="sub">PDF zum Teilen</span></button>
     <button class="menu-item" data-a="import">${icon('import')}Pieces importieren …<span class="sub">ZIP, Ordner</span></button>
     <button class="menu-item" data-a="newcat">${icon('plus')}Neuer Kleidungstyp …</button>
@@ -418,6 +422,7 @@ function openMenu() {
       if (act === 'newcat') createCategory();
       if (act === 'import') openImport();
       if (act === 'catalog') openCatalog();
+      if (act === 'coll') Coll.openList();
       if (act === 'check') openCheck();
       if (act === 'trash') openTrash();
       if (act === 'status') {
@@ -474,6 +479,7 @@ function openDetail(key, keep) {
       ${probs.length ? `<div class="section-title">Hinweise</div><ul class="problems">${probs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
       <div class="section-title">Beschreibung</div><div class="desc">${descHtml(p.beschreibung)}</div>
       ${p.schlagwoerter.length ? `<div class="section-title">Schlagwörter</div><div class="row">${p.schlagwoerter.map(t => `<span class="chip static">${esc(t)}</span>`).join('')}</div>` : ''}
+      <div id="d-coll"></div>
       <div class="section-title">Produktdaten</div>
       <dl class="datalist">
         <dt>Nummer</dt><dd>${pad3(p.nummer)}</dd><dt>Kleidungstyp</dt><dd>${esc(p.kategorie)}</dd>
@@ -499,6 +505,7 @@ function openDetail(key, keep) {
   $$('[data-view]', v).forEach(el => el.onclick = () => openViewer(p, el.dataset.view));
   $$('[data-open]', v).forEach(el => el.onclick = () => openFile(el.dataset.open));
   $$('.assign', v).forEach(sel => sel.onchange = () => assign(p, sel.dataset.rel, sel.value, sel));
+  if (typeof Coll !== 'undefined') Coll.fillDetail(p, $('#d-coll', v));
   loadSlideImages(p, v);
 }
 

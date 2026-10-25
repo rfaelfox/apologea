@@ -254,6 +254,13 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   max. 10 MB (Budget je Seite, erst JPEG-Qualität, dann Auflösung), „Hohe Qualität“ max. 40 MB. Härtetest 120 Pieces mit
   Rauschbildern: 8,9 MB / 36 Seiten. Hinweis ab >100 Seiten (Lesegrenze für Claude).
 - 1.4.1: Katalog-Auswahl mit Checkbox „Alle Pieces (n)“ (an/aus/teilweise), Zähler „x von n ausgewählt“.
+- 1.5.0: **Kollektionen** (`collections.js`). Gespeichert in `Sammlung/.apologea/kollektionen.json`
+  (`{format:"APOLOGEA-Kollektionen/1", kollektionen:[{id,name,beschreibung,status:idee|planung|bereit|veroeffentlicht,drop:"YYYY-MM-DD",pieces:[pieceId…],erstellt,geaendert}]}`);
+  Piece-Ordner/Produktdaten unverändert. `Store.updateCollections` liest frisch, ändert, schreibt mit eTag (If-Match), 3 Versuche;
+  unlesbare/beschädigte Datei wird nie überschrieben. Menü → Kollektionen (Übersicht), Kollektion (Beschreibung, Status,
+  Drop-Datum, Pieces per Suchauswahl, Reihenfolge ↑↓, fehlende Pieces entfernen, Katalog-PDF in Kollektionsreihenfolge mit
+  Beschreibung + Drop auf dem Deckblatt), Detailansicht eines Pieces: Kollektions-Chips + „Zu Kollektion …“ (auch neu anlegen).
+  Katalog-Textebene jetzt auf Spaltenbreite gestaucht (Tz). Getestet im Demo-Modus inkl. gleichzeitiger Änderung und kaputter Datei.
 - PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
