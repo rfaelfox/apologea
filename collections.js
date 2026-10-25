@@ -7,7 +7,7 @@ const Coll = (() => {
   const STATUS = [['idee', 'Idee'], ['planung', 'In Planung'], ['bereit', 'Bereit'], ['veroeffentlicht', 'Veröffentlicht']];
   const STATUS_LABEL = Object.fromEntries(STATUS);
   const STATUS_BADGE = { idee: '', planung: 'entwurf', bereit: 'hinweis', veroeffentlicht: 'ok' };
-  const st = { open: null, reorder: null };
+  const st = { open: null, reorder: null, removed: new Set() };
 
   const list = () => Store.collections || [];
   const byId = id => list().find(c => c.id === id);
@@ -75,32 +75,33 @@ const Coll = (() => {
         <div class="detail-title"><div class="nr">Kollektion${c.drop ? ' · Drop ' + esc(fmtDrop(c.drop)) : ''}</div><h1>${esc(c.name)}</h1>
           <div class="row" style="margin-top:8px">${badge(c)}<span class="hint">${ps.length} ${ps.length === 1 ? 'Piece' : 'Pieces'}</span></div></div>
         ${c.beschreibung ? `<p class="coll-text">${esc(c.beschreibung).replace(/\n/g, '<br>')}</p>` : ''}
-        ${ro ? '<p class="hint">Reihenfolge mit den Pfeilen ändern. Diese Reihenfolge gilt auch im Katalog.</p>' : `<div class="actions coll-actions">
+        ${ro ? '<p class="hint">Reihenfolge mit den Pfeilen ändern, mit ✕ aus der Kollektion entfernen. Erst „Fertig“ speichert. Die Reihenfolge gilt auch im Katalog.</p>' : `<div class="actions coll-actions">
           <button class="btn primary" id="cv-add">${icon('plus')}Pieces wählen</button>
           <button class="btn gold" id="cv-cat">${icon('file')}Katalog (PDF)</button>
-          <button class="btn" id="cv-order" ${ps.length > 1 ? '' : 'disabled'}>${icon('sort')}Reihenfolge</button>
+          <button class="btn" id="cv-order" ${ps.length ? '' : 'disabled'}>${icon('sort')}Reihenfolge &amp; entfernen</button>
         </div>`}
         ${miss && !ro ? `<div class="notice coll-miss">${miss === 1 ? '1 Piece ist' : miss + ' Pieces sind'} nicht mehr in der Sammlung (gelöscht oder im Papierkorb). <button class="btn small ghost" id="cv-clean">Entfernen</button></div>` : ''}
         ${ro ? `<div class="filelist coll-order">${ro.map((pid, i) => { const p = pieceById(pid); return p ? `<div class="filerow"><span class="nr">${i + 1}.</span><div class="fn">${pad3(p.nummer)} · ${esc(p.name)}<small>${esc(p.kategorie)}</small></div>
-            <button class="btn small" data-up="${i}" ${i ? '' : 'disabled'} aria-label="Nach oben">↑</button><button class="btn small" data-down="${i}" ${i < ro.length - 1 ? '' : 'disabled'} aria-label="Nach unten">↓</button></div>` : ''; }).join('')}</div>`
-          : ps.length ? `<main class="grid coll-grid">${ps.map(pieceCardHtml).join('')}</main>` : '<div class="coll-empty"><p class="hint">Noch keine Pieces in dieser Kollektion. Tippen Sie auf „Pieces wählen“.</p></div>'}
+            <button class="btn small" data-up="${i}" ${i ? '' : 'disabled'} aria-label="Nach oben">↑</button><button class="btn small" data-down="${i}" ${i < ro.length - 1 ? '' : 'disabled'} aria-label="Nach unten">↓</button><button class="btn small danger" data-x="${i}" aria-label="Aus Kollektion entfernen">✕</button></div>` : ''; }).join('')}</div>`
+          : ps.length ? `<main class="grid coll-grid">${ps.map(p => pieceCardHtml(p).replace(/^(\s*<article[^>]*>)/, `$1<button class="coll-rm" data-rm="${esc(p.id)}" aria-label="Aus Kollektion entfernen">✕</button>`)).join('')}</main>` : '<div class="coll-empty"><p class="hint">Noch keine Pieces in dieser Kollektion. Tippen Sie auf „Pieces wählen“.</p></div>'}
       </div>`;
     $('.view-body', v).scrollTop = scroll;
-    $('#cv-back', v).onclick = () => { if (st.reorder) { st.reorder = null; renderOne(); return; } closeOne(); };
+    $('#cv-back', v).onclick = () => { if (st.reorder) { st.reorder = null; st.removed = new Set(); renderOne(); return; } closeOne(); };
     if (ro) {
       $('#cv-ro-done', v).onclick = async () => {
         const order = st.reorder.slice();
-        const ok = await save(cs => { const x = cs.find(k => k.id === c.id); if (!x) throw new Error('Die Kollektion wurde inzwischen gelöscht.'); const rest = (x.pieces || []).filter(id => !order.includes(id)); x.pieces = order.filter(id => (x.pieces || []).includes(id)).concat(rest); x.geaendert = isoLocal(); }, 'Reihenfolge wird gespeichert …');
-        if (ok) { st.reorder = null; renderOne(); renderListIfOpen(); toast('Reihenfolge gespeichert.', 'ok'); }
+        const ok = await save(cs => { const x = cs.find(k => k.id === c.id); if (!x) throw new Error('Die Kollektion wurde inzwischen gelöscht.'); const gone = st.removed; const rest = (x.pieces || []).filter(id => !order.includes(id) && !gone.has(id)); x.pieces = order.filter(id => (x.pieces || []).includes(id)).concat(rest); x.geaendert = isoLocal(); }, 'Wird gespeichert …');
+        if (ok) { const n = st.removed.size; st.reorder = null; st.removed = new Set(); renderOne(); renderListIfOpen(); toast(n ? `Gespeichert · ${n} ${n === 1 ? 'Piece' : 'Pieces'} entfernt.` : 'Reihenfolge gespeichert.', 'ok'); }
       };
       $$('[data-up]', v).forEach(b => b.onclick = () => { const i = +b.dataset.up; [ro[i - 1], ro[i]] = [ro[i], ro[i - 1]]; renderOne(); });
       $$('[data-down]', v).forEach(b => b.onclick = () => { const i = +b.dataset.down; [ro[i + 1], ro[i]] = [ro[i], ro[i + 1]]; renderOne(); });
+      $$('[data-x]', v).forEach(b => b.onclick = () => { st.removed.add(ro[+b.dataset.x]); ro.splice(+b.dataset.x, 1); renderOne(); });
       return;
     }
     $('#cv-edit', v).onclick = () => edit(c);
     $('#cv-add', v).onclick = () => pick(c);
     $('#cv-cat', v).onclick = () => { if (!ps.length) { toast('Die Kollektion enthält noch keine Pieces.', 'err'); return; } openCatalog({ collection: c, pieces: ps }); };
-    $('#cv-order', v).onclick = () => { st.reorder = ps.map(p => p.id); renderOne(); };
+    $('#cv-order', v).onclick = () => { st.reorder = ps.map(p => p.id); st.removed = new Set(); renderOne(); };
     const clean = $('#cv-clean', v);
     if (clean) clean.onclick = async () => {
       const ids = new Set(M().pieces.map(p => p.id));
@@ -108,7 +109,14 @@ const Coll = (() => {
     };
     const grid = $('.coll-grid', v);
     if (grid) {
-      grid.onclick = e => {
+      grid.onclick = async e => {
+        const rm = e.target.closest('.coll-rm');
+        if (rm) {
+          e.stopPropagation();
+          const p = pieceById(rm.dataset.rm);
+          if (p && await confirmSheet('Aus Kollektion entfernen?', `<b>${pad3(p.nummer)} · ${esc(p.name)}</b> wird aus „${esc(c.name)}“ entfernt. Das Piece selbst bleibt in der Sammlung.`, 'Entfernen', true)) removePieces(c, [p.id]);
+          return;
+        }
         const card = e.target.closest('.card'); if (!card) return;
         S.visible = ps.map(p => p.key);
         openDetail(card.dataset.key);
@@ -120,6 +128,14 @@ const Coll = (() => {
   function closeOne() { const v = $('#coll-view'); if (v) v.remove(); st.open = null; st.reorder = null; renderGrid(); }
   function renderListIfOpen() { if ($('#coll-list')) renderList(); }
 
+  /** Pieces aus einer Kollektion entfernen (die Pieces selbst bleiben in der Sammlung) */
+  async function removePieces(c, ids, quiet) {
+    const set = new Set(ids);
+    const ok = await save(cs => { const x = cs.find(k => k.id === c.id); if (!x) throw new Error('Die Kollektion wurde inzwischen gelöscht.'); x.pieces = (x.pieces || []).filter(id => !set.has(id)); x.geaendert = isoLocal(); }, 'Wird entfernt …');
+    if (ok) { if (st.open) renderOne(); renderListIfOpen(); if (!quiet) toast(set.size === 1 ? 'Aus der Kollektion entfernt.' : `${set.size} Pieces aus der Kollektion entfernt.`, 'ok'); }
+    return ok;
+  }
+
   // ---------------------------------------------------------------- Anlegen / Bearbeiten / Löschen
   function edit(c) {
     const body = document.createElement('div');
@@ -129,8 +145,16 @@ const Coll = (() => {
       <div class="field"><label for="ce-desc">Beschreibung <span class="faint">(optional)</span></label><textarea class="input" id="ce-desc" placeholder="Idee, Thema, Botschaft der Kollektion …">${esc(c ? c.beschreibung || '' : '')}</textarea></div>
       <div class="field"><label>Status</label><div class="seg" id="ce-status">${STATUS.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === status ? 'on' : ''}">${l}</button>`).join('')}</div></div>
       <div class="field"><label for="ce-drop">Drop-Datum <span class="faint">(optional)</span></label><input class="input" id="ce-drop" type="date" value="${esc(c ? c.drop || '' : '')}"></div>
+      ${c ? `<div class="field"><label>Pieces in dieser Kollektion <span class="faint" id="ce-pcount"></span></label><div class="filelist ce-pieces" id="ce-pieces"></div><span class="hint">Mit ✕ entfernen – gespeichert wird mit „Speichern“. Hinzufügen über „Pieces wählen“.</span></div>` : ''}
       ${c ? `<button type="button" class="btn danger block" id="ce-del" style="margin-top:6px">${icon('trash')}Kollektion löschen</button><p class="hint">Löscht nur die Zusammenstellung – die Pieces bleiben erhalten.</p>` : ''}`;
     let data = null;
+    const removed = new Set();
+    const drawPieces = () => {
+      const box = $('#ce-pieces', body); if (!box) return;
+      const ids = (c.pieces || []).filter(id => !removed.has(id));
+      $('#ce-pcount', body).textContent = `(${ids.length})`;
+      box.innerHTML = ids.length ? ids.map(id => { const p = pieceById(id); return `<div class="filerow"><div class="fn">${p ? pad3(p.nummer) + ' · ' + esc(p.name) : '<span class="faint">Nicht mehr in der Sammlung</span>'}<small>${p ? esc(p.kategorie) : ''}</small></div><button type="button" class="btn small danger" data-ce-x="${esc(id)}" aria-label="Entfernen">✕</button></div>`; }).join('') : '<p class="hint" style="padding:10px 12px;margin:0">Keine Pieces.</p>';
+    };
     sheet({
       title: c ? 'Kollektion bearbeiten' : 'Neue Kollektion', body,
       buttons: [{ label: 'Abbrechen' }, { label: c ? 'Speichern' : 'Anlegen', cls: 'primary', run: () => {
@@ -140,6 +164,7 @@ const Coll = (() => {
         data = { name, beschreibung: $('#ce-desc', body).value.replace(/\r\n/g, '\n').trim(), status, drop: $('#ce-drop', body).value || '' };
       } }],
       onOpen: (back, close) => {
+        if (c) { drawPieces(); $('#ce-pieces', body).onclick = e => { const b = e.target.closest('[data-ce-x]'); if (b) { removed.add(b.dataset.ceX); drawPieces(); } }; }
         $('#ce-status', body).onclick = e => { const b = e.target.closest('button'); if (!b) return; status = b.dataset.v; $$('#ce-status button', body).forEach(x => x.classList.toggle('on', x === b)); };
         const del = $('#ce-del', body);
         if (del) del.onclick = async () => {
@@ -152,7 +177,7 @@ const Coll = (() => {
     }).then(async () => {
       if (!data) return;
       if (c) {
-        if (await save(cs => { const x = cs.find(k => k.id === c.id); if (!x) throw new Error('Die Kollektion wurde inzwischen gelöscht.'); Object.assign(x, data, { geaendert: isoLocal() }); })) { renderOne(); renderListIfOpen(); toast('Gespeichert.', 'ok'); }
+        if (await save(cs => { const x = cs.find(k => k.id === c.id); if (!x) throw new Error('Die Kollektion wurde inzwischen gelöscht.'); Object.assign(x, data, { geaendert: isoLocal() }); if (removed.size) x.pieces = (x.pieces || []).filter(id => !removed.has(id)); })) { renderOne(); renderListIfOpen(); toast(removed.size ? `Gespeichert · ${removed.size} ${removed.size === 1 ? 'Piece' : 'Pieces'} entfernt.` : 'Gespeichert.', 'ok'); }
       } else {
         const id = newId(), now = isoLocal();
         if (await save(cs => { cs.push(Object.assign({ id, pieces: [], erstellt: now, geaendert: now }, data)); }, 'Kollektion wird angelegt …')) { renderListIfOpen(); openOne(id); pick(byId(id)); }
@@ -224,7 +249,7 @@ const Coll = (() => {
   async function toggleFor(p, done) {
     if (!(await ensureLoaded(true))) return;
     const cs = list();
-    const opts = cs.map(c => ({ label: c.name, value: c.id, sub: (c.pieces || []).includes(p.id) ? '✓ enthalten' : '' })).concat([{ label: 'Neue Kollektion …', value: '__neu', icon: 'plus' }]);
+    const opts = cs.map(c => ({ label: c.name, value: c.id, sub: (c.pieces || []).includes(p.id) ? '✓ enthalten · tippen zum Entfernen' : 'hinzufügen' })).concat([{ label: 'Neue Kollektion …', value: '__neu', icon: 'plus' }]);
     const v = await choose(`${pad3(p.nummer)} · ${p.name}`, opts);
     if (!v) return;
     if (v === '__neu') {
