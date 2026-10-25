@@ -263,6 +263,9 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   Katalog-Textebene jetzt auf Spaltenbreite gestaucht (Tz). Getestet im Demo-Modus inkl. gleichzeitiger Änderung und kaputter Datei.
 - 1.5.1: Pieces aus Kollektion entfernen: ✕ auf jeder Karte (mit Rückfrage), Liste mit ✕ im Bearbeiten-Fenster (Stift),
   ✕ im Modus „Reihenfolge & entfernen“; Detail-Menü „enthalten · tippen zum Entfernen“. (Abwählen in „Pieces wählen“ ging schon, war aber nicht auffindbar.)
+- 1.5.2: Detailansicht zeigte auf dem iPhone nur einen Streifen des Bildes (Vollbild ok). Jetzt: Datei laden, vollständig
+  dekodieren, auf Bildschirmgröße (max. 1,5× Displaypixel, 1200–2400 px) verkleinern (PNG bei Transparenz), dann anzeigen;
+  nacheinander statt parallel. Vollbild weiter mit Original. Im Chromium getestet – auf echtem iPhone vom Nutzer zu bestätigen.
 - PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
