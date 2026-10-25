@@ -247,14 +247,18 @@ function renderImport() {
   let v = $('#import');
   if (!v) { v = document.createElement('div'); v.id = 'import'; v.className = 'view'; $('#layer').appendChild(v); }
   const on = st.pieces.filter(p => p.on);
+  // Fokus: nach „importieren“ nur die Pieces zeigen, denen noch der Kleidungstyp fehlt (bleiben sichtbar, auch wenn erledigt)
+  const open = st.focus ? st.pieces.filter((p, i) => st.focus.has(i) && p.on && !p.cat).length : 0;
   const roleSel = (pi, fi, cur) => `<select class="input imp-role" data-p="${pi}" data-f="${fi}">${ROLES.map(r => `<option value="${r}" ${r === cur ? 'selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')}<option value="arbeitsdatei" ${cur === 'arbeitsdatei' ? 'selected' : ''}>Arbeitsdatei</option><option value="weg" ${cur === 'weg' ? 'selected' : ''}>Nicht importieren</option></select>`;
   v.innerHTML = `
     <div class="view-head"><button class="btn ghost" id="i-cancel">Abbrechen</button><div class="title">Import</div><span style="width:90px"></span></div>
     <div class="view-body">
-      <p class="hint" style="margin-top:0"><span class="mono">${esc(st.sourceName)}</span> · ${st.fileCount} Dateien · <b>${st.pieces.length} Pieces erkannt</b>. Bitte Namen, Kleidungstyp und Bildzuordnung prüfen.</p>
+      ${st.focus ? `<div class="notice imp-focus ${open ? '' : 'done'}">${open ? `<b>${open === 1 ? '1 Piece hat' : open + ' Pieces haben'} noch keinen Kleidungstyp.</b> Es werden nur diese angezeigt – bitte zuordnen.` : '<b>Alle zugeordnet.</b> Jetzt unten auf „importieren“ tippen.'}<button class="btn small ghost" id="i-all">Alle anzeigen</button></div>`
+        : `<p class="hint" style="margin-top:0"><span class="mono">${esc(st.sourceName)}</span> · ${st.fileCount} Dateien · <b>${st.pieces.length} Pieces erkannt</b>. Bitte Namen, Kleidungstyp und Bildzuordnung prüfen.</p>`}
       <div class="field"><label for="i-allcat">Kleidungstyp für alle ohne Zuordnung</label><select class="input" id="i-allcat">${catOptions('')}</select></div>
-      <label class="imp-check"><input type="checkbox" id="i-draft" ${st.entwurf ? 'checked' : ''}><span>Alle als <b>Entwurf</b> speichern (empfohlen – am Handy oder PC kurz prüfen)</span></label>
+      ${st.focus ? '' : `<label class="imp-check"><input type="checkbox" id="i-draft" ${st.entwurf ? 'checked' : ''}><span>Alle als <b>Entwurf</b> speichern (empfohlen – am Handy oder PC kurz prüfen)</span></label>`}
       ${st.pieces.map((p, pi) => {
+        if (st.focus && !st.focus.has(pi)) return '';
         const miss = impStatus(p);
         return `<div class="imp-card ${p.on ? '' : 'off'}">
           <label class="imp-check imp-top"><input type="checkbox" data-on="${pi}" ${p.on ? 'checked' : ''}><span class="mono faint">${esc(p.source)}</span></label>
@@ -270,7 +274,8 @@ function renderImport() {
     <div class="view-foot"><button class="btn primary" id="i-go" ${on.length ? '' : 'disabled'}>${icon('check')}${on.length === 1 ? '1 Piece' : on.length + ' Pieces'} importieren</button></div>`;
 
   $('#i-cancel').onclick = () => closeImport();
-  $('#i-draft').onchange = e => { st.entwurf = e.target.checked; };
+  if ($('#i-draft')) $('#i-draft').onchange = e => { st.entwurf = e.target.checked; };
+  if ($('#i-all')) $('#i-all').onclick = () => { st.focus = null; renderImport(); };
   $('#i-allcat').onchange = async e => {
     let val = e.target.value;
     if (val === '__ask') { const n = await askText('Neuer Kleidungstyp', 'Name (wird beim Import als Ordner angelegt)'); if (!n) { e.target.value = ''; return; } val = '__neu:' + Names.category(n); }
@@ -320,7 +325,13 @@ async function runImport() {
   const st = Imp.st;
   const list = st.pieces.filter(p => p.on);
   const noCat = list.filter(p => !p.cat), noName = list.filter(p => !Names.segment(p.name, 40));
-  if (noCat.length) { toast(`Bitte für ${noCat.length === 1 ? '„' + noCat[0].name + '“' : noCat.length + ' Pieces'} einen Kleidungstyp wählen.`, 'err', { title: 'Bitte ergänzen' }); renderImport(); return; }
+  if (noCat.length) {
+    st.focus = new Set(noCat.map(p => st.pieces.indexOf(p)));
+    renderImport();
+    $('#import .view-body').scrollTop = 0;
+    toast(`Es gibt ${noCat.length === 1 ? 'ein Piece' : noCat.length + ' Pieces'} ohne Kleidungstyp. Es werden nur ${noCat.length === 1 ? 'dieses' : 'diese'} angezeigt.`, '', { title: 'Kleidungstyp fehlt' });
+    return;
+  }
   if (noName.length) { toast('Jedes Piece braucht einen Produktnamen mit mindestens einem Buchstaben oder einer Ziffer.', 'err', { title: 'Bitte ergänzen' }); return; }
   if (!(await confirmSheet(`${list.length} ${list.length === 1 ? 'Piece' : 'Pieces'} importieren?`, `Die Pieces werden in Ihrem OneDrive in die Sammlung eingefügt${st.entwurf ? ' (als Entwurf)' : ''}. Bitte die App währenddessen geöffnet und den Bildschirm an lassen.`, 'Importieren'))) return;
 
