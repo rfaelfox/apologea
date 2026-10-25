@@ -261,6 +261,8 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   Drop-Datum, Pieces per Suchauswahl, Reihenfolge ↑↓, fehlende Pieces entfernen, Katalog-PDF in Kollektionsreihenfolge mit
   Beschreibung + Drop auf dem Deckblatt), Detailansicht eines Pieces: Kollektions-Chips + „Zu Kollektion …“ (auch neu anlegen).
   Katalog-Textebene jetzt auf Spaltenbreite gestaucht (Tz). Getestet im Demo-Modus inkl. gleichzeitiger Änderung und kaputter Datei.
+- 1.5.1: Pieces aus Kollektion entfernen: ✕ auf jeder Karte (mit Rückfrage), Liste mit ✕ im Bearbeiten-Fenster (Stift),
+  ✕ im Modus „Reihenfolge & entfernen“; Detail-Menü „enthalten · tippen zum Entfernen“. (Abwählen in „Pieces wählen“ ging schon, war aber nicht auffindbar.)
 - PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
