@@ -249,6 +249,10 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   JetBrains Mono, Lizenzen beiliegend), Logo-Kopien in `catalog/` (nur width/height ergänzt). Teilen/Speichern/Ansehen.
   Getestet im Demo-Modus (10 und 40 Pieces, beide Varianten; PDF mit pypdf/pdftoppm geprüft). Mit echtem OneDrive ungetestet
   (offen: ob OneDrive-Vorschaubilder per fetch ladbar sind – sonst automatisch Originaldatei, langsamer).
+- 1.4.0: Katalog-Fenster mit Umfang „Auswahl“ + Suchleiste (Name, Nummer, Motiv, Serie, Kleidungstyp; „Treffer wählen“,
+  „Leeren“; Auswahl wird gemerkt). PDF durchsuchbar (unsichtbare Textebene, Helvetica/WinAnsi). Dateigröße: Standard
+  max. 10 MB (Budget je Seite, erst JPEG-Qualität, dann Auflösung), „Hohe Qualität“ max. 40 MB. Härtetest 120 Pieces mit
+  Rauschbildern: 8,9 MB / 36 Seiten. Hinweis ab >100 Seiten (Lesegrenze für Claude).
 - PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
