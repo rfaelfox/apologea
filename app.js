@@ -1,7 +1,7 @@
 /* APOLOGEA Handy-App – Oberfläche */
 'use strict';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -35,7 +35,8 @@ const I = {
   swap: '<path d="M7 7h12M15 3l4 4-4 4M17 17H5M9 13l-4 4 4 4"/>',
   check: '<path d="M4 12.5l5 5L20 6.5"/>',
   restore: '<path d="M4 12a8 8 0 1 0 2.5-5.8L4 8.5"/><path d="M4 4v4.5h4.5"/>',
-  chevron: '<path d="M9 5l7 7-7 7"/>'
+  chevron: '<path d="M9 5l7 7-7 7"/>',
+  import: '<path d="M12 3v11M7.5 9.5L12 14l4.5-4.5"/><path d="M4 14v4.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V14"/>'
 };
 const icon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
 
@@ -48,6 +49,7 @@ const S = {
   visible: [],
   detail: null,
   form: null,
+  imp: false,
   syncing: false,
   lastSync: 0,
   user: ''
@@ -122,10 +124,10 @@ async function boot() {
     // Kommt eine neue App-Version an, einmal neu laden, damit sie sofort sichtbar ist
     const hadController = !!navigator.serviceWorker.controller;
     let reloaded = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded && !S.form) { reloaded = true; location.reload(); } });
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded && !S.form && !S.imp) { reloaded = true; location.reload(); } });
     navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
   }
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - S.lastSync > 20000 && !S.form && Store.drive) sync(true); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - S.lastSync > 20000 && !S.form && !S.imp && Store.drive) sync(true); });
   if (S.demo) { await openCollection(DemoDrive, 'Sammlung'); return; }
   if (!Auth.configured()) { renderSetupMissing(); return; }
   try { await Auth.handleRedirect(); }
@@ -245,6 +247,7 @@ function renderCatalog() {
       <div class="topbar-row">
         <div class="wordmark">APOLOGEA</div>
         <button class="btn ghost icon" id="b-sync" aria-label="Aktualisieren"><span class="sync-dot" id="syncdot"></span>${icon('refresh')}</button>
+        <button class="btn ghost icon" id="b-import" aria-label="Pieces importieren" title="Pieces importieren (ZIP, Ordner)">${icon('import')}</button>
         <button class="btn ghost icon" id="b-menu" aria-label="Menü">${icon('menu')}</button>
       </div>
       <div class="search">${icon('search')}<input class="input" id="q" type="search" placeholder="Name, Nummer, Beschreibung …" autocomplete="off" enterkeyhint="search" value="${esc(S.filter.q)}"></div>
@@ -258,6 +261,7 @@ function renderCatalog() {
     ${S.demo ? '<div style="position:fixed;left:12px;bottom:calc(26px + var(--safe-b));z-index:6" class="badge entwurf">Demo-Modus</div>' : ''}`;
   $('#b-sync').onclick = () => sync(false);
   $('#b-menu').onclick = openMenu;
+  $('#b-import').onclick = openImport;
   $('#b-new').onclick = () => openForm('neu');
   $('#b-sort').onclick = openSort;
   let t;
@@ -380,6 +384,7 @@ function openMenu() {
   const segs = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([v, l]) => `<button data-v="${v}" class="${v === cur ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   body.innerHTML = `
     <button class="menu-item" data-a="sync">${icon('refresh')}Jetzt aktualisieren</button>
+    <button class="menu-item" data-a="import">${icon('import')}Pieces importieren …<span class="sub">ZIP, Ordner</span></button>
     <button class="menu-item" data-a="newcat">${icon('plus')}Neuer Kleidungstyp …</button>
     <button class="menu-item" data-a="status">${icon('shield')}Nach Status filtern<span class="sub">${esc({ '': 'Alle', vollstaendig: 'Vollständig', entwurf: 'Entwürfe', unvollstaendig: 'Unvollständig', hinweise: 'Mit Hinweisen' }[S.filter.status])}</span></button>
     <button class="menu-item" data-a="check">${icon('warn')}Sammlung prüfen</button>
@@ -409,6 +414,7 @@ function openMenu() {
       const act = a.dataset.a;
       if (act === 'sync') sync(false);
       if (act === 'newcat') createCategory();
+      if (act === 'import') openImport();
       if (act === 'check') openCheck();
       if (act === 'trash') openTrash();
       if (act === 'status') {
