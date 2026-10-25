@@ -285,3 +285,4 @@ p.coll-text { font-size: 15px; color: var(--ivory-2); line-height: 1.55; margin:
 .coll-rm:active { background: var(--danger-bg); color: var(--danger); }
 .ce-pieces { max-height: 34vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .coll-order .btn.danger { margin-left: 2px; }
+.slide-pic { position: absolute; inset: 0; background-position: center; background-repeat: no-repeat; background-size: contain; }

@@ -1,7 +1,7 @@
 /* APOLOGEA Handy-App – Oberfläche */
 'use strict';
 
-const VERSION = '1.5.2';
+const VERSION = '1.5.3';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -513,7 +513,7 @@ function slideHtml(p, r) {
   const b = p.bilder[r];
   const it = b && b.item;
   const stage = it
-    ? `<div class="slide-stage ${r === 'design' ? 'bg-' + S.designBg : ''}" data-view="${r}"><img data-slide="${it.id}" data-role="${r}" data-name="${esc(it.name)}" alt=""><div class="spinner" style="position:absolute"></div></div>`
+    ? `<div class="slide-stage ${r === 'design' ? 'bg-' + S.designBg : ''}" data-view="${r}"><div class="slide-pic" role="img" aria-label="${esc(ROLE_LABEL[r])}" data-slide="${it.id}" data-role="${r}" data-name="${esc(it.name)}"></div><div class="spinner" style="position:absolute"></div></div>`
     : `<div class="slide-stage"><div class="missing-img">${icon('warn')}${b ? 'Datei fehlt:<br>' + esc(b.rel) : 'Kein ' + ROLE_LABEL[r] + ' hinterlegt'}</div></div>`;
   return `<div class="slide">${stage}<div class="slide-label"><span class="role">${ROLE_LABEL[r]}</span><span>${it ? esc(it.name) + ' · ' + fmtBytes(it.size) : ''}</span></div></div>`;
 }
@@ -553,7 +553,8 @@ async function slideSrc(url, keepAlpha) {
 
 async function loadSlideImages(p, v) {
   slideUrls.forEach(u => URL.revokeObjectURL(u)); slideUrls = [];
-  const imgs = $$('img[data-slide]', v);
+  // Als Hintergrundbild statt <img>: Safari auf dem iPhone malte <img> im Karussell nur als schmalen Streifen
+  const imgs = $$('.slide-pic[data-slide]', v);
   const ready = img => { const sp = img.parentElement && img.parentElement.querySelector('.spinner'); if (sp) sp.remove(); };
   // Nacheinander statt gleichzeitig: schont den Speicher des iPhones bei großen Dateien
   for (const i of imgs) {
@@ -564,8 +565,8 @@ async function loadSlideImages(p, v) {
       let src = u;
       try { src = await slideSrc(u, alpha); } catch (e) { src = u; }
       if (!i.isConnected) return;
-      i.onload = i.onerror = () => ready(i);
-      i.src = src;
+      i.style.backgroundImage = `url("${src}")`;
+      ready(i);
     } catch (e) { ready(i); fail(e, 'Bilder konnten nicht geladen werden'); return; }
   }
 }
