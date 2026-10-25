@@ -231,6 +231,12 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   aktualisiert hat, konnte aus der Cloud nicht geprüft werden (github.io gesperrt) → Rückmeldung des Nutzers abwarten.
 - 1.1.1: Fehlt beim Tippen auf „importieren“ der Kleidungstyp, zeigt die Vorschau nur noch diese Pieces (Hinweisleiste mit
   Restanzahl, „Alle anzeigen“). Getestet im Demo-Modus.
+- 1.2.0: Import fortsetzbar. Echter Hintergrund-Upload ist für Web-Apps nicht möglich (iOS friert geschlossene Apps ein).
+  Stattdessen: Auftrag (gewählte Dateien + Plan) in IndexedDB (`apologea-import`/`jobs`/`aktuell`), nach jedem Piece abgehakt.
+  Beim nächsten Öffnen (bzw. im Import-Fenster) „Import fortsetzen?“. Schutz vor Doppelten: Kennung `Import <id>/<n>` in
+  `herkunft`. Netz-/Anmeldefehler → Abbruch mit Fortsetzen; sonstige Fehler → Piece übersprungen und gemeldet.
+  Bildschirmsperre (Wake Lock) wird nach Rückkehr neu angefordert. Getestet: simulierter Netzabbruch, Fortsetzen,
+  „gespeichert aber nicht abgehakt“ (keine Doppelten), Auftrag übersteht Neuladen.
 - PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte

@@ -1,7 +1,7 @@
 /* APOLOGEA Handy-App – Oberfläche */
 'use strict';
 
-const VERSION = '1.1.1';
+const VERSION = '1.2.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -179,6 +179,7 @@ async function openCollection(drive, path, id) {
     unbusy();
     drive.me().then(n => { S.user = n; }).catch(() => {});
     Store.cleanupStaging().catch(() => {});
+    if (typeof checkImportResume === 'function') checkImportResume().catch(() => {});
   } catch (e) { unbusy(); throw e; }
 }
 
