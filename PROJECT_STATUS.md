@@ -269,7 +269,18 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
 - 1.5.3: Streifen blieb auf dem iPhone (auch bei 200-KB-Bildern → keine Größenfrage; Streifen sitzt an der korrekten
   Bildoberkante = Safari-Zeichenfehler mit <img> im Karussell). Karussell zeigt Bilder jetzt als Hintergrundbild (`.slide-pic`,
   background-size: contain) statt <img>. Auf echtem iPhone vom Nutzer zu bestätigen.
-- PC-Programm (APOLOGEA_PC_mit_Suchkatalog) liegt **nicht** im Repo; Importe erscheinen dort trotzdem (gemeinsamer Ordner).
+- **PC-Programm 1.1.0 (Kollektionen)**, 2026-10-26: Quellcode vom Nutzer erhalten (C#, .NET Framework 4.8, lokaler HTTP-Server
+  + Web-Oberfläche als eingebettete Ressourcen, gebaut mit `Quellcode\bauen.cmd` unter Windows). Pfad beim Nutzer:
+  `C:\Users\rafae\OneDrive\Desktop\APOLOGEA_PC_mit_Suchkatalog\APOLOGEA_Arbeitsprogramm\APOLOGEA.exe`, Sammlung =
+  dortiger Ordner `Sammlung` (= derselbe OneDrive-Ordner wie die Handy-App).
+  Änderungen: neu `src/Kollektionen.cs` (GET `/api/kollektionen`, POST `/api/kollektionen/speichern` mit Stand = SHA-1 des
+  Dateiinhalts → 409 bei Änderung dazwischen; beschädigte Datei → 422, nie überschreiben; atomar schreiben), Routen in
+  `src/Api.cs`, Version 1.1.0 in `src/Program.cs`, UI in `ui/app.js`/`ui/app.css` (Seitenleiste „Kollektionen“, Leiste über
+  dem Raster, ✕ auf Karten, Bearbeiten mit ✕-Liste, Suchauswahl mit „Alle Pieces“, Reihenfolge & entfernen,
+  Detail „Zu Kollektion …“, Symbol `sort`). Mit Mono kompiliert und unter Xvfb (`--ohne-fenster --sammlung … --instanz test`)
+  im Browser getestet (inkl. Änderung „vom Handy“ zwischendurch). **Code NICHT im (öffentlichen) Repo**; Paket
+  `APOLOGEA_PC_Update_1.1_Kollektionen.zip` an Nutzer übergeben – Nutzer muss `bauen.cmd` ausführen. Unter Windows ungetestet.
+- PC-Programm: Quellcode nicht im Repo (siehe oben); Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
