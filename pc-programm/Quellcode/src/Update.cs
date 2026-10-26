@@ -182,6 +182,7 @@ namespace Apologea
                     {
                         string saved = Path.Combine(backup, "Quellcode");
                         if (Directory.Exists(saved)) { foreach (var kv in data) { string t = Path.Combine(SourceDir, kv.Key.Replace('/', Path.DirectorySeparatorChar)); string s = Path.Combine(saved, kv.Key.Replace('/', Path.DirectorySeparatorChar)); if (File.Exists(s)) File.Copy(s, t, true); else if (File.Exists(t)) File.Delete(t); } }
+                        RemoveEmptyDirs(SourceDir);
                     }
                     catch (Exception ex) { Util.Log("Quellcode konnte nicht vollständig zurückgesetzt werden: " + ex.Message); }
                     Util.Log("Update auf " + ver + " fehlgeschlagen (Bauen, Code " + code + "): " + output);
@@ -239,6 +240,12 @@ namespace Apologea
                 Directory.CreateDirectory(Path.GetDirectoryName(t));
                 File.Copy(f, t, true);
             }
+        }
+
+        static void RemoveEmptyDirs(string dir)
+        {
+            foreach (var d in Directory.GetDirectories(dir)) RemoveEmptyDirs(d);
+            if (dir != SourceDir && Directory.GetFileSystemEntries(dir).Length == 0) Directory.Delete(dir);
         }
 
         static void Prune(string root, int keep)
