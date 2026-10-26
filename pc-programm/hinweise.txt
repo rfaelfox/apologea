@@ -1,0 +1,2 @@
+Neu in 1.3.0: Programm-Aktualisierung per Klick (Einstellungen → Programm-Aktualisierung).
+Enthält außerdem: Pieces importieren (ZIP, Ordner, Bilder), Katalog als PDF, Kollektionen – wie in der Handy-App.
