@@ -1,0 +1,18 @@
+# Cloudflare-Worker-Konfiguration für den APOLOGEA Live-View-Dienst (siehe README.md)
+name = "apologea-live"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "apologea-live"
+database_id = "HIER-DIE-ID-AUS-wrangler-d1-create-EINTRAGEN"
+
+[triggers]
+crons = ["17 * * * *"]
+
+[vars]
+SHOP_DOMAIN = "dfz1mp-1u.myshopify.com"
+# Weitere erlaubte Herkunft, z. B. die eigene Domain: "https://apologea.eu"
+ALLOWED_ORIGINS = ""
+# READ_TOKEN wird als Geheimnis gesetzt:  wrangler secret put READ_TOKEN

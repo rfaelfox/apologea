@@ -1,0 +1,100 @@
+{%- liquid
+  case section.settings.height
+    when 'large'
+      assign h = '82svh'
+    when 'medium'
+      assign h = '64svh'
+    else
+      assign h = '100svh'
+  endcase
+  assign overlay = section.settings.overlay | divided_by: 100.0
+-%}
+<section class="hero{% if section.settings.kenburns %} hero--kenburns{% endif %}" style="--hero-h: {{ h }}; --hero-overlay: {{ overlay }};">
+  <div class="hero__media reveal-fade">
+    {%- if section.settings.video != blank -%}
+      {{ section.settings.video | video_tag: autoplay: true, loop: true, muted: true, controls: false, playsinline: true, image_size: '1920x' }}
+    {%- elsif section.settings.image != blank -%}
+      {{ section.settings.image | image_url: width: 2400 | image_tag:
+        loading: 'eager', fetchpriority: 'high',
+        widths: '750,1100,1500,1920,2400', sizes: '100vw',
+        alt: section.settings.image.alt | default: ''
+      }}
+    {%- else -%}
+      <div class="hero__placeholder">{{ 'lifestyle-1' | placeholder_svg_tag }}</div>
+    {%- endif -%}
+  </div>
+  {%- if section.settings.rays -%}
+    <div class="hero__rays" aria-hidden="true"></div>
+  {%- endif -%}
+
+  <div class="hero__content">
+    {%- for block in section.blocks -%}
+      {%- case block.type -%}
+        {%- when 'eyebrow' -%}
+          <p class="eyebrow reveal" {{ block.shopify_attributes }}>{{ block.settings.text | escape }}</p>
+        {%- when 'heading' -%}
+          <h2 class="display reveal" style="--reveal-delay: 150ms;" {{ block.shopify_attributes }}>{{ block.settings.text | escape }}</h2>
+        {%- when 'text' -%}
+          <div class="hero__sub reveal" style="--reveal-delay: 300ms;" {{ block.shopify_attributes }}>{{ block.settings.text }}</div>
+        {%- when 'buttons' -%}
+          <div class="hero__actions reveal" style="--reveal-delay: 450ms;" {{ block.shopify_attributes }}>
+            {%- if block.settings.label_1 != blank -%}
+              <a class="btn btn--solid" href="{{ block.settings.link_1 | default: routes.all_products_collection_url }}">{{ block.settings.label_1 | escape }}</a>
+            {%- endif -%}
+            {%- if block.settings.label_2 != blank -%}
+              <a class="btn btn--ghost" href="{{ block.settings.link_2 | default: routes.collections_url }}">{{ block.settings.label_2 | escape }}</a>
+            {%- endif -%}
+          </div>
+      {%- endcase -%}
+    {%- endfor -%}
+  </div>
+  {%- if section.settings.scroll_hint -%}
+    <span class="hero__scroll" aria-hidden="true"></span>
+  {%- endif -%}
+</section>
+
+{% schema %}
+{
+  "name": "Hero „Sacred“",
+  "tag": "div",
+  "class": "section-hero",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Bild" },
+    { "type": "video", "id": "video", "label": "Video (ersetzt das Bild)" },
+    {
+      "type": "select", "id": "height", "label": "Höhe",
+      "options": [
+        { "value": "full", "label": "Bildschirmhöhe" },
+        { "value": "large", "label": "Groß" },
+        { "value": "medium", "label": "Mittel" }
+      ],
+      "default": "full"
+    },
+    { "type": "range", "id": "overlay", "label": "Abdunkelung", "min": 0, "max": 90, "step": 5, "unit": "%", "default": 55 },
+    { "type": "header", "content": "Animation" },
+    { "type": "checkbox", "id": "rays", "label": "Lichtstrahlen", "default": true },
+    { "type": "checkbox", "id": "kenburns", "label": "Langsamer Zoom (Ken Burns)", "default": true },
+    { "type": "checkbox", "id": "scroll_hint", "label": "Scroll-Hinweis", "default": true }
+  ],
+  "blocks": [
+    { "type": "eyebrow", "name": "Eyebrow", "limit": 1, "settings": [{ "type": "text", "id": "text", "label": "Text", "default": "Neue Kollektion" }] },
+    { "type": "heading", "name": "Überschrift", "limit": 1, "settings": [{ "type": "text", "id": "text", "label": "Text", "default": "Light in the Dark" }] },
+    { "type": "text", "name": "Text", "limit": 1, "settings": [{ "type": "richtext", "id": "text", "label": "Text", "default": "<p>Luxury Christian Streetwear.</p>" }] },
+    {
+      "type": "buttons", "name": "Buttons", "limit": 1,
+      "settings": [
+        { "type": "text", "id": "label_1", "label": "Button 1", "default": "Kollektion entdecken" },
+        { "type": "url", "id": "link_1", "label": "Link 1" },
+        { "type": "text", "id": "label_2", "label": "Button 2", "default": "Unsere Geschichte" },
+        { "type": "url", "id": "link_2", "label": "Link 2" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Hero „Sacred“",
+      "blocks": [{ "type": "eyebrow" }, { "type": "heading" }, { "type": "text" }, { "type": "buttons" }]
+    }
+  ]
+}
+{% endschema %}

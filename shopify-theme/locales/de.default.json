@@ -1,0 +1,114 @@
+{
+  "general": {
+    "meta": { "tags": "Getaggt mit „{{ tags }}“", "page": "Seite {{ page }}" },
+    "menu": "Menü",
+    "main_menu": "Hauptmenü",
+    "close": "Schließen",
+    "search": "Suchen",
+    "account": "Konto",
+    "cart": "Warenkorb",
+    "cart_count": { "one": "{{ count }} Artikel", "other": "{{ count }} Artikel" },
+    "announcement": "Ankündigung",
+    "view_all": "Alle ansehen",
+    "discover": "Entdecken",
+    "continue_shopping": "Weiter einkaufen",
+    "pagination": "Seitennavigation",
+    "previous": "Vorherige Seite",
+    "next": "Nächste Seite"
+  },
+  "accessibility": { "skip_to_content": "Direkt zum Inhalt" },
+  "products": {
+    "add_to_cart": "In den Warenkorb",
+    "sold_out": "Ausverkauft",
+    "unavailable": "Nicht verfügbar",
+    "sale": "Sale",
+    "quantity": "Menge",
+    "increase": "Menge erhöhen",
+    "decrease": "Menge verringern",
+    "price": { "from": "ab {{ price }}", "regular": "Regulärer Preis" },
+    "tax_included": "Inkl. MwSt.",
+    "shipping_policy_html": "zzgl. <a href=\"{{ link }}\">Versand</a>",
+    "production_time": "Wird für dich gefertigt · Produktionszeit: {{ time }}",
+    "details": "Details",
+    "material": "Material",
+    "fit": "Passform",
+    "print_method": "Druckverfahren",
+    "care": "Pflege",
+    "placeholder_title": "Produktname"
+  },
+  "collections": {
+    "eyebrow": "Kollektion",
+    "all": "Kollektionen",
+    "count": { "one": "{{ count }} Produkt", "other": "{{ count }} Produkte" },
+    "empty": "In dieser Kollektion sind noch keine Produkte.",
+    "sort_by": "Sortieren nach"
+  },
+  "cart": {
+    "title": "Warenkorb",
+    "product": "Produkt",
+    "quantity": "Menge",
+    "total": "Summe",
+    "remove": "Entfernen",
+    "note": "Bestellnotiz",
+    "update": "Aktualisieren",
+    "subtotal": "Zwischensumme",
+    "taxes_shipping": "Steuern und Versand werden an der Kasse berechnet.",
+    "checkout": "Zur Kasse",
+    "empty": "Dein Warenkorb ist leer."
+  },
+  "newsletter": {
+    "label": "E-Mail-Adresse",
+    "button": "Anmelden",
+    "success": "Danke für deine Anmeldung."
+  },
+  "blogs": { "eyebrow": "Journal", "empty": "Noch keine Beiträge.", "back": "Zurück zum Journal" },
+  "templates": {
+    "404": { "title": "Seite nicht gefunden", "subtext": "Diese Seite existiert nicht (mehr)." },
+    "search": {
+      "title": "Suche",
+      "placeholder": "Wonach suchst du?",
+      "results": { "one": "{{ count }} Ergebnis für „{{ terms }}“", "other": "{{ count }} Ergebnisse für „{{ terms }}“" }
+    }
+  },
+  "sections": {
+    "scripture": { "empty": "Bibelstelle im Theme-Editor eintragen (Vers + Referenz). Dieser Hinweis ist nur im Editor sichtbar." }
+  },
+  "password": {
+    "eyebrow": "Bald verfügbar",
+    "enter": "Shop mit Passwort betreten",
+    "label": "Passwort",
+    "submit": "Betreten"
+  },
+  "customer": {
+    "email": "E-Mail",
+    "password": "Passwort",
+    "password_confirm": "Passwort bestätigen",
+    "first_name": "Vorname",
+    "last_name": "Nachname",
+    "logout": "Abmelden",
+    "orders": "Bestellungen",
+    "no_orders": "Du hast noch keine Bestellungen.",
+    "login": { "title": "Anmelden", "submit": "Anmelden" },
+    "register": { "title": "Konto erstellen", "submit": "Konto erstellen" },
+    "recover": { "title": "Passwort vergessen?", "submit": "Link senden", "success": "Wir haben dir eine E-Mail zum Zurücksetzen gesendet." },
+    "account": { "title": "Mein Konto" },
+    "order": { "title": "Bestellung {{ name }}", "number": "Bestellung", "date": "Datum", "status": "Status" },
+    "addresses": {
+      "title": "Adressen",
+      "add": "Neue Adresse",
+      "delete": "Löschen",
+      "save": "Speichern",
+      "address1": "Straße und Hausnummer",
+      "zip": "PLZ",
+      "city": "Ort",
+      "country": "Land"
+    },
+    "reset": { "title": "Neues Passwort", "submit": "Passwort speichern" },
+    "activate": { "title": "Konto aktivieren", "submit": "Aktivieren" }
+  },
+  "gift_card": {
+    "title": "Geschenkgutschein",
+    "code": "Gutscheincode",
+    "unavailable": "Dieser Gutschein ist nicht mehr gültig."
+  }
+}

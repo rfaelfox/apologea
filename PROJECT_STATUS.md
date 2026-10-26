@@ -1,0 +1,307 @@
+# APOLOGEA — NOCTURNE · Projektstatus
+
+> Diese Datei ist der Einstiegspunkt für jede neue Claude-Sitzung.
+> Neue Sitzung: „Weiter laut PROJECT_STATUS.md“.
+
+Stand: 2026-10-16 (Sitzung 5 – APOLOGEA Studio) · Branch: `claude/apologea-shopify-theme-9kvfrj`
+
+## Auftrag (Kurzfassung)
+Eigenes Shopify-Online-Store-2.0-Theme „NOCTURNE“ für APOLOGEA (Luxury Christian Streetwear),
+inkl. Sacred-Cinematic-Animationen, Multi-POD-Datenmodell (MarketPrint zuerst), Produktimport-Workflow,
+Dokumentation. Vollständiger Master-Prompt: liegt beim Nutzer; Kernregeln siehe unten.
+
+## Harte Regeln
+- Live-Theme **niemals** veröffentlichen, ersetzen oder ändern. Nur unveröffentlichte Entwicklungs-Themes.
+- Keine kostenpflichtigen Aktionen, keine echten POD-Aufträge, keine Löschungen ohne Freigabe.
+- Original-Logo nicht verändern (liegt jetzt vor, siehe `docs/brand/`).
+- Keine erfundenen Tool-Ergebnisse, Bibelzitate, theologischen/historischen Fakten, Rechtsaussagen.
+- Die **APOLOGEA Handy-App** (PWA im Repo-Root: index.html, app.js, …) nur auf ausdrücklichen Wunsch ändern
+  (ab 2026-10-25: Import-Funktion vom Nutzer beauftragt). Datenformat muss mit dem PC-Programm kompatibel bleiben.
+  Theme-Code kommt nach `shopify-theme/`, Doku nach `docs/`.
+
+## Phase 1 — Technical Discovery (Ergebnis)
+| Punkt | Befund |
+|---|---|
+| Repository | Enthält nur die Handy-App (OneDrive-Kollektionsverwaltung). Kein Theme vorhanden. |
+| Shopify-Store | `dfz1mp-1u.myshopify.com` (Shop-Name „Apologea“) |
+| Live-Theme | „Horizon“ (benannt „apologea.eu“) — **nicht anfassen** |
+| Weitere Themes | Entwurf „Feather“ — nicht anfassen |
+| Theme Access App | im Shop installiert; Passwort vom Nutzer erzeugt |
+| Claude-Connectors | Gmail + **MarketPrint verbunden** (ab Sitzung 3, Teil 3). Vorher: nur Gmail. **MarketPrint bietet seit 10/2026 einen Claude-Connector** (help.marketprint.de, „MarketPrint mit Claude verbinden“; Produkte im Chat anlegen + in den Shop veröffentlichen). Offizieller **Shopify**-Connector im Verzeichnis ebenfalls verfügbar. Nutzer verbindet beide unter claude.ai/customize/connectors → wirkt erst in **neuer Sitzung**. |
+| Netzwerk | Benutzerdefiniert: `*.myshopify.com`, `theme-kit-access.shopifyapps.com` + Paketmanager. Erreichbarkeit getestet ✔ |
+| Theme-Access-Secret | Als Network Secret hinterlegt (Header `X-Shopify-Access-Token`, ohne Präfix, Host `theme-kit-access.shopifyapps.com`). **Funktioniert ab Sitzung 3** ✔ |
+| Env-Variable | `SHOPIFY_FLAG_STORE=dfz1mp-1u.myshopify.com` (gilt ab neuer Sitzung) |
+| Setup-Skript | `npm install -g @shopify/cli` |
+| Shopify CLI | 4.9.4 installierbar ✔ |
+| MarketPrint | App im Shop installiert ✔ (Nutzer, 2026-10-16). Kein API-Zugriff für Claude: Theme Access deckt nur Themes ab → Produkte legt der Nutzer in der App an; Claude liest sie über die Storefront (`/products/<handle>.js`) mit Shop-Passwort. |
+| Logo / Assets | Logo geliefert ✔ → `docs/brand/` (Original + 3 SVGs) |
+
+### Wichtiger technischer Hinweis
+Node-`fetch` ignoriert den Proxy. Shopify-CLI-Befehle **immer** mit `NODE_USE_ENV_PROXY=1` ausführen, z. B.:
+```bash
+NODE_USE_ENV_PROXY=1 shopify theme list --password shptka_placeholder
+```
+Das echte Passwort injiziert der Proxy als Header; im Befehl steht nur ein Platzhalter mit Präfix `shptka_`
+(die CLI erkennt daran den Theme-Access-Modus).
+
+## Sitzung 2 (2026-10-16) — Ergebnis
+
+### Verbindungstest
+`NODE_USE_ENV_PROXY=1 shopify theme list --store dfz1mp-1u.myshopify.com --password shptka_placeholder`
+→ **401 „Invalid API key or access token (unrecognized login or wrong password)“**.
+Gegenprobe per `curl` direkt an `https://theme-kit-access.shopifyapps.com/cli/admin/api/2025-07/graphql.json`
+(mit und ohne eigenen Header): ebenfalls 401. Netzwerk/Proxy funktionieren also, aber das injizierte
+Passwort wird von Theme Access abgelehnt. Wahrscheinliche Ursachen (vom Nutzer zu prüfen):
+- Wert im Network Secret enthält Leerzeichen/Zeilenumbruch, ein Präfix wie „Bearer “ oder ist abgeschnitten.
+- Passwort wurde in der Theme-Access-App neu erzeugt/widerrufen → altes ungültig.
+- Passwort gehört zu einem anderen Shop.
+→ Bis das gelöst ist: Theme per **ZIP-Upload** einspielen (siehe `shopify-theme/README.md`).
+
+### Phase 2 — Designsystem ✔
+`docs/DESIGN_SYSTEM.md`: Farben (aus der App-Palette übernommen, Kontraste berechnet), Typografie,
+Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo-Platzhalter-Regel.
+
+### Phase 3 — Theme-Grundstruktur ✔ (`shopify-theme/`)
+- Layouts: `theme`, `password`. Header-/Footer-Gruppen.
+- Startseite: Hero „Sacred“ (Lichtstrahlen, Ken-Burns, gestaffelter Reveal), Ausgewählte Kollektion,
+  Bibelstelle (leer, vom Händler zu füllen), Bild mit Text, Kollektionen, Manifest, Newsletter.
+- Seiten: Produkt (Varianten-Picker, Metafelder, JSON-LD), Kollektion (Sortierung, Paginierung),
+  Kollektionsliste, Warenkorb, Seite, Suche, Blog, Beitrag, 404, Passwort, Kundenkonto (alle 7), Geschenkkarte.
+- Theme-Einstellungen: Farben, Schriften, Animationen an/aus, Körnung, Produktkarten, Social Links.
+- Sprachen: Deutsch (Standard), Englisch.
+- `shopify theme check`: **57 Dateien, 0 Befunde**. JSON- und JS-Syntax geprüft.
+- `docs/POD_DATA_MODEL.md`: Metafeld-Entwurf (Namespace `apologea`) + Import-Workflow.
+- Noch **nicht** in Shopify hochgeladen (wegen 401) und **nicht** im Browser gerendert getestet.
+
+## Sitzung 3 (2026-10-16) — Ergebnis
+- Network Secret vom Nutzer neu angelegt (Header `X-Shopify-Access-Token`, ohne „Bearer“).
+- Verbindungstest `shopify theme list` ✔ — Themes: Horizon [live] #202475110735, Feather [unpublished] #202485956943.
+- `shopify theme check --path shopify-theme`: 57 Dateien, 0 Befunde.
+- `shopify theme push --unpublished --theme "APOLOGEA NOCTURNE (Dev)"` ✔ → neues Theme
+  **#202489921871** [unpublished]. Horizon und Feather unverändert.
+  (Nach „Theme upload complete“ meldete die CLI ein `ECONNRESET` — nur Nachlauf; per `theme pull`
+  geprüft: alle 59 Dateien sind auf dem Server.)
+- Vorschau: https://dfz1mp-1u.myshopify.com?preview_theme_id=202489921871
+- Editor: https://dfz1mp-1u.myshopify.com/admin/themes/202489921871/editor
+- Netzwerk-Allowlist vom Nutzer erweitert: `apologea.eu`, `www.apologea.eu`, `cdn.shopify.com` (wirkt sofort).
+- Vorschau per Playwright gerendert (Desktop 1440 px, Mobil 390 px): Shop ist **passwortgeschützt**,
+  daher nur die Passwortseite sichtbar — sie rendert mit NOCTURNE korrekt (Lichtstrahlen, Wortmarke,
+  Newsletter-Formular, „Shop mit Passwort betreten“), keine Liquid-Fehler. Fehlgeschlagene Requests nur
+  Shopify-Tracking/Shop Pay (shop.app, shopifysvc.com, monorail) — nicht theme-relevant.
+- Startseite/Produkt/Kollektion etc. noch **nicht** gerendert geprüft → braucht Storefront-Passwort
+  (Online Store → Einstellungen) oder Prüfung durch Nutzer im Admin.
+- Künftige Updates ins selbe Dev-Theme: `NODE_USE_ENV_PROXY=1 shopify theme push --path shopify-theme
+  --theme 202489921871 --password shptka_placeholder` (nie `--publish`/`--live`).
+
+### Sitzung 3, Teil 2 — Logo + Render-Test
+- Logo vom Nutzer erhalten (1254×1254 WebP, Gold auf Schwarz). Vektorisiert (vtracer, 4× hochskaliert,
+  Schwelle auf Helligkeit) → `apologea-logo.svg` / `-wordmark.svg` / `-emblem.svg`, Abgleich mit Original ≈ 97,6 % IoU.
+  Relief → Goldverlauf. Details: `docs/DESIGN_SYSTEM.md` §7.
+- Eingebaut: Header (Variante wählbar, Standard Schriftzug 170 px, mobil ≤ 128 px), Footer (Kreuz + Schriftzug),
+  Passwortseite (Kreuz + Schriftzug statt Text-H1), Favicon (Kreuz, falls kein eigenes gesetzt).
+  Platzhalter-Logik + Übersetzungsschlüssel `general.logo_placeholder` entfernt.
+- Render-Test mit Storefront-Passwort (Passwort NICHT im Repo; Nutzer gibt es bei Bedarf erneut an):
+  Startseite, Kollektionsliste, Kollektion, Produkt, Warenkorb, Suche, 404 — Desktop 1440 px + Mobil 390 px:
+  keine Liquid-Fehler, keine Theme-JS-Fehler, kein horizontales Scrollen.
+- Dabei behoben: Produkttitel lief am Desktop rechts aus dem Bild (kleinere Größe + Umbruch);
+  `body { overflow-x: clip }` gegen Körnungs-Overlay; Logo-H1 hatte Überschriften-Abstand (Versatz);
+  Header-Raster mittig (minmax), mobile Icons 36 px; leere Bibelstelle wird im Shop ausgeblendet (nur im Editor Hinweis).
+- Shop enthält nur Beispielprodukte (Horizon-Demo) → „Ausgewählte Kollektion“ zeigt Platzhalter, bis eine Kollektion gewählt ist.
+- Theme-Check: 57 Dateien, 0 Befunde. Alles in Dev-Theme #202489921871 gepusht (unveröffentlicht).
+
+## Sitzung 4 (2026-10-16) — MarketPrint-Connector (nur lesend geprüft)
+- Connector **MarketPrint Print On Demand** ist in der Sitzung verfügbar. **Shopify-Connector nicht** verbunden.
+- Tools: `get_account_info`, `list_base_products`, `get_base_product_details`, `list_my_images` (lesend);
+  `upload_image`, `upload_neckprint` (schreibend, Account); `create_shop_product` (**legt echtes Produkt an und
+  veröffentlicht es im Shop** → nur mit ausdrücklicher Freigabe).
+- Konto: `info.maranathaclothing@gmail.com`, verbundene Shops: `dfz1mp-1u.myshopify.com` (**APOLOGEA**) und
+  `xgyzvd-1m.myshopify.com` (**anderer Shop — nie als Ziel verwenden**).
+- 97 Basisprodukte. Kandidaten fürs Testprodukt (beide DTG/DTF, Front + Back je 4677×5881 px, Nackendruck möglich):
+  - **VACANCY Oversized Shirt** `6391c767702e1dea29b936ed` — 240 g/m², Oversized; Farben Black, White, Natural Raw,
+    Baby Blue, Washed Grey, Washed Black; XS–4XL; Basispreis 16,65 € (Washed 17,15 €; 3XL/4XL +3 €).
+  - HigherBlanks Premium T-Shirt `66215c4ac7be538a2491108d` — 180 g/m², Regular; Black, White, French Navy,
+    Natural Raw, Heather Grey; S–4XL; 11,49 € (3XL/4XL 14,49 €).
+- Vorhandene APOLOGEA-Designs (Meine Designs): `02_APOLOGEA_Brust_25cm.png` (6acdfe4efb65be1f3ca35a70),
+  `apologea_seraphim_rueckendruck_DTF.png` (6ac944f3f24314427489e598, plus Duplikat „(1)“ 6ac9485df2431414b289e7cd),
+  `apologea_emblem_DTF_4500px.png` (6ac90b40f24314090f89a0d2), `apologea_emblem_transparent_4500px.png` (6ac909faf24314999989a04e).
+  (Weitere Designs gehören zu Maranatha/anderen Projekten.)
+- Offene Entscheidungen des Nutzers fürs Testprodukt: Basisprodukt, Farben/Größen, Motiv(e) + Platzierung,
+  DTG oder DTF, Verkaufspreis, Mockups (`withDesign`/`all`), Titel/Beschreibung.
+
+## Sitzung 5 (2026-10-16) — APOLOGEA Studio (lokales Verwaltungsprogramm)
+- Neues Projekt `studio/` (Node.js-Dienst + Oberfläche im Edge-App-Fenster), Doku: `docs/STUDIO.md`.
+- Schnittstellen geprüft: MarketPrint-MCP (7 Werkzeuge, nur lesend aufgerufen), Shopify GraphQL 2026-07 (Theme Access = nur Themes;
+  Inhalte brauchen Dev-Dashboard-App mit Client-Credentials), Claude (API mit eigenem Schlüssel ODER lokale Claude-Code-CLI).
+- Funktionen: Dashboard mit echtem Verbindungsstatus, Website bearbeiten (Claude-Vorschlag → Theme-Kopie als Vorschau →
+  Änderungsübersicht → Freigabe → Übernahme mit Sicherung/Konfliktprüfung → Wiederherstellung), Produkt-Assistent für MarketPrint
+  (Katalog, Varianten, Druckflächen, Platzierung, Druckdatei-Prüfung, Alternativ-Motiv, Claude-Texte kurz/schlicht/ausführlich,
+  Preis/Shop/Mockups/Kollektionen/Tags, Freigabe, Doppelschutz, Ergebnisprüfung), Designbibliothek (Kopie im Datenordner),
+  Vorlagen, Verlauf, Einstellungen (DPAPI-verschlüsselte Zugänge), Sicherung Export/Import + tägliche Auto-Sicherung.
+- Tests: 17 automatische (simulierter Shopify-Server, MarketPrint-Simulation, Ersatz-CLI) + 40 Oberflächenprüfungen – alle bestanden.
+  Keine echten Schreibaktionen bei Shopify/MarketPrint.
+- Installationspaket (`node studio/tools/build-package.mjs`, ca. 42 MB inkl. Node.js 22.23.3) an Nutzer übergeben.
+  **Nicht auf dem Nutzer-PC installiert** (keine Verbindung zum PC aus der Cloud-Umgebung).
+- Zielshop-Schutz: Nur `dfz1mp-1u.myshopify.com` ist als Zielshop freigegeben; `xgyzvd-1m.myshopify.com` wird im Studio
+  gesperrt angezeigt (Einstellungen → MarketPrint → erlaubte Zielshops).
+- Logo Nr. 29 = das gelieferte Logo (Kreuz + Schriftzug, vom Nutzer bestätigt) → im Studio und als Programmsymbol eingebunden.
+- Offen: echte Verbindungsprüfung auf dem PC (Claude Code + MarketPrint-Connector),
+  Shopify-Dev-Dashboard-App für Seiten/Kollektionen.
+
+## Sitzung 5, Teil 2 (2026-10-16) — Studio 1.1: mehrere POD-Anbieter
+- Anbieter als Bausteine (`studio/src/server/providers/`): MarketPrint, **Printify**, **Printful** mit gemeinsamem Vertrag;
+  neue Anbieter = eine Datei + Eintrag in der Registry (Anleitung: `docs/STUDIO.md` §2a).
+- Printify: Katalog → Druckdienstleister → Varianten, Upload, Entwurf + echte Mockups, Veröffentlichen an Shopify (asynchron bestätigt).
+- Printful: Katalog/Grundpreise/Druckflächen/echte Mockups; Anlegen nur in „Manual order / API“-Shops (laut Printful-Doku nicht in
+  Shopify-verbundenen Shops) – wird im Programm offen angezeigt.
+- Nutzer hat noch **keine** Printify-/Printful-Konten → nur Simulation/Test-Server. Zielshops neuer Anbieter sind standardmäßig gesperrt.
+- Tests: 26 automatische + 48 Oberflächenprüfungen bestanden.
+
+## Sitzung 5, Teil 3 (2026-10-16) — Studio 1.1.1: MarketPrint über Claude Code
+- Problem beim Nutzer: Verbindungstest meldete „Werkzeuge wurden nicht geladen“, obwohl `claude mcp list` den Connector als verbunden zeigt.
+  Ursache: Claude Code lädt claude.ai-Connector-Werkzeuge bei Bedarf über seine Werkzeugsuche (ToolSearch); das Studio hatte alle eingebauten Werkzeuge abgeschaltet.
+- Lösung: ToolSearch bleibt erlaubt; der Verbindungstest ruft `get_account_info` mit allen Namensvarianten des Servers auf, übernimmt den tatsächlichen Werkzeugnamen und liest dabei gleich das Konto. Claude Code läuft im internen Datenordner statt im Benutzerordner.
+- Statuskarten in den Einstellungen aktualisieren sich nach Speichern/Prüfen selbst.
+- Tests: `npm test` 28/28, Oberflächen-Durchlauf ohne Fehler (neuer Test für nachgeladene Werkzeuge).
+
+## Sitzung 5, Teil 4 (2026-10-16) — Studio 1.2.0: Aktualisierung im Programm
+- Wunsch: Programm verbessern, ohne jedes Mal ein neues Paket herunterzuladen. Nutzer hat die Ein-Klick-Aktualisierung
+  ausdrücklich freigegeben (Risiko erklärt: Code kommt aus dem öffentlichen GitHub-Repo).
+- Umsetzung siehe docs/STUDIO.md §2b. Installer beendet außerdem hängende Studio-/Claude-Code-Prozesse selbst.
+- Ab jetzt nach jeder Studio-Änderung: `node tools/manifest.mjs`, Tests, committen, pushen → Nutzer klickt „Jetzt aktualisieren“.
+- Tests: `npm test` 36/36 (neu: update.test.mjs), Neustart-Ablauf manuell geprüft (gleicher Port und Schlüssel).
+
+## Sitzung 5, Teil 5 (2026-10-16) — Studio 1.3.0: Platzier-Editor, Nackendruck, Website-Editor
+- Produkt: Vorder-/Rück-/Beidseitig-Ansicht, Motiv auf dem Produktfoto ziehen/skalieren, Motiv bleibt immer in der
+  MarketPrint-Druckfläche. Nackendruck nur für die 7 Grundprodukte mit `hasNeckPrint` (Live-Katalog nur lesend geprüft).
+- Website: Editor wie bei Shopify (Abschnitte, Einstellungen, Live-Ansicht des Shops im Programm), Claude-Auftrag oben.
+  Neues Geheimnis `shopify.storefrontPassword` (nur verschlüsselt auf dem PC).
+- Tests: `npm test` grün, Oberflächen-Durchlauf 52/52, Website-Editor zusätzlich gegen simulierten Shop durchgeklickt.
+- DPI-Prüfung gut/mittel/schlecht (≥200 / 150–199 / <150 DPI, Annahme Druckfläche ≙ 300 DPI) live im Editor.
+- Verteilung über die Aktualisierung im Programm (kein neues Paket nötig, keine neuen Bibliotheken).
+
+## Sitzung 5, Teil 6 (2026-10-16) — Studio 1.4.0: zwei Wege für neue Produkte
+- Wunsch: Foto-Editor verwerfen (Druckfläche wich vom MarketPrint-Editor ab; Lage liefert die Schnittstelle nicht).
+- „Neues Produkt erstellen“: Weg 1 im Programm über MCP, Weg 2 direkt in den MarketPrint-Designer (Website).
+- Tests: `npm test` grün, Oberflächen-Durchlauf 55/55.
+
+## Sitzung 5, Teil 7 (2026-10-16) — Studio 1.5.0: Bilder mit dem Claude-Auftrag
+- Website-Editor: Bilder direkt im Auftragsfeld anhängen; Claude setzt sie ein (z. B. Banner).
+- Produkte: eigene Mockups/Fotos hochladen, Claude plant Einsatz, nach Freigabe ins Shopify-Produkt.
+- Weg 2 (MarketPrint-Website): Direktlinks laden dort nicht → Startseite + Wegbeschreibung (1.4.3).
+- Tests: `npm test` 41/41, Oberflächen-Durchlauf 58/58.
+
+## Sitzung 6 (2026-10-16) — Studio 2.0.0: Analytics & Business Intelligence
+- Sicherung vorher: Commit `4b4f447`, Tag `sicherung-vor-analytics-1.5.0`.
+- Neuer Bereich „Analytics“: Übersicht, Live View, Verkäufe & Umsatz, Kunden & Besucher, Produktperformance,
+  Gewinn & POD-Kosten, Berichte (PDF/CSV/Excel). Details, Definitionen und Grenzen: docs/ANALYTICS.md.
+- Live View über eigenen Dienst `analytics-collector/` (Cloudflare Worker + Shopify Pixel, nur mit Einwilligung, 48 h Löschung).
+- Abgleich per Abfrage (keine Webhooks, Studio ist nicht öffentlich erreichbar). Benachrichtigungen im Programm.
+- Nutzer muss: Admin-App-Bereiche read_orders/read_reports/read_products (+ optional read_all_orders), geschützte
+  Kundendaten beantragen, Live-View-Dienst einrichten, Kosten/Gebühren eintragen.
+- Tests: `npm test` 49/49 (neu: analytics.test.mjs mit gekennzeichneten Testdaten), Oberflächen-Durchlauf 58/58,
+  alle Analytics-Ansichten gegen simulierten Shop durchgeklickt. Keine neuen Bibliotheken → Aktualisierung im Programm.
+
+## Sitzung 6, Teil 2 (2026-10-16) — Studio 2.1.0: Einrichtungs-Assistent
+- Nutzer war nicht am PC und bat, die Einrichtung zu übernehmen. Nicht möglich (Shopify-/Cloudflare-Logins des Nutzers nötig);
+  stattdessen: Analytics → „Einrichtung“ mit echter Prüfung je Schritt und Knöpfen, die die richtigen Seiten öffnen.
+- Live-Dienst per Klick über die Cloudflare-REST-API (auf dem PC gibt es nur node.exe, kein npm/wrangler).
+  Collector liegt jetzt unter `studio/src/collector/`, damit er mit der Aktualisierung im Programm ausgeliefert wird.
+- Tests: `npm test` 55/55 (neu: cloudflare.test.mjs mit simuliertem Cloudflare), Oberflächen-Durchlauf 58/58,
+  Assistent im Browser durchgeklickt. Gegen echtes Cloudflare noch ungetestet.
+
+## Sitzung 6, Teil 3 (2026-10-17) — Studio 2.1.1: MarketPrint-Fehlermeldung
+- Nutzer sah „Werkzeug get_base_product_details ist in Claude Code nicht verfügbar“. Ursache sehr wahrscheinlich: Anmeldung des
+  claude.ai-Connectors MarketPrint abgelaufen (auch in der Cloud-Sitzung meldete sich MarketPrint als „Anmeldung erforderlich“).
+- Studio liest jetzt den Connector-Status aus dem Claude-Code-Start (needs-auth / failed / fehlt) und nennt Ursache + Lösung.
+- Tests: `npm test` grün (neu: needs-auth-Fall in bridge.test.mjs).
+
+## Sitzung 7 (2026-10-25) — Handy-App 1.1.0: Pieces importieren (ohne KI)
+- Wunsch: neue Pieces als ZIP/Ordner auf einmal in App + Sammlung übernehmen. KI-Anbindung ausdrücklich **nicht** gewünscht.
+- Neu `import.js` (+ Einbindung in `index.html`, `sw.js`, Knopf in der Kopfleiste und im Menü „Pieces importieren …“).
+  - ZIP-Leser ohne Bibliothek (DecompressionStream, ZIP64, UTF-8/CP437-Namen, verschlüsselt → klare Meldung).
+  - Regeln: Ordner mit `Produktdaten.json` (PC-Format, Zusatzfelder bleiben) · `Kleidungstyp/Piece/…` · `Piece/…` ·
+    lose Dateien nach Namen gruppiert (Rollenwörter wie Design/Mockup/Ansicht entfernt). `Arbeitsdateien/` → Arbeitsdateien.
+    Nummer aus Ordnernamen (`180_NAME`), wenn frei, sonst nächste freie. Mehrere ZIPs werden getrennt ausgewertet.
+  - Vorschau: je Piece an/aus, Name, Kleidungstyp (inkl. neu anlegen), Rolle je Datei, Bild-Vorschau; mögliche Duplikate
+    (gleicher Name im selben Kleidungstyp) sind abgewählt. Standard: als Entwurf speichern.
+  - Speichern über `Store.save` (neu: optionale Felder `herkunft`, `extra`) → exakt das Format des PC-Programms.
+- Tests (Demo-Modus, Playwright, 390 px): 2 ZIPs (Struktur + lose Dateien, CP437-Name, Duplikat, PC-Format) und
+  Einzeldateien – Erkennung, Anlage, Nummern, neue Kleidungstypen korrekt, keine JS-Fehler. Mit echtem OneDrive **ungetestet**.
+- Mit Freigabe des Nutzers **nur die 6 App-Dateien** nach `main` übernommen (Commit `635889d`). Ob die Auslieferung (vermutlich GitHub Pages)
+  aktualisiert hat, konnte aus der Cloud nicht geprüft werden (github.io gesperrt) → Rückmeldung des Nutzers abwarten.
+- 1.1.1: Fehlt beim Tippen auf „importieren“ der Kleidungstyp, zeigt die Vorschau nur noch diese Pieces (Hinweisleiste mit
+  Restanzahl, „Alle anzeigen“). Getestet im Demo-Modus.
+- 1.2.0: Import fortsetzbar. Echter Hintergrund-Upload ist für Web-Apps nicht möglich (iOS friert geschlossene Apps ein).
+  Stattdessen: Auftrag (gewählte Dateien + Plan) in IndexedDB (`apologea-import`/`jobs`/`aktuell`), nach jedem Piece abgehakt.
+  Beim nächsten Öffnen (bzw. im Import-Fenster) „Import fortsetzen?“. Schutz vor Doppelten: Kennung `Import <id>/<n>` in
+  `herkunft`. Netz-/Anmeldefehler → Abbruch mit Fortsetzen; sonstige Fehler → Piece übersprungen und gemeldet.
+  Bildschirmsperre (Wake Lock) wird nach Rückkehr neu angefordert. Getestet: simulierter Netzabbruch, Fortsetzen,
+  „gespeichert aber nicht abgehakt“ (keine Doppelten), Auftrag übersteht Neuladen.
+- 1.2.1: Verbindungsabbruch (DriveError status 0/„offline“, 429, 5xx – vorher fälschlich als Piece-Fehler gewertet) →
+  automatisch warten, bis App sichtbar + online, Stand prüfen (Kennung), dasselbe Piece erneut (max. 8 Versuche, dann
+  Fortsetzen später). Zwischenordner wird bei Fehlern nicht mehr gelöscht (hätte ein bereits verschobenes, fertiges Piece
+  löschen können). Getestet: Abbruch im Hintergrund + Rückkehr; Abbruch direkt nach dem Speichern → keine Doppelten.
+- 1.3.0: Menü → „Katalog erstellen …“ → gestaltete PDF (A4) mit Deckblatt, Kapiteln je Kleidungstyp (fließend, mit
+  „Fortsetzung“), Bildkarten (Nummer, Name, Motiv, Serie, Entwurf-Kennzeichen), optional Verzeichnis, Rückseite.
+  Varianten „Übersicht“ (9/Seite) und „Groß“ (4/Seite mit Beschreibung); Umfang alle/ohne Entwürfe/aktueller Filter.
+  Umsetzung `catalog.js`: Canvas je Seite (1654×2339) → JPEG → eigener PDF-Schreiber, keine Bibliothek. Bilder seitenweise
+  (OneDrive-Vorschaubild „large“, sonst Originaldatei). Schriften OFL in `catalog/fonts/` (Cormorant Garamond, Inter,
+  JetBrains Mono, Lizenzen beiliegend), Logo-Kopien in `catalog/` (nur width/height ergänzt). Teilen/Speichern/Ansehen.
+  Getestet im Demo-Modus (10 und 40 Pieces, beide Varianten; PDF mit pypdf/pdftoppm geprüft). Mit echtem OneDrive ungetestet
+  (offen: ob OneDrive-Vorschaubilder per fetch ladbar sind – sonst automatisch Originaldatei, langsamer).
+- 1.4.0: Katalog-Fenster mit Umfang „Auswahl“ + Suchleiste (Name, Nummer, Motiv, Serie, Kleidungstyp; „Treffer wählen“,
+  „Leeren“; Auswahl wird gemerkt). PDF durchsuchbar (unsichtbare Textebene, Helvetica/WinAnsi). Dateigröße: Standard
+  max. 10 MB (Budget je Seite, erst JPEG-Qualität, dann Auflösung), „Hohe Qualität“ max. 40 MB. Härtetest 120 Pieces mit
+  Rauschbildern: 8,9 MB / 36 Seiten. Hinweis ab >100 Seiten (Lesegrenze für Claude).
+- 1.4.1: Katalog-Auswahl mit Checkbox „Alle Pieces (n)“ (an/aus/teilweise), Zähler „x von n ausgewählt“.
+- 1.5.0: **Kollektionen** (`collections.js`). Gespeichert in `Sammlung/.apologea/kollektionen.json`
+  (`{format:"APOLOGEA-Kollektionen/1", kollektionen:[{id,name,beschreibung,status:idee|planung|bereit|veroeffentlicht,drop:"YYYY-MM-DD",pieces:[pieceId…],erstellt,geaendert}]}`);
+  Piece-Ordner/Produktdaten unverändert. `Store.updateCollections` liest frisch, ändert, schreibt mit eTag (If-Match), 3 Versuche;
+  unlesbare/beschädigte Datei wird nie überschrieben. Menü → Kollektionen (Übersicht), Kollektion (Beschreibung, Status,
+  Drop-Datum, Pieces per Suchauswahl, Reihenfolge ↑↓, fehlende Pieces entfernen, Katalog-PDF in Kollektionsreihenfolge mit
+  Beschreibung + Drop auf dem Deckblatt), Detailansicht eines Pieces: Kollektions-Chips + „Zu Kollektion …“ (auch neu anlegen).
+  Katalog-Textebene jetzt auf Spaltenbreite gestaucht (Tz). Getestet im Demo-Modus inkl. gleichzeitiger Änderung und kaputter Datei.
+- 1.5.1: Pieces aus Kollektion entfernen: ✕ auf jeder Karte (mit Rückfrage), Liste mit ✕ im Bearbeiten-Fenster (Stift),
+  ✕ im Modus „Reihenfolge & entfernen“; Detail-Menü „enthalten · tippen zum Entfernen“. (Abwählen in „Pieces wählen“ ging schon, war aber nicht auffindbar.)
+- 1.5.2: Detailansicht zeigte auf dem iPhone nur einen Streifen des Bildes (Vollbild ok). Jetzt: Datei laden, vollständig
+  dekodieren, auf Bildschirmgröße (max. 1,5× Displaypixel, 1200–2400 px) verkleinern (PNG bei Transparenz), dann anzeigen;
+  nacheinander statt parallel. Vollbild weiter mit Original. Im Chromium getestet – auf echtem iPhone vom Nutzer zu bestätigen.
+- 1.5.3: Streifen blieb auf dem iPhone (auch bei 200-KB-Bildern → keine Größenfrage; Streifen sitzt an der korrekten
+  Bildoberkante = Safari-Zeichenfehler mit <img> im Karussell). Karussell zeigt Bilder jetzt als Hintergrundbild (`.slide-pic`,
+  background-size: contain) statt <img>. Auf echtem iPhone vom Nutzer zu bestätigen.
+- **PC-Programm 1.1.0 (Kollektionen)**, 2026-10-26: Quellcode vom Nutzer erhalten (C#, .NET Framework 4.8, lokaler HTTP-Server
+  + Web-Oberfläche als eingebettete Ressourcen, gebaut mit `Quellcode\bauen.cmd` unter Windows). Pfad beim Nutzer:
+  `C:\Users\rafae\OneDrive\Desktop\APOLOGEA_PC_mit_Suchkatalog\APOLOGEA_Arbeitsprogramm\APOLOGEA.exe`, Sammlung =
+  dortiger Ordner `Sammlung` (= derselbe OneDrive-Ordner wie die Handy-App).
+  Änderungen: neu `src/Kollektionen.cs` (GET `/api/kollektionen`, POST `/api/kollektionen/speichern` mit Stand = SHA-1 des
+  Dateiinhalts → 409 bei Änderung dazwischen; beschädigte Datei → 422, nie überschreiben; atomar schreiben), Routen in
+  `src/Api.cs`, Version 1.1.0 in `src/Program.cs`, UI in `ui/app.js`/`ui/app.css` (Seitenleiste „Kollektionen“, Leiste über
+  dem Raster, ✕ auf Karten, Bearbeiten mit ✕-Liste, Suchauswahl mit „Alle Pieces“, Reihenfolge & entfernen,
+  Detail „Zu Kollektion …“, Symbol `sort`). Mit Mono kompiliert und unter Xvfb (`--ohne-fenster --sammlung … --instanz test`)
+  im Browser getestet (inkl. Änderung „vom Handy“ zwischendurch). **Code NICHT im (öffentlichen) Repo**; Paket
+  `APOLOGEA_PC_Update_1.1_Kollektionen.zip` an Nutzer übergeben – Nutzer muss `bauen.cmd` ausführen. Unter Windows ungetestet.
+- **PC-Programm 1.2.0** (2026-10-26): Funktionsgleich mit der Handy-App. Neu `ui/import.js` (ZIP-Leser + Regeln unverändert
+  aus der Handy-App, Speichern über `/api/upload` + `/api/ordner-vorschau` (Nummer) + `/api/speichern`; Ziehen & Ablegen von
+  Ordnern; Fokus fehlende Kleidungstypen; Duplikate abgewählt), `ui/katalog.js` (Katalog-Kern aus der Handy-App, Bilder über
+  `/vorschau?w=1000`; Kollektions-Katalog), eingebettete Schriften/Logo (`bauen.cmd` um Ressourcen erweitert), neuer
+  Endpunkt `/api/pdf-speichern` (Windows-„Speichern unter“, PDF-Kopf geprüft, optional öffnen), `Save` übernimmt beim
+  Neuanlegen `herkunft` und `extra` (unbekannte Felder), obere Leiste ohne Umbruch. Mit Mono getestet (Import 20 Jogginghosen
+  inkl. Duplikaterkennung, Katalog, Kollektionen-Regression). Unter Windows ungetestet; Paket `APOLOGEA_PC_Update_1.2.zip`.
+  Bewusst nicht übernommen: Fortsetzen unterbrochener Importe (nur am Handy nötig, da iOS Apps anhält).
+- **PC-Programm 1.3.0** (2026-10-26): Programm-Aktualisierung per Klick. Quellcode jetzt im Repo unter
+  `pc-programm/Quellcode` (Nutzer-Entscheidung „Weg A“: öffentlich), Liste `pc-programm/update.json` (Version, Hinweise aus
+  `pc-programm/hinweise.txt`, SHA-256 je Datei; erzeugt mit `python3 pc-programm/tools/manifest.py`). `src/Update.cs`: liest
+  den neuesten Commit dieses Zweigs (api.github.com) und die Dateien (raw.githubusercontent.com), prüft Summen, sichert nach
+  `Programm-Sicherung` (letzte 5), ersetzt `Quellcode`, benennt die laufende EXE in `APOLOGEA.alt.exe` um, `bauen.cmd /still`,
+  Neustart; bei Fehler alles zurück. UI: Einstellungen → „Programm-Aktualisierung“, Hinweisleiste, Suche höchstens alle 12 h.
+  Getestet mit Mono gegen einen lokalen GitHub-Ersatz (Summenfehler → nichts geändert; Erfolg → Neustart als 1.3.0;
+  Baufehler → EXE und Quellcode zurück). Gegen das echte GitHub nur mit curl geprüft (Mono kommt hier nicht durch den Proxy).
+  Unter Windows ungetestet; Paket `APOLOGEA_PC_Update_1.3.zip` (einmal von Hand einspielen).
+  **Ab jetzt bei jeder PC-Änderung:** Version in `src/Program.cs` erhöhen, `hinweise.txt`, `manifest.py`, committen, pushen.
+
+## Nächste Schritte
+1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
+2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“
+   → Verbindung prüfen), Claude (Claude Code oder API-Schlüssel). Rückmeldung, was „Verbindung prüfen“ anzeigt.
+3. Erstes echtes Produkt: Druckdatei in MarketPrint „Meine Designs“ hochladen, im Studio verknüpfen, Entwurf → Freigabe.
+4. Theme NOCTURNE: Inhalte im Editor füllen; Vorschau prüfen.

@@ -1,0 +1,67 @@
+{%- liquid
+  assign collection = section.settings.collection
+  if collection == blank and product
+    assign collection = product.collections.first
+  endif
+  assign show_placeholders = false
+  if request.design_mode or template.name == 'index'
+    assign show_placeholders = true
+  endif
+  assign has_products = false
+  if collection != blank and collection.products_count > 0
+    assign has_products = true
+  endif
+-%}
+{%- if has_products or show_placeholders -%}
+<section class="section{% if section.settings.alt_bg %} section--alt{% endif %}" style="{% render 'section-spacing', s: section.settings %}">
+  <div class="container">
+    <div class="section-head reveal">
+      <div>
+        {%- if section.settings.eyebrow != blank -%}<p class="eyebrow">{{ section.settings.eyebrow | escape }}</p>{%- endif -%}
+        <h2>{{ section.settings.heading | default: collection.title | escape }}</h2>
+      </div>
+      {%- if collection != blank -%}
+        <a class="link-arrow" href="{{ collection.url }}">{{ 'general.view_all' | t }}</a>
+      {%- endif -%}
+    </div>
+
+    <div class="grid grid--{{ section.settings.columns }} reveal--stagger">
+      {%- if has_products -%}
+        {%- assign shown = 0 -%}
+        {%- for item in collection.products -%}
+          {%- if product and item.id == product.id -%}{%- continue -%}{%- endif -%}
+          {%- if shown >= section.settings.limit -%}{%- break -%}{%- endif -%}
+          {% render 'product-card', product: item %}
+          {%- assign shown = shown | plus: 1 -%}
+        {%- endfor -%}
+      {%- else -%}
+        {%- for i in (1..section.settings.limit) -%}
+          <article class="card">
+            {%- assign n = forloop.index0 | modulo: 4 | plus: 1 -%}
+            <div class="card__media">{{ 'product-apparel-' | append: n | placeholder_svg_tag }}</div>
+            <h3 class="card__title">{{ 'products.placeholder_title' | t }}</h3>
+            <div class="price">{{ 0 | money }}</div>
+          </article>
+        {%- endfor -%}
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Ausgewählte Kollektion",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Drop 01" },
+    { "type": "text", "id": "heading", "label": "Überschrift", "default": "Die Kollektion" },
+    { "type": "collection", "id": "collection", "label": "Kollektion" },
+    { "type": "range", "id": "limit", "label": "Anzahl Produkte", "min": 2, "max": 12, "step": 1, "default": 4 },
+    { "type": "select", "id": "columns", "label": "Spalten (Desktop)", "options": [{ "value": "3", "label": "3" }, { "value": "4", "label": "4" }], "default": "4" },
+    { "type": "checkbox", "id": "alt_bg", "label": "Abgesetzter Hintergrund", "default": false },
+    { "type": "range", "id": "padding_top", "label": "Abstand oben", "min": 0, "max": 160, "step": 8, "unit": "px", "default": 112 },
+    { "type": "range", "id": "padding_bottom", "label": "Abstand unten", "min": 0, "max": 160, "step": 8, "unit": "px", "default": 112 }
+  ],
+  "presets": [{ "name": "Ausgewählte Kollektion" }]
+}
+{% endschema %}
