@@ -288,7 +288,16 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   Neuanlegen `herkunft` und `extra` (unbekannte Felder), obere Leiste ohne Umbruch. Mit Mono getestet (Import 20 Jogginghosen
   inkl. Duplikaterkennung, Katalog, Kollektionen-Regression). Unter Windows ungetestet; Paket `APOLOGEA_PC_Update_1.2.zip`.
   Bewusst nicht übernommen: Fortsetzen unterbrochener Importe (nur am Handy nötig, da iOS Apps anhält).
-- PC-Programm: Quellcode nicht im Repo (siehe oben); Importe erscheinen dort trotzdem (gemeinsamer Ordner).
+- **PC-Programm 1.3.0** (2026-10-26): Programm-Aktualisierung per Klick. Quellcode jetzt im Repo unter
+  `pc-programm/Quellcode` (Nutzer-Entscheidung „Weg A“: öffentlich), Liste `pc-programm/update.json` (Version, Hinweise aus
+  `pc-programm/hinweise.txt`, SHA-256 je Datei; erzeugt mit `python3 pc-programm/tools/manifest.py`). `src/Update.cs`: liest
+  den neuesten Commit dieses Zweigs (api.github.com) und die Dateien (raw.githubusercontent.com), prüft Summen, sichert nach
+  `Programm-Sicherung` (letzte 5), ersetzt `Quellcode`, benennt die laufende EXE in `APOLOGEA.alt.exe` um, `bauen.cmd /still`,
+  Neustart; bei Fehler alles zurück. UI: Einstellungen → „Programm-Aktualisierung“, Hinweisleiste, Suche höchstens alle 12 h.
+  Getestet mit Mono gegen einen lokalen GitHub-Ersatz (Summenfehler → nichts geändert; Erfolg → Neustart als 1.3.0;
+  Baufehler → EXE und Quellcode zurück). Gegen das echte GitHub nur mit curl geprüft (Mono kommt hier nicht durch den Proxy).
+  Unter Windows ungetestet; Paket `APOLOGEA_PC_Update_1.3.zip` (einmal von Hand einspielen).
+  **Ab jetzt bei jeder PC-Änderung:** Version in `src/Program.cs` erhöhen, `hinweise.txt`, `manifest.py`, committen, pushen.
 
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
