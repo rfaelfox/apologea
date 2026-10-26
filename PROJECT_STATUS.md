@@ -280,6 +280,14 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   Detail „Zu Kollektion …“, Symbol `sort`). Mit Mono kompiliert und unter Xvfb (`--ohne-fenster --sammlung … --instanz test`)
   im Browser getestet (inkl. Änderung „vom Handy“ zwischendurch). **Code NICHT im (öffentlichen) Repo**; Paket
   `APOLOGEA_PC_Update_1.1_Kollektionen.zip` an Nutzer übergeben – Nutzer muss `bauen.cmd` ausführen. Unter Windows ungetestet.
+- **PC-Programm 1.2.0** (2026-10-26): Funktionsgleich mit der Handy-App. Neu `ui/import.js` (ZIP-Leser + Regeln unverändert
+  aus der Handy-App, Speichern über `/api/upload` + `/api/ordner-vorschau` (Nummer) + `/api/speichern`; Ziehen & Ablegen von
+  Ordnern; Fokus fehlende Kleidungstypen; Duplikate abgewählt), `ui/katalog.js` (Katalog-Kern aus der Handy-App, Bilder über
+  `/vorschau?w=1000`; Kollektions-Katalog), eingebettete Schriften/Logo (`bauen.cmd` um Ressourcen erweitert), neuer
+  Endpunkt `/api/pdf-speichern` (Windows-„Speichern unter“, PDF-Kopf geprüft, optional öffnen), `Save` übernimmt beim
+  Neuanlegen `herkunft` und `extra` (unbekannte Felder), obere Leiste ohne Umbruch. Mit Mono getestet (Import 20 Jogginghosen
+  inkl. Duplikaterkennung, Katalog, Kollektionen-Regression). Unter Windows ungetestet; Paket `APOLOGEA_PC_Update_1.2.zip`.
+  Bewusst nicht übernommen: Fortsetzen unterbrochener Importe (nur am Handy nötig, da iOS Apps anhält).
 - PC-Programm: Quellcode nicht im Repo (siehe oben); Importe erscheinen dort trotzdem (gemeinsamer Ordner).
 
 ## Nächste Schritte
