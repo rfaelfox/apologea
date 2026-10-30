@@ -1,7 +1,7 @@
 /* APOLOGEA Handy-App – Oberfläche */
 'use strict';
 
-const VERSION = '1.5.3';
+const VERSION = '1.6.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -42,7 +42,7 @@ const icon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 
 const S = {
   demo: new URLSearchParams(location.search).has('demo'),
-  filter: { q: '', cat: '', status: '' },
+  filter: { q: '', cat: '', status: '', zg: '' },
   sort: prefs.get('sort', 'nummer-auf'),
   cardImg: prefs.get('cardImg', 'mockup'),
   designBg: prefs.get('designBg', 'dunkel'),
@@ -255,6 +255,7 @@ function renderCatalog() {
       </div>
       <div class="search">${icon('search')}<input class="input" id="q" type="search" placeholder="Name, Nummer, Beschreibung …" autocomplete="off" enterkeyhint="search" value="${esc(S.filter.q)}"></div>
       <div class="cats" id="cats"></div>
+      <div class="cats zgs" id="zgs"></div>
       <div class="ornament-line"></div>
     </header>
     <div class="countline"><span id="count"></span><button class="btn ghost small" id="b-sort">${icon('sort')}<span id="sortlabel"></span></button></div>
@@ -271,6 +272,7 @@ function renderCatalog() {
   $('#q').addEventListener('input', e => { clearTimeout(t); t = setTimeout(() => { S.filter.q = e.target.value; renderGrid(); }, 150); });
   $('#q').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
   $('#cats').onclick = e => { const b = e.target.closest('[data-cat]'); if (!b) return; S.filter.cat = b.dataset.cat; renderChips(); renderGrid(); window.scrollTo(0, 0); };
+  $('#zgs').onclick = e => { const b = e.target.closest('[data-zg]'); if (!b) return; S.filter.zg = b.dataset.zg; renderChips(); renderGrid(); window.scrollTo(0, 0); };
   $('#grid').onclick = e => { const c = e.target.closest('.card'); if (c) openDetail(c.dataset.key); };
   renderChips(); renderGrid();
 }
@@ -283,6 +285,8 @@ function renderChips() {
   const ps = M().pieces;
   el.innerHTML = `<button class="cat ${!S.filter.cat ? 'on' : ''}" data-cat="">Alle<b>${ps.length}</b></button>` +
     M().categories.map(c => `<button class="cat ${S.filter.cat === c.name ? 'on' : ''}" data-cat="${esc(c.name)}">${esc(c.name)}<b>${c.anzahl}</b></button>`).join('');
+  const z = $('#zgs');
+  if (z) z.innerHTML = ZG.FILTERS.map(([v, l]) => { const k = ps.filter(p => ZG.matches(p.zielgruppe, v)).length; return v === 'offen' && !k ? '' : `<button class="cat zg ${S.filter.zg === v ? 'on' : ''}" data-zg="${v}">${l}<b>${k}</b></button>`; }).join('');
   const n = $('#notice');
   const probs = ps.filter(p => p.probleme.some(x => !/^Kein Bild für/.test(x) || p.status === 'Vollständig')).length;
   if (n) n.innerHTML = S.filter.status ? `<div class="notice">Filter: ${esc({ vollstaendig: 'Vollständig', entwurf: 'Entwürfe', unvollstaendig: 'Unvollständig', hinweise: 'Mit Hinweisen' }[S.filter.status])} · <u id="clrstat">aufheben</u></div>`
@@ -299,6 +303,7 @@ function filtered() {
   const statusOf = p => p.status === 'Entwurf' ? 'entwurf' : p.status === 'Unvollständig' ? 'unvollstaendig' : 'vollstaendig';
   let l = M().pieces.filter(p => {
     if (S.filter.cat && p.kategorie !== S.filter.cat) return false;
+    if (!ZG.matches(p.zielgruppe, S.filter.zg)) return false;
     if (st && (st === 'hinweise' ? !realProblems(p).length : statusOf(p) !== st)) return false;
     if (!terms.length) return true;
     if (!p._hay) p._hay = norm([p.nummer, pad3(p.nummer), p.name, p.motivtitel, p.beschreibung, p.schlagwoerter.join(' '), p.serie, p.kategorie, p.folderName].join(' '));
@@ -345,7 +350,7 @@ function pieceCardHtml(p) {
   const isD = role === 'design';
   return `<article class="card" data-key="${p.key}">
     <div class="card-img ${isD ? 'design bg-' + S.designBg : ''}">${f ? `<img data-thumb="${f.id}" alt="">` : `<div class="missing-img">${icon('image')}Kein Bild</div>`}<div class="badges">${badges.join('')}</div></div>
-    <div class="card-body"><div class="card-nr">NR. ${pad3(p.nummer)}</div><div class="card-name">${esc(p.name)}</div><div class="card-sub">${esc(p.motivtitel || p.kategorie)}</div></div></article>`;
+    <div class="card-body"><div class="card-nr">NR. ${pad3(p.nummer)}${p.zielgruppe ? `<span class="zg-tag">${ZG.label(p.zielgruppe)}</span>` : ''}</div><div class="card-name">${esc(p.name)}</div><div class="card-sub">${esc(p.motivtitel || p.kategorie)}</div></div></article>`;
 }
 
 // ---------------------------------------------------------------- Vorschaubilder bei Bedarf laden
@@ -391,6 +396,7 @@ function openMenu() {
     <button class="menu-item" data-a="coll">${icon('template')}Kollektionen<span class="sub">${typeof Coll !== 'undefined' && Coll.count ? Coll.count : ''}</span></button>
     <button class="menu-item" data-a="catalog">${icon('file')}Katalog erstellen …<span class="sub">PDF zum Teilen</span></button>
     <button class="menu-item" data-a="import">${icon('import')}Pieces importieren …<span class="sub">ZIP, Ordner</span></button>
+    <button class="menu-item" data-a="zg">${icon('swap')}Mann / Frau zuordnen …<span class="sub">${M().pieces.filter(p => !p.zielgruppe).length ? M().pieces.filter(p => !p.zielgruppe).length + ' offen' : 'alle zugeordnet'}</span></button>
     <button class="menu-item" data-a="newcat">${icon('plus')}Neuer Kleidungstyp …</button>
     <button class="menu-item" data-a="status">${icon('shield')}Nach Status filtern<span class="sub">${esc({ '': 'Alle', vollstaendig: 'Vollständig', entwurf: 'Entwürfe', unvollstaendig: 'Unvollständig', hinweise: 'Mit Hinweisen' }[S.filter.status])}</span></button>
     <button class="menu-item" data-a="check">${icon('warn')}Sammlung prüfen</button>
@@ -420,6 +426,7 @@ function openMenu() {
       const act = a.dataset.a;
       if (act === 'sync') sync(false);
       if (act === 'newcat') createCategory();
+      if (act === 'zg') openZgAssign();
       if (act === 'import') openImport();
       if (act === 'catalog') openCatalog();
       if (act === 'coll') Coll.openList();
@@ -469,7 +476,8 @@ function openDetail(key, keep) {
       <div class="carousel" id="car">${ROLES.map(r => slideHtml(p, r)).join('')}</div>
       <div class="dots" id="dots">${ROLES.map((r, i) => `<span class="${i === 0 ? 'on' : ''}"></span>`).join('')}</div>
       <div class="detail-title"><div class="nr">Nr. ${pad3(p.nummer)} · ${esc(p.kategorie)}</div><h1>${esc(p.name)}</h1>${p.motivtitel ? `<div class="motiv">${esc(p.motivtitel)}</div>` : ''}
-        <div class="row" style="margin-top:8px"><span class="badge ${p.status === 'Vollständig' ? 'ok' : p.status === 'Entwurf' ? 'entwurf' : 'fehlt'}">${p.status}</span></div></div>
+        <div class="row" style="margin-top:8px"><span class="badge ${p.status === 'Vollständig' ? 'ok' : p.status === 'Entwurf' ? 'entwurf' : 'fehlt'}">${p.status}</span></div>
+        <div class="zg-pick"><span class="zg-lbl">Für</span>${zgSeg('d-zg', p.zielgruppe)}</div></div>
       <div class="actions">
         <button class="btn primary" id="d-edit">${icon('edit')}Bearbeiten</button>
         <button class="btn gold" id="d-tpl">${icon('template')}Als Vorlage</button>
@@ -482,7 +490,7 @@ function openDetail(key, keep) {
       <div id="d-coll"></div>
       <div class="section-title">Produktdaten</div>
       <dl class="datalist">
-        <dt>Nummer</dt><dd>${pad3(p.nummer)}</dd><dt>Kleidungstyp</dt><dd>${esc(p.kategorie)}</dd>
+        <dt>Nummer</dt><dd>${pad3(p.nummer)}</dd><dt>Kleidungstyp</dt><dd>${esc(p.kategorie)}</dd><dt>Für</dt><dd>${esc(ZG.label(p.zielgruppe) || 'nicht zugeordnet')}</dd>
         ${p.serie ? `<dt>Serie</dt><dd>${esc(p.serie)}</dd>` : ''}
         <dt>Erstellt</dt><dd>${fmtDate(p.erstellt)}</dd><dt>Geändert</dt><dd>${fmtDate(p.geaendert)}</dd>
         ${p.herkunft ? `<dt>Herkunft</dt><dd>${esc(p.herkunft)}</dd>` : ''}
@@ -500,6 +508,7 @@ function openDetail(key, keep) {
   $('#d-tpl').onclick = () => openForm('vorlage', p);
   $('#d-share').onclick = () => shareItems(ROLES.map(r => p.bilder[r] && p.bilder[r].item).filter(Boolean), p);
   $('#d-trash').onclick = () => trashPiece(p);
+  $('#d-zg').onclick = e => { const b = e.target.closest('button'); if (b) setZg([p], b.dataset.v === p.zielgruppe ? '' : b.dataset.v); };
   const car = $('#car');
   car.addEventListener('scroll', () => { const i = Math.round(car.scrollLeft / car.clientWidth); $$('#dots span').forEach((d, j) => d.classList.toggle('on', i === j)); }, { passive: true });
   $$('[data-view]', v).forEach(el => el.onclick = () => openViewer(p, el.dataset.view));
@@ -682,10 +691,10 @@ function openForm(mode, p) {
   if (!M().categories.length) { toast('Bitte zuerst einen Kleidungstyp anlegen (Menü → Neuer Kleidungstyp).', 'err'); return; }
   const f = {
     mode, key: null, baseETag: null, stagingId: null, dirty: false, vorlage_von: null, tplTitle: '',
-    nummer: Store.nextNumber(), name: '', motivtitel: '', catId: (M().categories.find(c => c.name === S.filter.cat) || {}).id || '', serie: '', beschreibung: '', schlagwoerter: [], entwurf: false,
+    nummer: Store.nextNumber(), name: '', motivtitel: '', catId: (M().categories.find(c => c.name === S.filter.cat) || {}).id || '', zielgruppe: ['mann', 'frau', 'unisex'].includes(S.filter.zg) ? S.filter.zg : '', serie: '', beschreibung: '', schlagwoerter: [], entwurf: false,
     slots: { design: null, kleidungsansicht: null, mockup: null }, work: [], unassigned: [], prevMissing: {}
   };
-  if (p) Object.assign(f, { name: p.name, motivtitel: p.motivtitel, catId: p.catId, serie: p.serie, beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter.slice() });
+  if (p) Object.assign(f, { name: p.name, motivtitel: p.motivtitel, catId: p.catId, zielgruppe: p.zielgruppe || '', serie: p.serie, beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter.slice() });
   if (mode === 'bearbeiten') {
     Object.assign(f, { key: p.key, baseETag: p.jsonItem.eTag, nummer: p.nummer, entwurf: p.entwurf, orig: p, unassigned: p.unzugeordnet.filter(u => u.item && IMG_EXT.includes(extOf(u.rel))) });
     ROLES.forEach(r => { const b = p.bilder[r]; if (b && b.item) f.slots[r] = { art: 'behalten', rel: b.rel, item: b.item, name: b.item.name, size: b.item.size }; else if (b) f.prevMissing[r] = b.rel; });
@@ -714,6 +723,7 @@ function renderForm() {
       <div class="section-title">Angaben</div>
       <div class="field"><label for="f-cat">Kleidungstyp<span class="req">*</span></label>
         <select class="input" id="f-cat"><option value="">Bitte auswählen …</option>${M().categories.map(c => `<option value="${c.id}" ${c.id === f.catId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}<option value="__neu">＋ Neuer Kleidungstyp …</option></select></div>
+      <div class="field"><label>Für <span class="faint">(Mann, Frau oder beide)</span></label>${zgSeg('f-zg', f.zielgruppe, true)}</div>
       <div class="field"><label for="f-name">Produktname<span class="req">*</span></label><input class="input name" id="f-name" value="${esc(f.name)}" maxlength="60" placeholder="z. B. SERAPHIM" autocapitalize="characters" autocomplete="off"></div>
       <div class="field"><label for="f-nr">Piece-Nummer<span class="req">*</span></label><input class="input" id="f-nr" type="number" inputmode="numeric" min="1" value="${f.nummer}"><span class="hint" id="f-nr-hint"></span></div>
       <div class="field"><label for="f-motiv">Motivtitel <span class="faint">(optional)</span></label><input class="input" id="f-motiv" value="${esc(f.motivtitel)}" maxlength="80" autocomplete="off"></div>
@@ -732,6 +742,7 @@ function renderForm() {
     if (e.target.value === '__neu') { const c = await createCategory(); if (c) { f.catId = c.id; renderForm(); } else e.target.value = f.catId; return; }
     f.catId = e.target.value; dirty();
   };
+  $('#f-zg').onclick = e => { const b = e.target.closest('button'); if (!b) return; f.zielgruppe = b.dataset.v; $$('#f-zg button').forEach(x => x.classList.toggle('on', x === b)); dirty(); };
   $('#f-name').oninput = e => { f.name = e.target.value; dirty(); };
   $('#f-nr').oninput = e => { f.nummer = parseInt(e.target.value, 10) || 0; dirty(); };
   $('#f-motiv').oninput = e => { f.motivtitel = e.target.value; dirty(); };
@@ -897,6 +908,88 @@ async function saveForm(asDraft) {
     if (p) openDetail(p.key);
     toast(`Gespeichert in OneDrive: ${p ? p.kategorie + '/' + p.folderName : ''}`, 'ok', { title: `${pad3(f.nummer)} · ${f.name.trim()}${asDraft ? ' (Entwurf)' : ''}` });
   } catch (e) { unbusy(); fail(e, 'Speichern nicht möglich'); }
+}
+
+// ================================================================ Mann / Frau / Unisex
+function zgSeg(id, cur, withOpen) {
+  const opts = ZG.LIST.concat(withOpen ? [['', 'Offen']] : []);
+  return `<div class="seg zg-seg" id="${id}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === (cur || '') ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+}
+
+async function setZg(pieces, zg, quiet) {
+  if (!quiet) busy('Wird gespeichert …');
+  try {
+    const r = await Store.setZielgruppe(pieces.map(p => ({ key: p.key, zg })), msg => busy(msg));
+    if (!quiet) unbusy();
+    if (r.conflicts) toast(`${r.conflicts === 1 ? 'Ein Piece wurde' : r.conflicts + ' Pieces wurden'} gerade an einem anderen Gerät geändert und nicht umgestellt. Bitte aktualisieren und erneut versuchen.`, 'err');
+    else if (!quiet) toast(pieces.length === 1 ? `${pad3(pieces[0].nummer)} · ${pieces[0].name}: ${ZG.label(zg) || 'nicht zugeordnet'}` : `${r.done} Pieces: ${ZG.label(zg) || 'nicht zugeordnet'}`, 'ok');
+    rerender();
+    return r;
+  } catch (e) { if (!quiet) unbusy(); fail(e, 'Speichern nicht möglich'); return null; }
+}
+
+/** Schnelles Zuordnen vieler Pieces: Liste mit Bild und drei Knöpfen je Piece */
+function openZgAssign() {
+  const st = { only: M().pieces.some(p => !p.zielgruppe), cat: '', q: '' };
+  let v = $('#zg-view');
+  if (!v) { v = document.createElement('div'); v.id = 'zg-view'; v.className = 'view'; $('#layer').appendChild(v); }
+  const list = () => {
+    const t = norm(st.q).split(/\s+/).filter(Boolean);
+    return M().pieces.filter(p => (!st.only || !p.zielgruppe) && (!st.cat || p.kategorie === st.cat) &&
+      t.every(x => norm([p.nummer, pad3(p.nummer), p.name, p.motivtitel, p.kategorie].join(' ')).includes(x))).sort((a, b) => a.nummer - b.nummer);
+  };
+  const row = p => { const { f } = cardItem(p); return `<div class="zg-row" data-key="${p.key}"><div class="zg-thumb">${f ? `<img data-thumb="${f.id}" alt="">` : icon('image')}</div>
+    <div class="zg-name"><b>${pad3(p.nummer)} · ${esc(p.name)}</b><small>${esc(p.kategorie)}${p.motivtitel ? ' · ' + esc(p.motivtitel) : ''}</small></div>${zgSeg('', p.zielgruppe)}</div>`; };
+  const count = n => { const open = M().pieces.filter(p => !p.zielgruppe).length; $('#zg-count', v).innerHTML = `${open ? `<b>${open}</b> von ${M().pieces.length} noch offen` : '<b>Alle Pieces zugeordnet.</b>'} · ${n} angezeigt`; };
+  const draw = () => {
+    const l = list();
+    const open = M().pieces.filter(p => !p.zielgruppe).length;
+    count(l.length);
+    $('#zg-list', v).innerHTML = l.length ? l.map(row).join('') : `<div class="empty">${st.only && !open ? 'Alle Pieces sind zugeordnet. 🙏' : 'Keine passenden Pieces.'}</div>`;
+    $('#zg-bulk', v).classList.toggle('hidden', !l.length);
+    observeThumbs($('#zg-list', v));
+  };
+  v.innerHTML = `
+    <div class="view-head"><button class="btn ghost icon" id="zg-back" aria-label="Zurück">${icon('back')}</button><div class="title">Mann / Frau zuordnen</div><span style="width:44px"></span></div>
+    <div class="view-body">
+      <p class="hint" style="margin-top:0">Je Piece auf <b>Mann</b>, <b>Frau</b> oder <b>Unisex</b> tippen – wird sofort gespeichert. Unisex-Pieces erscheinen bei Mann und bei Frau.</p>
+      <div class="search">${icon('search')}<input class="input" id="zg-q" type="search" placeholder="Name, Nummer …" autocomplete="off" enterkeyhint="search"></div>
+      <div class="cats" id="zg-cats" style="margin-top:10px"></div>
+      <label class="imp-check"><input type="checkbox" id="zg-only" ${st.only ? 'checked' : ''}><span>Nur Pieces ohne Zuordnung</span></label>
+      <p class="hint" id="zg-count"></p>
+      <div class="zg-bulk" id="zg-bulk"><span>Alle angezeigten:</span>${ZG.LIST.map(([k, l]) => `<button class="btn small" data-all="${k}">${l}</button>`).join('')}</div>
+      <div id="zg-list"></div>
+    </div>`;
+  const cats = () => { $('#zg-cats', v).innerHTML = `<button class="cat ${!st.cat ? 'on' : ''}" data-c="">Alle</button>` + M().categories.map(c => `<button class="cat ${st.cat === c.name ? 'on' : ''}" data-c="${esc(c.name)}">${esc(c.name)}</button>`).join(''); };
+  $('#zg-back', v).onclick = () => { v.remove(); rerender(); };
+  $('#zg-q', v).addEventListener('input', e => { st.q = e.target.value; draw(); });
+  $('#zg-q', v).addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+  $('#zg-cats', v).onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; st.cat = b.dataset.c; cats(); draw(); };
+  $('#zg-only', v).onchange = e => { st.only = e.target.checked; draw(); };
+  $('#zg-bulk', v).onclick = async e => {
+    const b = e.target.closest('[data-all]'); if (!b) return;
+    const l = list();
+    if (!(await confirmSheet(`${l.length} Pieces auf „${ZG.label(b.dataset.all)}“ setzen?`, 'Gilt für alle gerade angezeigten Pieces. Einzelne lassen sich danach wieder umstellen.', 'Übernehmen'))) return;
+    await setZg(l, b.dataset.all);
+    draw();
+  };
+  // Einzelne Knöpfe: sofort sichtbar umschalten, im Hintergrund nacheinander speichern
+  let queue = Promise.resolve();
+  $('#zg-list', v).onclick = e => {
+    const b = e.target.closest('.zg-seg button'); if (!b) return;
+    const rowEl = b.closest('.zg-row'), p = M().pieces.find(x => x.key === rowEl.dataset.key); if (!p) return;
+    const zg = b.classList.contains('on') ? '' : b.dataset.v;
+    $$('button', b.parentElement).forEach(x => x.classList.toggle('on', x === b && !!zg));
+    rowEl.classList.add('saving');
+    queue = queue.then(async () => {
+      const cur = M().pieces.find(x => x.key === rowEl.dataset.key);
+      const r = cur ? await setZg([cur], zg, true) : null;
+      rowEl.classList.remove('saving');
+      if (!r || r.conflicts) { draw(); return; }
+      if (st.only && zg) { rowEl.classList.add('gone'); setTimeout(draw, 350); } else count($$('.zg-row', v).length);
+    });
+  };
+  cats(); draw();
 }
 
 // ================================================================ Papierkorb und Prüfung

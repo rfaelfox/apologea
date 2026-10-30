@@ -19,6 +19,7 @@ namespace Apologea
         public string Name = "";
         public string Motivtitel = "";
         public string Kategorie = "";
+        public string Zielgruppe = ""; // "mann" | "frau" | "unisex" | "" (offen)
         public string Serie = "";
         public string Beschreibung = "";
         public string Herkunft = "";
@@ -56,7 +57,25 @@ namespace Apologea
         public static bool IsKnownKey(string k) { return Known.Contains(k); }
         static readonly HashSet<string> Known = new HashSet<string> {
             "format", "id", "nummer", "name", "motivtitel", "kategorie", "serie", "beschreibung", "schlagwoerter",
-            "entwurf", "bilder", "arbeitsdateien", "erstellt", "geaendert", "herkunft", "vorlage_von" };
+            "entwurf", "bilder", "arbeitsdateien", "erstellt", "geaendert", "herkunft", "vorlage_von", "zielgruppe" };
+
+        /// <summary>Zielgruppe vereinheitlichen (gleiche Wörter wie zielgruppe.js der Handy-App); Unbekanntes → ""</summary>
+        public static string NormZielgruppe(string v)
+        {
+            string s = (v ?? "").Trim().ToLowerInvariant();
+            switch (s)
+            {
+                case "mann": case "männer": case "maenner": case "manner": case "herren": case "herr": case "men": case "mens": case "male": case "boys": return "mann";
+                case "frau": case "frauen": case "damen": case "dame": case "women": case "womens": case "woman": case "ladies": case "lady": case "female": case "girls": case "wmns": return "frau";
+                case "unisex": return "unisex";
+                default: return "";
+            }
+        }
+
+        public static string ZielgruppeLabel(string v)
+        {
+            return v == "mann" ? "Mann" : v == "frau" ? "Frau" : v == "unisex" ? "Unisex" : "";
+        }
 
         public static Piece FromDict(Dictionary<string, object> d)
         {
@@ -66,6 +85,7 @@ namespace Apologea
             p.Name = Json.StrOr(d, "name", "").Trim();
             p.Motivtitel = Json.StrOr(d, "motivtitel", "").Trim();
             p.Kategorie = Json.StrOr(d, "kategorie", "");
+            p.Zielgruppe = NormZielgruppe(Json.Str(d, "zielgruppe"));
             p.Serie = Json.StrOr(d, "serie", "");
             p.Beschreibung = Json.StrOr(d, "beschreibung", "");
             p.Herkunft = Json.StrOr(d, "herkunft", "");
@@ -94,6 +114,7 @@ namespace Apologea
             d["name"] = Name;
             d["motivtitel"] = Motivtitel;
             d["kategorie"] = Kategorie;
+            d["zielgruppe"] = Zielgruppe ?? "";
             d["serie"] = Serie;
             d["beschreibung"] = Beschreibung;
             d["schlagwoerter"] = Schlagwoerter;

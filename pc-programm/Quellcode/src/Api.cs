@@ -124,6 +124,12 @@ namespace Apologea
                         var p = NeedCol().AssignFile(Json.Str(b, "id"), Json.Str(b, "datei"), Json.Str(b, "rolle"));
                         return Response.Json(Ok("piece", PieceDetail(p)));
                     }
+                case "/api/zielgruppe":
+                    {
+                        var b = Body(r);
+                        int n = NeedCol().SetZielgruppe(Json.StrList(b, "ids"), Json.Str(b, "zielgruppe"));
+                        return Response.Json(Ok("anzahl", n));
+                    }
                 case "/api/ordner-uebernehmen":
                     {
                         var p = NeedCol().AdoptFolder(Json.Str(Body(r), "ordner"));

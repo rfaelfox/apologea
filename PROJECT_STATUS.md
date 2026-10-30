@@ -299,6 +299,15 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   Unter Windows ungetestet; Paket `APOLOGEA_PC_Update_1.3.zip` (einmal von Hand einspielen).
   **Ab jetzt bei jeder PC-Änderung:** Version in `src/Program.cs` erhöhen, `hinweise.txt`, `manifest.py`, committen, pushen.
 
+- **Mann / Frau / Unisex** (2026-10-30, Handy-App 1.6.0, PC-Programm 1.4.0): neues Feld `zielgruppe` in Produktdaten.json
+  (`"mann"|"frau"|"unisex"|""`), gemeinsame Logik in `zielgruppe.js` (Kopie in `pc-programm/Quellcode/ui/`). Filter
+  „Mann“/„Frau“ schließen Unisex ein. Handy: zweite Chip-Zeile, Umschalter im Piece und im Formular, Menü „Mann / Frau
+  zuordnen …“ (Liste mit Bild, sofort speichern, „alle angezeigten“), Import (aus Produktdaten bzw. Ordner-/ZIP-Namen wie
+  „Damen“, „Herren“, nicht aus dem Piece-Namen), Katalog (Für + Gliederung nach Mann/Frau, Kennzeichen auf dem Bild).
+  PC: gleiches, Seitenleiste „Für“, Endpunkt `/api/zielgruppe` (nur Produktdaten.json, Ordner bleiben). Ältere Programm-
+  versionen behalten das Feld (unbekannte Felder bleiben erhalten). Getestet: Handy-Demo (Playwright 390 px) und PC unter
+  Mono/Xvfb inkl. Import einer „Damen_…zip“ und Katalog-PDF; mit echtem OneDrive/Windows ungetestet.
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“

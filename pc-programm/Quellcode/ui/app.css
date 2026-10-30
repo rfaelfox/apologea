@@ -655,3 +655,16 @@ select.input option { background: #1a1816; color: var(--ivory); }
 @media (max-width: 1640px) { .topbar .btn.ghost:not(#b-import):not(#b-katalog) .lbl { display: none; } .topbar .btn.ghost { padding-left: 10px; padding-right: 10px; } }
 @media (max-width: 1240px) { .topbar .btn.ghost .lbl { display: none; } }
 .upd-bar { border-color: var(--gold-dim); background: var(--gold-wash); color: var(--gold-2); }
+
+/* Mann / Frau / Unisex */
+.zg-tag { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--line-2); border-radius: 4px; color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; vertical-align: 1px; }
+.zg-pick { display: flex; align-items: center; gap: 10px; }
+.zg-lbl { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+.zg-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.zg-tools .search { flex: 1; min-width: 220px; margin: 0; }
+.zg-tools select.input { width: auto; }
+.zg-list { max-height: 56vh; overflow-y: auto; }
+.zg-row { display: flex; align-items: center; gap: 12px; transition: opacity .25s; }
+.zg-row .fn { flex: 1; min-width: 0; }
+.zg-row.saving { opacity: .6; }
+.zg-row.gone { opacity: 0; }

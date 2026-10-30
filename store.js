@@ -9,7 +9,7 @@ const ROLE_SHORT = { design: 'Design', kleidungsansicht: 'Ansicht', mockup: 'Moc
 const ROLE_BASE = { design: 'Design', kleidungsansicht: 'Kleidungsansicht', mockup: 'Mockup' };
 const DATA_FILE = 'Produktdaten.json';
 const IMG_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tif', 'tiff', 'svg', 'avif', 'psd', 'heic', 'heif'];
-const KNOWN_KEYS = ['format', 'id', 'nummer', 'name', 'motivtitel', 'kategorie', 'serie', 'beschreibung', 'schlagwoerter', 'entwurf', 'bilder', 'arbeitsdateien', 'erstellt', 'geaendert', 'herkunft', 'vorlage_von'];
+const KNOWN_KEYS = ['format', 'id', 'nummer', 'name', 'motivtitel', 'kategorie', 'serie', 'beschreibung', 'schlagwoerter', 'entwurf', 'bilder', 'arbeitsdateien', 'erstellt', 'geaendert', 'herkunft', 'vorlage_von', 'zielgruppe'];
 
 // ---------------------------------------------------------------- Hilfen (identisch zum PC-Programm)
 const Names = (() => {
@@ -155,7 +155,7 @@ const Store = (() => {
     const p = {
       key: folder.id, raw: d,
       id: d.id || folder.id, nummer: parseInt(d.nummer, 10) || 0, name: String(d.name || '').trim(), motivtitel: String(d.motivtitel || '').trim(),
-      kategorie: cat.name, catId: cat.id, serie: d.serie || '', beschreibung: d.beschreibung || '', schlagwoerter: Array.isArray(d.schlagwoerter) ? d.schlagwoerter : [],
+      kategorie: cat.name, catId: cat.id, zielgruppe: ZG.norm(d.zielgruppe), serie: d.serie || '', beschreibung: d.beschreibung || '', schlagwoerter: Array.isArray(d.schlagwoerter) ? d.schlagwoerter : [],
       entwurf: !!d.entwurf, erstellt: d.erstellt || jsonItem.modified, geaendert: d.geaendert || jsonItem.modified, herkunft: d.herkunft || '', vorlage_von: d.vorlage_von || null,
       folderId: folder.id, folderName: folder.name, webUrl: folder.webUrl, jsonItem, files,
       bilder: {}, arbeitsdateien: [], unzugeordnet: [], probleme: []
@@ -347,7 +347,7 @@ const Store = (() => {
   // ---------------------------------------------------------------- Speichern
   function pieceJson(p) {
     const d = {
-      format: 'APOLOGEA-Piece/1', id: p.id, nummer: p.nummer, name: p.name, motivtitel: p.motivtitel, kategorie: p.kategorie, serie: p.serie,
+      format: 'APOLOGEA-Piece/1', id: p.id, nummer: p.nummer, name: p.name, motivtitel: p.motivtitel, kategorie: p.kategorie, zielgruppe: p.zielgruppe || '', serie: p.serie,
       beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter, entwurf: p.entwurf,
       bilder: { design: p.bilder.design || null, kleidungsansicht: p.bilder.kleidungsansicht || null, mockup: p.bilder.mockup || null },
       arbeitsdateien: p.arbeitsdateien, erstellt: p.erstellt, geaendert: p.geaendert, herkunft: p.herkunft, vorlage_von: p.vorlage_von
@@ -381,7 +381,7 @@ const Store = (() => {
     const now = isoLocal();
     const tpl = f.vorlage_von ? model.pieces.find(p => p.id === f.vorlage_von) : null;
     const data = {
-      id: old ? old.id : newId(), nummer: f.nummer, name, motivtitel: f.motivtitel.trim(), kategorie: cat.name, serie: f.serie.trim(),
+      id: old ? old.id : newId(), nummer: f.nummer, name, motivtitel: f.motivtitel.trim(), kategorie: cat.name, zielgruppe: ZG.norm(f.zielgruppe), serie: f.serie.trim(),
       beschreibung: f.beschreibung.replace(/\r\n/g, '\n').trim(), schlagwoerter: f.schlagwoerter, entwurf: !!f.entwurf,
       erstellt: old ? old.erstellt : now, geaendert: now,
       herkunft: old ? old.herkunft : f.herkunft || 'Am Handy erstellt am ' + new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + (tpl ? ' nach Vorlage ' + pad3(tpl.nummer) + ' · ' + tpl.name + '.' : '.'),
@@ -512,6 +512,29 @@ const Store = (() => {
     return model.pieces.find(x => x.key === p.key);
   }
 
+  /** Zielgruppe direkt setzen (ohne Ordner zu verändern). changes: [{ key, zg }]. Ein Piece, das gerade
+      an einem anderen Gerät geändert wurde, wird übersprungen und gezählt. */
+  async function setZielgruppe(changes, progress) {
+    let done = 0, conflicts = 0;
+    for (let i = 0; i < changes.length; i++) {
+      const p = model.pieces.find(x => x.key === changes[i].key);
+      if (!p) { conflicts++; continue; }
+      const zg = ZG.norm(changes[i].zg);
+      if ((p.zielgruppe || '') === zg) { done++; continue; }
+      if (progress && changes.length > 1) progress(`Wird gespeichert … ${i + 1} von ${changes.length}`);
+      const d = Object.assign({}, p.raw, { zielgruppe: zg, geaendert: isoLocal() });
+      const text = JSON.stringify(d, null, 2) + '\n';
+      let r;
+      try { r = await drive.replaceText(p.jsonItem.id, text, p.jsonItem.eTag); }
+      catch (e) { if (e.code === 'conflict') { conflicts++; continue; } if (done) { await rebuild(); } throw e; }
+      st.items.set(r.id, Object.assign({}, st.items.get(r.id) || p.jsonItem, r));
+      st.texts.set(r.id, { cTag: st.items.get(r.id).cTag, text });
+      done++;
+    }
+    await rebuild();
+    return { done, conflicts };
+  }
+
   async function trashPiece(p) {
     await drive.sync(st); await rebuild();
     const cur = model.pieces.find(x => x.key === p.key);
@@ -597,7 +620,7 @@ const Store = (() => {
 
   return {
     loadCollections, updateCollections, get collections() { return collections; },
-    open, fromCache, refresh, nextNumber, numberOwner, save, createCategory, assign, trashPiece, restore, deleteForever,
+    open, fromCache, refresh, nextNumber, numberOwner, save, setZielgruppe, createCategory, assign, trashPiece, restore, deleteForever,
     createStaging, uploadToStaging, discardStaging, cleanupStaging, blobOf,
     get model() { return model; }, get drive() { return drive; }
   };

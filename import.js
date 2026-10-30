@@ -212,7 +212,7 @@ async function analyzeImport(fileList) {
     const multi = sources.length > 1;
     const groups = [];
     let fileCount = 0;
-    sources.forEach(s => { fileCount += s.entries.length; ImportRules.group(s.entries, M().categories).forEach(g => groups.push(Object.assign(g, { source: (multi ? s.label + ' › ' : '') + (g.dir || 'oberste Ebene') }))); });
+    sources.forEach(s => { fileCount += s.entries.length; ImportRules.group(s.entries, M().categories).forEach(g => groups.push(Object.assign(g, { srcLabel: s.kind === 'zip' ? s.label.replace(/\.zip$/i, '') : s.label, source: (multi ? s.label + ' › ' : '') + (g.dir || 'oberste Ebene') }))); });
     if (!groups.length) { unbusy(); toast('In der Auswahl wurden keine Dateien gefunden.', 'err'); return; }
     busy('Zuordnung wird vorbereitet …');
     const pieces = [];
@@ -233,6 +233,8 @@ async function analyzeImport(fileList) {
         name, wantNr, motivtitel: String((data && data.motivtitel) || '').trim(), serie: String((data && data.serie) || '').trim(),
         beschreibung: String((data && data.beschreibung) || ''), schlagwoerter: data && Array.isArray(data.schlagwoerter) ? data.schlagwoerter.map(String) : [],
         extra: data || {}, cat: cat ? cat.id : catName ? '__neu:' + Names.category(catName) : '',
+        // Mann/Frau: aus der Produktdaten.json, sonst aus Ordner- bzw. ZIP-Namen wie „Damen“ oder „Herren“ (nicht aus dem Piece-Namen)
+        zielgruppe: ZG.norm(data && data.zielgruppe) || ZG.guess(String(g.dir || '').split('/').filter(x => x && x !== g.label).concat([g.srcLabel])),
         source: g.source, files: ImportRules.assignRoles(g.files, data && data.bilder)
       });
     }
@@ -252,6 +254,10 @@ function catOptions(sel) {
     ${news.map(n => `<option value="${esc(n)}" ${n === sel ? 'selected' : ''}>＋ Neu anlegen: ${esc(n.slice(6))}</option>`).join('')}<option value="__ask">＋ Anderer neuer Kleidungstyp …</option>`;
 }
 
+function zgOptions(sel, withOpen) {
+  return `<option value="">${withOpen ? 'Nicht zugeordnet' : 'Bitte wählen …'}</option>` + ZG.LIST.map(([v, l]) => `<option value="${v}" ${v === sel ? 'selected' : ''}>${l}</option>`).join('');
+}
+
 function renderImport() {
   const st = Imp.st;
   let v = $('#import');
@@ -266,6 +272,7 @@ function renderImport() {
       ${st.focus ? `<div class="notice imp-focus ${open ? '' : 'done'}">${open ? `<b>${open === 1 ? '1 Piece hat' : open + ' Pieces haben'} noch keinen Kleidungstyp.</b> Es werden nur diese angezeigt – bitte zuordnen.` : '<b>Alle zugeordnet.</b> Jetzt unten auf „importieren“ tippen.'}<button class="btn small ghost" id="i-all">Alle anzeigen</button></div>`
         : `<p class="hint" style="margin-top:0"><span class="mono">${esc(st.sourceName)}</span> · ${st.fileCount} Dateien · <b>${st.pieces.length} Pieces erkannt</b>. Bitte Namen, Kleidungstyp und Bildzuordnung prüfen.</p>`}
       <div class="field"><label for="i-allcat">Kleidungstyp für alle ohne Zuordnung</label><select class="input" id="i-allcat">${catOptions('')}</select></div>
+      ${st.focus ? '' : `<div class="field"><label for="i-allzg">Mann / Frau für alle ohne Zuordnung</label><select class="input" id="i-allzg">${zgOptions('')}</select></div>`}
       ${st.focus ? '' : `<label class="imp-check"><input type="checkbox" id="i-draft" ${st.entwurf ? 'checked' : ''}><span>Alle als <b>Entwurf</b> speichern (empfohlen – am Handy oder PC kurz prüfen)</span></label>`}
       ${st.pieces.map((p, pi) => {
         if (st.focus && !st.focus.has(pi)) return '';
@@ -276,6 +283,7 @@ function renderImport() {
           <div class="imp-thumbs">${ROLES.map(r => { const f = p.files.find(x => x.role === r); return `<div class="imp-thumb ${r === 'design' ? 'bg-' + S.designBg : ''}" data-thumb="${pi}:${r}">${f ? '' : `<span>${ROLE_SHORT[r]}<br>fehlt</span>`}<small>${ROLE_SHORT[r]}</small></div>`; }).join('')}</div>
           <div class="field"><label>Produktname</label><input class="input name" data-name="${pi}" value="${esc(p.name)}" maxlength="60" autocomplete="off"></div>
           <div class="field"><label>Kleidungstyp</label><select class="input ${p.on && !p.cat ? 'invalid' : ''}" data-cat="${pi}">${catOptions(p.cat)}</select></div>
+          <div class="field"><label>Für</label><select class="input" data-zg="${pi}">${zgOptions(p.zielgruppe, true)}</select></div>
           <div class="hint">${p.wantNr ? `Nummer ${pad3(p.wantNr)} (aus dem Ordnernamen)` : 'Nummer: nächste freie'} · ${miss.length ? `<span style="color:var(--warn)">Entwurf – fehlt: ${miss.map(r => ROLE_LABEL[r]).join(', ')}</span>` : '<span style="color:var(--ok)">alle drei Bilder vorhanden</span>'}</div>
           <div class="filelist imp-files">${p.files.map((f, fi) => `<div class="filerow"><div class="fn">${esc(f.rel)}<small>${fmtBytes(f.size || 0)}</small></div>${roleSel(pi, fi, f.role)}</div>`).join('')}</div>
         </div>`;
@@ -293,6 +301,8 @@ function renderImport() {
     st.pieces.forEach(p => { if (!p.cat) p.cat = val; });
     renderImport();
   };
+  if ($('#i-allzg')) $('#i-allzg').onchange = e => { const val = e.target.value; if (!val) return; st.pieces.forEach(p => { if (!p.zielgruppe) p.zielgruppe = val; }); renderImport(); };
+  $$('[data-zg]', v).forEach(s => s.onchange = () => { st.pieces[+s.dataset.zg].zielgruppe = s.value; });
   $$('[data-on]', v).forEach(c => c.onchange = () => { st.pieces[+c.dataset.on].on = c.checked; renderImport(); });
   $$('[data-name]', v).forEach(i => i.oninput = () => { st.pieces[+i.dataset.name].name = i.value; });
   $$('[data-cat]', v).forEach(s => s.onchange = async () => {
@@ -349,7 +359,7 @@ async function runImport() {
     id: newId(), rootId: Store.drive.rootId, created: Date.now(), sourceName: st.sourceName, entwurf: st.entwurf,
     sources: st.sources.map(s => s.kind === 'zip' ? { kind: 'zip', label: s.label, file: s.file } : { kind: 'files', label: s.label, files: s.files }),
     pieces: list.map(p => ({
-      name: p.name.trim(), motivtitel: p.motivtitel, serie: p.serie, beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter, extra: p.extra,
+      name: p.name.trim(), motivtitel: p.motivtitel, serie: p.serie, beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter, extra: p.extra, zielgruppe: p.zielgruppe || '',
       cat: p.cat, wantNr: p.wantNr, source: p.source, done: false, result: null,
       files: p.files.filter(f => f.role !== 'weg').map(f => ({ src: f.entry.src, key: f.entry.key, rel: f.rel, role: f.role }))
     }))
@@ -464,7 +474,7 @@ async function executeJob(job, entries) {
           const missing = ROLES.filter(r => !slots[r]);
           const nummer = p.wantNr && !Store.numberOwner(p.wantNr) ? p.wantNr : Store.nextNumber();
           const saved = await Store.save({
-            mode: 'neu', key: null, stagingId, nummer, name: p.name, motivtitel: p.motivtitel, catId: p.cat, serie: p.serie,
+            mode: 'neu', key: null, stagingId, nummer, name: p.name, motivtitel: p.motivtitel, catId: p.cat, zielgruppe: p.zielgruppe || '', serie: p.serie,
             beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter, entwurf: job.entwurf || missing.length > 0, vorlage_von: null,
             slots, work, extra: Object.assign({}, p.extra), herkunft: `Am Handy importiert am ${label} aus „${job.sourceName}“ (${p.source}; ${tag}).`
           }, msg => busy(head + ' – ' + msg));

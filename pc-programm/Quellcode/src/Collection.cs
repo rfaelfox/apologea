@@ -423,6 +423,7 @@ namespace Apologea
             d["name"] = p.Name;
             d["motivtitel"] = p.Motivtitel;
             d["kategorie"] = p.Kategorie;
+            d["zielgruppe"] = p.Zielgruppe;
             d["serie"] = p.Serie;
             d["beschreibung"] = p.Beschreibung;
             d["schlagwoerter"] = p.Schlagwoerter;
@@ -726,6 +727,7 @@ namespace Apologea
                 p.Motivtitel = motiv;
                 p.Kategorie = kategorie;
                 p.Serie = (Json.Str(req, "serie") ?? "").Trim();
+                p.Zielgruppe = Piece.NormZielgruppe(Json.Str(req, "zielgruppe"));
                 p.Beschreibung = (Json.Str(req, "beschreibung") ?? "").Replace("\r\n", "\n").Trim();
                 p.Schlagwoerter = Json.StrList(req, "schlagwoerter").Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                 p.Entwurf = entwurf;
@@ -963,6 +965,30 @@ namespace Apologea
                 Util.Log("Datei zugeordnet: " + p.Titel + " / " + rel + " -> " + rolle);
                 Scan();
                 return pieces[p.Id];
+            }
+        }
+
+        /// <summary>Setzt Mann / Frau / Unisex für mehrere Pieces, ohne Ordner oder Dateien zu verändern.</summary>
+        public int SetZielgruppe(List<string> ids, string zielgruppe)
+        {
+            lock (Sync)
+            {
+                string zg = Piece.NormZielgruppe(zielgruppe);
+                if (!string.IsNullOrEmpty(zielgruppe) && zg.Length == 0) throw new UserError("Unbekannte Zuordnung.");
+                int n = 0;
+                foreach (var id in ids.Distinct())
+                {
+                    var p = Get(id);
+                    if (p.Zielgruppe == zg) { n++; continue; }
+                    var c = p.Clone();
+                    c.Zielgruppe = zg;
+                    c.Geaendert = DateTime.Now;
+                    Util.WriteAllTextAtomic(Path.Combine(p.Dir, Piece.DataFile), c.ToJson());
+                    n++;
+                }
+                Util.Log("Zielgruppe „" + (zg.Length == 0 ? "offen" : Piece.ZielgruppeLabel(zg)) + "“ für " + n + " Piece(s) gesetzt");
+                Scan();
+                return n;
             }
         }
 

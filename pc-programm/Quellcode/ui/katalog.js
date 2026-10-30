@@ -160,6 +160,14 @@ const Catalog = (() => {
       setFont(g, 500, 19, F.mono); g.fillStyle = C.faint; tracked(g, 'BILD FOLGT', x + w / 2, y + ih / 2 + Math.min(w, ih) * .28, 6, 'center');
     }
     brackets(g, x + 12, y + 12, w - 24, ih - 24, 24, 'rgba(179,150,89,.6)', 2);
+    if (p.zielgruppe) {
+      const zl = ZG.label(p.zielgruppe).toUpperCase();
+      setFont(g, 500, 16, F.mono);
+      const zw = trackedWidth(g, zl, 4) + 24;
+      g.fillStyle = 'rgba(8,8,8,.78)'; g.fillRect(x + 26, y + 26, zw, 34);
+      g.strokeStyle = 'rgba(179,150,89,.55)'; g.lineWidth = 1.5; g.strokeRect(x + 26, y + 26, zw, 34);
+      g.fillStyle = C.gold; tracked(g, zl, x + 26 + zw / 2, y + 49, 4, 'center');
+    }
     if (p.entwurf) {
       setFont(g, 500, 16, F.mono);
       const tw = trackedWidth(g, 'ENTWURF', 4) + 24;
@@ -175,7 +183,7 @@ const Catalog = (() => {
     ty += 52;
     const f = fit(g, (p.name || '').toUpperCase(), w, L.desc ? 46 : 38, L.desc ? 30 : 26, 600, F.serif, 3);
     g.fillStyle = C.ivory; tracked(g, f.text, x, ty, f.track, 'left');
-    note(`N° ${String(p.nummer).padStart(3, '0')} ${p.name}${p.motivtitel ? ' – ' + p.motivtitel : ''} · ${p.kategorie}${p.serie ? ' · ' + p.serie : ''}${p.entwurf ? ' · Entwurf' : ''}`, x, ty, f.size, w);
+    note(`N° ${String(p.nummer).padStart(3, '0')} ${p.name}${p.motivtitel ? ' – ' + p.motivtitel : ''} · ${p.kategorie}${p.zielgruppe ? ' · ' + ZG.label(p.zielgruppe) : ''}${p.serie ? ' · ' + p.serie : ''}${p.entwurf ? ' · Entwurf' : ''}`, x, ty, f.size, w);
     if (p.motivtitel) { ty += 36; setFont(g, 400, L.desc ? 23 : 21, F.sans); g.fillStyle = C.muted; g.fillText(ellipsize(g, p.motivtitel, w), x, ty); }
     if (L.desc && p.beschreibung) {
       ty += 22; line(g, x, ty, x + 60, ty, C.line, 1.5);
@@ -278,8 +286,11 @@ const Catalog = (() => {
     let cats = [];
     if (o.collection) cats = [{ name: o.collection.name, list: pieces.slice(), label: 'KOLLEKTION' }]; // Reihenfolge der Kollektion beibehalten
     else {
-      pieces.forEach(p => { let c = cats.find(x => x.name === p.kategorie); if (!c) cats.push(c = { name: p.kategorie, list: [] }); c.list.push(p); });
-      cats.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+      // Gliederung nach Kleidungstyp oder nach Mann / Frau / Unisex (dann je Kleidungstyp)
+      const ZORD = { mann: 0, frau: 1, unisex: 2, '': 3 };
+      const keyOf = p => o.group === 'zg' ? (ZG.label(p.zielgruppe) || 'Ohne Zuordnung') + ' · ' + p.kategorie : p.kategorie;
+      pieces.forEach(p => { const k = keyOf(p); let c = cats.find(x => x.name === k); if (!c) cats.push(c = { name: k, zo: ZORD[p.zielgruppe || ''], kat: p.kategorie, list: [] }); c.list.push(p); });
+      cats.sort((a, b) => o.group === 'zg' ? a.zo - b.zo || a.kat.localeCompare(b.kat, 'de') : a.name.localeCompare(b.name, 'de'));
       cats.forEach(c => c.list.sort((a, b) => a.nummer - b.nummer));
     }
     const pages = [{ type: 'cover' }];
@@ -463,7 +474,7 @@ function openCatalog(preset) {
   if (!S.data || !S.data.pieces.length) { toast('Die Sammlung enthält noch keine Pieces.', 'err'); return; }
   const all = S.data.pieces;
   const coll = preset && preset.collection ? preset : null;
-  const o = Object.assign({ title: 'Kollektion', contact: 'apologea.eu', scope: 'alle', role: S.cardImg || 'mockup', layout: 'kompakt', index: true, quality: 'klein', oeffnen: true }, store.get('catalog', {}));
+  const o = Object.assign({ title: 'Kollektion', contact: 'apologea.eu', scope: 'alle', zg: '', group: 'typ', role: S.cardImg || 'mockup', layout: 'kompakt', index: true, quality: 'klein', oeffnen: true }, store.get('catalog', {}));
   o.edition = new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
   if (coll) {
     const dd = coll.collection.drop ? new Date(coll.collection.drop + 'T12:00:00') : null;
@@ -473,11 +484,12 @@ function openCatalog(preset) {
     o.fixed = coll.pieces;
   }
   const sel = new Set(store.get('catalogSel', []).filter(id => S.byId.has(id)));
-  const filterActive = !!(S.filter.q || S.filter.kat || S.filter.status);
+  const filterActive = !!(S.filter.q || S.filter.kat || S.filter.status || S.filter.zg);
   if (o.scope === 'filter' && !filterActive) o.scope = 'alle';
   let q = '';
   const segs = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === cur ? 'on' : ''}">${l}</button>`).join('')}</div>`;
-  const count = scope => scope === 'fertig' ? all.filter(p => p.status !== 'Entwurf').length : scope === 'filter' ? filteredPieces().length : scope === 'auswahl' ? sel.size : all.length;
+  const count = scope => catalogList(Object.assign({}, o, { scope, sel: [...sel] })).length;
+  const zgSegC = () => segs('c-zg', [['', 'Alle'], ['mann', 'Mann'], ['frau', 'Frau'], ['unisex', 'Unisex']], o.zg || '');
   const scopeSeg = () => segs('c-scope', [['alle', `Alle (${count('alle')})`], ['fertig', `Ohne Entwürfe (${count('fertig')})`]].concat(filterActive && !S.filter.koll ? [['filter', `Aktueller Filter (${count('filter')})`]] : []).concat([['auswahl', `Auswahl (${count('auswahl')})`]]), o.scope);
   const sorted = all.slice().sort((a, b) => a.kategorie.localeCompare(b.kategorie, 'de') || a.nummer - b.nummer);
   const hits = () => { const t = norm(q).split(/\s+/).filter(Boolean); return t.length ? sorted.filter(p => t.every(x => p._hay.includes(x))) : sorted; };
@@ -493,6 +505,8 @@ function openCatalog(preset) {
       <div class="filelist kpick-list" id="c-list" style="max-height:34vh;margin-bottom:16px"></div>
     </div>
     <div class="cat-grid">
+      ${coll ? '' : `<div class="field"><label>Für</label>${zgSegC()}<span class="hint">„Mann“ und „Frau“ enthalten auch die Unisex-Pieces.</span></div>`}
+      <div class="field"><label>Gliederung</label>${segs('c-group', [['typ', 'Nach Kleidungstyp'], ['zg', 'Nach Mann / Frau']], o.group)}</div>
       <div class="field"><label for="c-title">Titel</label><input class="input" id="c-title" maxlength="40" value="${esc(o.title)}"></div>
       <div class="field"><label for="c-ed">Ausgabe</label><input class="input" id="c-ed" maxlength="40" value="${esc(o.edition)}"></div>
       <div class="field"><label for="c-contact">Kontakt <span class="faint">(optional, z. B. Website oder Instagram)</span></label><input class="input" id="c-contact" maxlength="60" value="${esc(o.contact)}"></div>
@@ -535,6 +549,8 @@ function openCatalog(preset) {
         const id = b.parentElement.id;
         $$('button', b.parentElement).forEach(x => x.classList.toggle('on', x === b));
         if (id === 'c-scope') { o.scope = b.dataset.v; $('#c-pick', body).classList.toggle('hidden', o.scope !== 'auswahl'); if (o.scope === 'auswahl') setTimeout(() => $('#c-q', body).focus(), 50); }
+        if (id === 'c-zg') { o.zg = b.dataset.v; refreshScope(); }
+        if (id === 'c-group') o.group = b.dataset.v;
         if (id === 'c-role') o.role = b.dataset.v;
         if (id === 'c-layout') o.layout = b.dataset.v;
         if (id === 'c-quality') o.quality = b.dataset.v;
@@ -543,12 +559,19 @@ function openCatalog(preset) {
   }).then(() => { if (go) makeCatalog(o); });
 }
 
+/** Pieces für den Katalog: Umfang (alle, ohne Entwürfe, Filter, Auswahl) und dazu „Für“ (Mann / Frau / Unisex) */
+function catalogList(o) {
+  const all = S.data.pieces, chosen = new Set(o.sel || []);
+  if (o.fixed) return o.fixed;
+  const list = o.scope === 'fertig' ? all.filter(p => p.status !== 'Entwurf') : o.scope === 'filter' ? filteredPieces() : o.scope === 'auswahl' ? all.filter(p => chosen.has(p.id)) : all.slice();
+  return o.zg ? list.filter(p => ZG.matches(p.zielgruppe, o.zg)) : list;
+}
+
 async function makeCatalog(o) {
   const keep = store.get('catalog', {});
-  store.set('catalog', { title: o.fixed ? keep.title || 'Kollektion' : o.title, contact: o.contact, scope: o.fixed ? keep.scope || 'alle' : o.scope, role: o.role, layout: o.layout, index: o.index, quality: o.quality, oeffnen: keep.oeffnen !== false });
+  store.set('catalog', { title: o.fixed ? keep.title || 'Kollektion' : o.title, contact: o.contact, scope: o.fixed ? keep.scope || 'alle' : o.scope, zg: o.fixed ? keep.zg || '' : o.zg, group: o.group, role: o.role, layout: o.layout, index: o.index, quality: o.quality, oeffnen: keep.oeffnen !== false });
   if (!o.fixed) store.set('catalogSel', o.sel || []);
-  const all = S.data.pieces, chosen = new Set(o.sel || []);
-  const src = o.fixed ? o.fixed : o.scope === 'fertig' ? all.filter(p => p.status !== 'Entwurf') : o.scope === 'filter' ? filteredPieces() : o.scope === 'auswahl' ? all.filter(p => chosen.has(p.id)) : all.slice();
+  const src = catalogList(o);
   // Felder wie in der Handy-App (Entwurf-Kennzeichen)
   const list = src.map(p => Object.assign({}, p, { entwurf: p.status === 'Entwurf' || !!p.entwurf }));
   if (!list.length) { toast('Für diese Auswahl gibt es keine Pieces.', 'err'); return; }

@@ -286,3 +286,23 @@ p.coll-text { font-size: 15px; color: var(--ivory-2); line-height: 1.55; margin:
 .ce-pieces { max-height: 34vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .coll-order .btn.danger { margin-left: 2px; }
 .slide-pic { position: absolute; inset: 0; background-position: center; background-repeat: no-repeat; background-size: contain; }
+
+/* Mann / Frau / Unisex */
+.zgs { padding-bottom: 10px; margin-top: -2px; }
+.cat.zg { font-size: 13px; padding: 5px 12px; }
+.zg-tag { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--line-2); border-radius: 4px; color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.zg-pick { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.zg-lbl { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+.zg-pick .zg-seg { flex: 1; max-width: 300px; }
+.zg-seg button { padding: 8px 4px; font-size: 13.5px; }
+.zg-bulk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; font-size: 13px; color: var(--muted); }
+.zg-row { display: grid; grid-template-columns: 52px 1fr; gap: 6px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); transition: opacity .3s; }
+.zg-row .zg-seg { grid-column: 1 / -1; }
+.zg-row.saving { opacity: .6; }
+.zg-row.gone { opacity: 0; }
+.zg-thumb { width: 52px; height: 52px; border-radius: 6px; overflow: hidden; background: var(--panel); display: flex; align-items: center; justify-content: center; color: var(--faint); }
+.zg-thumb img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .2s; }
+.zg-thumb img.on { opacity: 1; }
+.zg-thumb svg { width: 22px; height: 22px; }
+.zg-name b { display: block; font-weight: 500; font-size: 14.5px; color: var(--ivory); }
+.zg-name small { color: var(--faint); font-size: 12.5px; }

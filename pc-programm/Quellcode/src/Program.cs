@@ -50,7 +50,7 @@ namespace Apologea
 
     public static class Program
     {
-        public const string Version = "1.3.0";
+        public const string Version = "1.4.0";
         public static string ExeDir;
         public static string LocalDir;
         public static HostForm Host;

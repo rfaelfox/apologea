@@ -292,7 +292,7 @@ async function analyzeImport(fileList) {
     const multi = sources.length > 1;
     const groups = [];
     let fileCount = 0;
-    sources.forEach(s => { fileCount += s.entries.length; ImportRules.group(s.entries, S.data.kategorien).forEach(g => groups.push(Object.assign(g, { source: (multi ? s.label + ' › ' : '') + (g.dir || 'oberste Ebene') }))); });
+    sources.forEach(s => { fileCount += s.entries.length; ImportRules.group(s.entries, S.data.kategorien).forEach(g => groups.push(Object.assign(g, { srcLabel: s.label.replace(/\.zip$/i, ''), source: (multi ? s.label + ' › ' : '') + (g.dir || 'oberste Ebene') }))); });
     if (!groups.length) { unbusy(); toast('In der Auswahl wurden keine Dateien gefunden.', 'err'); return; }
     busy('Zuordnung wird vorbereitet …');
     const usedNr = new Set(S.data.pieces.map(p => p.nummer));
@@ -313,6 +313,8 @@ async function analyzeImport(fileList) {
         name, wantNr, motivtitel: String((data && data.motivtitel) || '').trim(), serie: String((data && data.serie) || '').trim(),
         beschreibung: String((data && data.beschreibung) || ''), schlagwoerter: data && Array.isArray(data.schlagwoerter) ? data.schlagwoerter.map(String) : [],
         extra: data || {}, cat: cat ? cat.name : catName ? '__neu:' + Names.category(catName) : '',
+        // Mann/Frau: aus der Produktdaten.json, sonst aus Ordner- bzw. ZIP-Namen wie „Damen“ oder „Herren“ (nicht aus dem Piece-Namen)
+        zielgruppe: ZG.norm(data && data.zielgruppe) || ZG.guess(String(g.dir || '').split('/').filter(x => x && x !== g.label).concat([g.srcLabel])),
         source: g.source, files: ImportRules.assignRoles(g.files, data && data.bilder)
       });
     }
@@ -331,6 +333,10 @@ function impCatOptions(sel) {
     ${news.map(n => `<option value="${esc(n)}" ${n === sel ? 'selected' : ''}>＋ Neu anlegen: ${esc(n.slice(6))}</option>`).join('')}<option value="__ask">＋ Anderer neuer Kleidungstyp …</option>`;
 }
 
+function impZgOptions(sel, withOpen) {
+  return `<option value="">${withOpen ? 'Nicht zugeordnet' : 'Bitte wählen …'}</option>` + ZG.LIST.map(([v, l]) => `<option value="${v}" ${v === sel ? 'selected' : ''}>${l}</option>`).join('');
+}
+
 function renderImport() {
   const st = Imp.st;
   let v = $('#import');
@@ -346,6 +352,7 @@ function renderImport() {
         : `<p class="muted" style="margin-top:0"><span class="mono">${esc(st.sourceName)}</span> · ${st.fileCount} Dateien · <b>${st.pieces.length} Pieces erkannt</b>. Bitte Namen, Kleidungstyp und Bildzuordnung prüfen.</p>`}
       <div class="imp-top-row">
         <div class="field" style="margin:0"><label for="i-allcat">Kleidungstyp für alle ohne Zuordnung</label><select class="input" id="i-allcat" style="min-width:280px">${impCatOptions('')}</select></div>
+        ${st.focus ? '' : `<div class="field" style="margin:0"><label for="i-allzg">Mann / Frau für alle ohne Zuordnung</label><select class="input" id="i-allzg" style="min-width:220px">${impZgOptions('')}</select></div>`}
         ${st.focus ? '' : `<label class="checkbox"><input type="checkbox" id="i-draft" ${st.entwurf ? 'checked' : ''}><span>Alle als <b>Entwurf</b> speichern (empfohlen – danach kurz prüfen)</span></label>`}
       </div>
       <div class="imp-grid">
@@ -360,6 +367,7 @@ function renderImport() {
             <div class="imp-fields">
               <div class="field"><label>Produktname</label><input class="input" data-name="${pi}" value="${esc(p.name)}" maxlength="60" autocomplete="off"></div>
               <div class="field"><label>Kleidungstyp</label><select class="input ${p.on && !p.cat ? 'invalid' : ''}" data-cat="${pi}">${impCatOptions(p.cat)}</select></div>
+              <div class="field"><label>Für</label><select class="input" data-zg="${pi}">${impZgOptions(p.zielgruppe, true)}</select></div>
               <div class="hint">${p.wantNr ? `Nummer ${pad3(p.wantNr)} (aus dem Ordnernamen)` : 'Nummer: nächste freie'} · ${miss.length ? `<span style="color:var(--warn)">Entwurf – fehlt: ${miss.map(r => ROLE_LABEL[r]).join(', ')}</span>` : '<span style="color:var(--ok)">alle drei Bilder vorhanden</span>'}</div>
             </div>
           </div>
@@ -381,6 +389,8 @@ function renderImport() {
     st.pieces.forEach(p => { if (!p.cat) p.cat = val; });
     renderImport();
   };
+  if ($('#i-allzg', v)) $('#i-allzg', v).onchange = e => { const val = e.target.value; if (!val) return; st.pieces.forEach(p => { if (!p.zielgruppe) p.zielgruppe = val; }); renderImport(); };
+  $$('[data-zg]', v).forEach(s => s.onchange = () => { st.pieces[+s.dataset.zg].zielgruppe = s.value; });
   $$('[data-on]', v).forEach(c => c.onchange = () => { st.pieces[+c.dataset.on].on = c.checked; renderImport(); });
   $$('[data-name]', v).forEach(i => i.oninput = () => { st.pieces[+i.dataset.name].name = i.value; });
   $$('[data-cat]', v).forEach(s => s.onchange = async () => {
@@ -460,7 +470,7 @@ async function runImport() {
         }
         const missing = ROLES.filter(r => !bilder[r]);
         const req = {
-          name: p.name.trim(), motivtitel: p.motivtitel, kategorie: p.cat, serie: p.serie, beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter,
+          name: p.name.trim(), motivtitel: p.motivtitel, kategorie: p.cat, zielgruppe: p.zielgruppe || '', serie: p.serie, beschreibung: p.beschreibung, schlagwoerter: p.schlagwoerter,
           entwurf: st.entwurf || missing.length > 0, vorlage_von: null, bilder, arbeitsdateien: work, extra: p.extra,
           herkunft: `Am PC importiert am ${label} aus „${st.sourceName}“ (${p.source}).`
         };
