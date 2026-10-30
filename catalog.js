@@ -502,7 +502,7 @@ function openCatalog(preset) {
       <div class="cat-tools"><span id="c-selcount" class="hint"></span><button type="button" class="btn small ghost" id="c-all">Treffer wählen</button><button type="button" class="btn small ghost" id="c-none">Leeren</button></div>
       <div class="cat-list" id="c-list"></div>
     </div>
-    ${coll ? '' : `<div class="field"><label>Für</label><div id="c-zg-box">${zgSegC()}</div><span class="hint">„Mann“ und „Frau“ enthalten auch die Unisex-Pieces.</span></div>`}
+    ${coll ? '' : `<div class="field"><label>Für</label><div id="c-zg-box">${zgSegC()}</div><span class="hint">Unisex = Mockups mit Mann und Frau.</span></div>`}
     <div class="field"><label>Gliederung</label>${segs('c-group', [['typ', 'Nach Kleidungstyp'], ['zg', 'Nach Mann / Frau']], o.group)}</div>
     <div class="field"><label for="c-title">Titel</label><input class="input" id="c-title" maxlength="40" value="${esc(o.title)}"></div>
     <div class="field"><label for="c-ed">Ausgabe</label><input class="input" id="c-ed" maxlength="40" value="${esc(o.edition)}"></div>

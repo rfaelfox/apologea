@@ -342,6 +342,29 @@ function renderShell() {
   }, true);
   renderSidebar();
   renderGrid();
+  $('#brand').onclick = () => renderStart(true);
+  if (!S.started) renderStart(true);
+}
+
+// ---------------------------------------------------------------- Startseite: Alle · Mann · Frau · Unisex
+function renderStart(show) {
+  let el = $('#start');
+  if (!el && !show) return;
+  if (!el) { el = document.createElement('div'); el.id = 'start'; el.className = 'start'; $('#app').appendChild(el); }
+  const ps = S.data.pieces, n = v => ps.filter(p => ZG.matches(p.zielgruppe, v)).length, open = n('offen');
+  el.innerHTML = `<div class="start-inner">
+    <img class="start-emblem" src="katalog-emblem.svg" alt="">
+    <div class="wordmark start-wm">APOLOGEA</div>
+    <div class="start-sub">Kollektion</div>
+    <div class="start-grid">${[['', 'Alle Pieces'], ['mann', 'Mann'], ['frau', 'Frau'], ['unisex', 'Unisex']].map(([v, l]) => `<button class="start-btn" data-zg="${v}"><span>${l}</span><b>${n(v)} Pieces</b></button>`).join('')}</div>
+    ${open && ps.length ? `<button class="start-open" id="st-open">${open} ${open === 1 ? 'Piece ist' : 'Pieces sind'} noch nicht zugeordnet – jetzt zuordnen</button>` : ''}
+  </div>`;
+  el.onclick = e => {
+    if (e.target.closest('#st-open')) { S.started = true; el.remove(); openZgAssign(); return; }
+    const b = e.target.closest('.start-btn'); if (!b) return;
+    S.started = true; S.filter.zg = b.dataset.zg; S.filter.kat = ''; S.filter.status = ''; S.filter.koll = '';
+    el.remove(); renderSidebar(); renderGrid(); const gw = $('#gridwrap'); if (gw) gw.scrollTop = 0;
+  };
 }
 
 function renderBrand() {
@@ -515,6 +538,7 @@ async function rescan(silent) {
     await loadData(r.sammlung);
     renderSidebar();
     renderGrid();
+    renderStart(false);
     const a = r.aenderungen;
     const n = a.geaendert + a.neu + a.entfernt;
     const parts = [];
@@ -1563,11 +1587,40 @@ async function setZg(ids, zg, quiet) {
     const r = await api('/api/zielgruppe', { ids, zielgruppe: zg });
     await loadData();
     if (!quiet) unbusy();
-    renderSidebar(); renderGrid();
+    renderSidebar(); renderGrid(); renderStart(false);
     if (S.detail && !S.form && ids.includes(S.detail.id) && $('#detail')) openDetail(S.detail.id, true);
     if (!quiet) toast(ids.length === 1 ? `${ZG.label(zg) || 'Nicht zugeordnet'}` : `${r.anzahl} Pieces: ${ZG.label(zg) || 'nicht zugeordnet'}`, 'ok', { title: ids.length === 1 && S.byId.get(ids[0]) ? `${S.byId.get(ids[0]).nummerText} · ${S.byId.get(ids[0]).name}` : 'Gespeichert' });
     return true;
   } catch (e) { if (!quiet) unbusy(); toastErr(e, 'Speichern nicht möglich'); return false; }
+}
+
+/** Zuordnungsliste (JSON von Claude) einlesen, Übersicht zeigen, nach Bestätigung speichern */
+async function zgFromFile(file) {
+  let r;
+  try { r = ZG.parseFile(await file.text(), S.data.pieces); } catch (e) { toastErr(e, 'Datei nicht lesbar'); return false; }
+  const by = k => r.changes.filter(c => c.zg === k);
+  const skipped = r.missing.length + r.mismatch.length + r.invalid.length;
+  const ok = await modal({
+    title: 'Zuordnung übernehmen?',
+    body: `<p><b>${r.changes.length} Pieces</b> aus „${esc(file.name)}“:</p>
+      <dl class="datalist">${ZG.LIST.map(([k, l]) => `<dt>${l}</dt><dd>${by(k).length}</dd>`).join('')}${by('').length ? `<dt>Offen</dt><dd>${by('').length}</dd>` : ''}</dl>
+      ${skipped ? `<p class="hint warn">${skipped} Einträge werden übersprungen:${r.mismatch.length ? `<br>Name passt nicht: ${r.mismatch.slice(0, 8).map(x => esc(x.p.nummerText + ' ' + x.p.name + ' ≠ ' + x.e.name)).join(', ')}${r.mismatch.length > 8 ? ' …' : ''}` : ''}${r.missing.length ? `<br>Nummer nicht gefunden: ${r.missing.slice(0, 12).map(x => pad3(x.nummer)).join(', ')}${r.missing.length > 12 ? ' …' : ''}` : ''}${r.invalid.length ? `<br>Ungültig: ${r.invalid.length}` : ''}</p>` : ''}
+      <p class="muted">Vorhandene Zuordnungen dieser Pieces werden überschrieben. Einzelne lassen sich danach wieder umstellen.</p>`,
+    buttons: [{ label: 'Abbrechen', value: false }, { label: 'Übernehmen', cls: 'primary', value: true }]
+  });
+  if (!ok || !r.changes.length) return false;
+  busy('Zuordnung wird gespeichert …');
+  let done = 0;
+  try {
+    for (const [k] of ZG.LIST.concat([['']])) {
+      const list = by(k); if (!list.length) continue;
+      busy(`${ZG.label(k) || 'Offen'}: ${list.length} Pieces werden gespeichert …`);
+      done += (await api('/api/zielgruppe', { ids: list.map(c => c.piece.id), zielgruppe: k })).anzahl;
+    }
+  } catch (e) { toastErr(e, 'Speichern nicht vollständig'); }
+  await loadData(); unbusy(); renderSidebar(); renderGrid(); renderStart(false);
+  if (done) toast(`${done} Pieces zugeordnet.`, 'ok');
+  return true;
 }
 
 /** Viele Pieces schnell zuordnen: Liste mit Vorschaubild und drei Knöpfen je Piece, gespeichert wird sofort */
@@ -1577,7 +1630,8 @@ function openZgAssign() {
   const list = () => { const t = norm(st.q).split(/\s+/).filter(Boolean); return S.data.pieces.filter(p => (!st.only || !p.zielgruppe) && (!st.kat || p.kategorie === st.kat) && t.every(x => p._hay.includes(x))).sort((a, b) => a.nummer - b.nummer); };
   const body = document.createElement('div');
   body.innerHTML = `
-    <p class="muted" style="margin-top:0">Je Piece auf <b>Mann</b>, <b>Frau</b> oder <b>Unisex</b> klicken – wird sofort gespeichert. Unisex-Pieces erscheinen bei Mann und bei Frau.</p>
+    <p class="muted" style="margin-top:0">Je Piece auf <b>Mann</b>, <b>Frau</b> oder <b>Unisex</b> klicken – wird sofort gespeichert. Unisex = Mockups mit Mann und Frau.</p>
+    <div class="zg-tools"><button type="button" class="btn gold" id="zg-file">${icon('file')}Zuordnung aus Datei übernehmen …</button><input type="file" id="zg-filein" accept=".json,application/json,text/plain" style="display:none"></div>
     <div class="zg-tools">
       <div class="search kpick-search">${icon('search')}<input class="input" id="zg-q" type="search" placeholder="Suchen: Name, Nummer, Motiv …" autocomplete="off"></div>
       <select class="input" id="zg-kat"><option value="">Alle Kleidungstypen</option>${S.data.kategorien.map(k => `<option ${k.name === st.kat ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select>
@@ -1601,6 +1655,8 @@ function openZgAssign() {
       $('#zg-q', body).addEventListener('input', debounce(e => { st.q = e.target.value; draw(); }, 100));
       $('#zg-kat', body).onchange = e => { st.kat = e.target.value; draw(); };
       $('#zg-only', body).onchange = e => { st.only = e.target.checked; draw(); };
+      $('#zg-file', body).onclick = () => $('#zg-filein', body).click();
+      $('#zg-filein', body).onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f && await zgFromFile(f)) draw(); };
       body.addEventListener('click', async e => {
         const all = e.target.closest('[data-all]');
         if (all) {

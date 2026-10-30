@@ -1,5 +1,3 @@
-Neu in 1.4.0: Mann / Frau / Unisex.
-- Links unter „Für“ nach Mann, Frau, Unisex oder „Ohne Zuordnung“ filtern („Mann“ und „Frau“ zeigen Unisex mit an).
-- „Mann / Frau zuordnen …“: alle Pieces in einer Liste mit Bild schnell zuordnen, auch alle angezeigten auf einmal.
-- Im Piece und beim Bearbeiten direkt umstellbar; Import erkennt „Damen“/„Herren“ in Ordner- und ZIP-Namen.
-- Katalog: nur Mann oder Frau, Gliederung nach Mann / Frau, Kennzeichen auf den Bildern.
+Neu in 1.5.0: Startseite mit vier Knöpfen – Alle Pieces, Mann, Frau, Unisex (Klick auf APOLOGEA oben führt zurück).
+- Mann, Frau und Unisex zeigen jetzt genau diese Gruppe (Unisex = Mockups mit Mann und Frau).
+- „Mann / Frau zuordnen …“ → „Zuordnung aus Datei übernehmen …“: Zuordnungsliste von Claude einspielen.

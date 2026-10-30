@@ -1,7 +1,7 @@
 /* APOLOGEA Handy-App – Oberfläche */
 'use strict';
 
-const VERSION = '1.6.0';
+const VERSION = '1.7.0';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -202,6 +202,7 @@ async function sync(silent) {
 }
 function setSyncDot(c) { const d = $('#syncdot'); if (d) d.className = 'sync-dot ' + c; }
 function rerender() {
+  renderStart(false);
   renderChips();
   if (!$('#coll-view')) renderGrid();
   if (typeof Coll !== 'undefined') Coll.refresh();
@@ -248,7 +249,7 @@ function renderCatalog() {
   $('#app').innerHTML = `
     <header class="topbar">
       <div class="topbar-row">
-        <div class="wordmark">APOLOGEA</div>
+        <button class="wordmark wm-btn" id="b-start" title="Startseite">APOLOGEA</button>
         <button class="btn ghost icon" id="b-sync" aria-label="Aktualisieren"><span class="sync-dot" id="syncdot"></span>${icon('refresh')}</button>
         <button class="btn ghost icon" id="b-import" aria-label="Pieces importieren" title="Pieces importieren (ZIP, Ordner)">${icon('import')}</button>
         <button class="btn ghost icon" id="b-menu" aria-label="Menü">${icon('menu')}</button>
@@ -264,6 +265,7 @@ function renderCatalog() {
     <button class="fab" id="b-new">${icon('plus')}Neues Piece</button>
     ${S.demo ? '<div style="position:fixed;left:12px;bottom:calc(26px + var(--safe-b));z-index:6" class="badge entwurf">Demo-Modus</div>' : ''}`;
   $('#b-sync').onclick = () => sync(false);
+  $('#b-start').onclick = () => renderStart(true);
   $('#b-menu').onclick = openMenu;
   $('#b-import').onclick = openImport;
   $('#b-new').onclick = () => openForm('neu');
@@ -275,6 +277,27 @@ function renderCatalog() {
   $('#zgs').onclick = e => { const b = e.target.closest('[data-zg]'); if (!b) return; S.filter.zg = b.dataset.zg; renderChips(); renderGrid(); window.scrollTo(0, 0); };
   $('#grid').onclick = e => { const c = e.target.closest('.card'); if (c) openDetail(c.dataset.key); };
   renderChips(); renderGrid();
+  if (!S.started) renderStart(true);
+}
+
+// ---------------------------------------------------------------- Startseite: Alle · Mann · Frau · Unisex
+function renderStart(show) {
+  let el = $('#start');
+  if (!el && !show) return;
+  if (!el) { el = document.createElement('div'); el.id = 'start'; el.className = 'start'; $('#app').appendChild(el); }
+  const ps = M().pieces, n = v => ps.filter(p => ZG.matches(p.zielgruppe, v)).length, open = n('offen');
+  el.innerHTML = `<div class="start-inner">
+    <img class="start-emblem" src="catalog/emblem.svg" alt="">
+    <div class="wordmark big">APOLOGEA</div>
+    <div class="start-sub">Kollektion</div>
+    <div class="start-grid">${[['', 'Alle Pieces'], ['mann', 'Mann'], ['frau', 'Frau'], ['unisex', 'Unisex']].map(([v, l]) => `<button class="start-btn" data-zg="${v}"><span>${l}</span><b>${n(v)}</b></button>`).join('')}</div>
+    ${open && ps.length ? `<button class="start-open" id="st-open">${open} ${open === 1 ? 'Piece ist' : 'Pieces sind'} noch nicht zugeordnet – jetzt zuordnen</button>` : ''}
+  </div>`;
+  el.onclick = e => {
+    if (e.target.closest('#st-open')) { S.started = true; el.remove(); openZgAssign(); return; }
+    const b = e.target.closest('.start-btn'); if (!b) return;
+    S.started = true; S.filter.zg = b.dataset.zg; S.filter.cat = ''; el.remove(); renderChips(); renderGrid(); window.scrollTo(0, 0);
+  };
 }
 
 const SORTS = { 'nummer-auf': 'Nummer ↑', 'nummer-ab': 'Nummer ↓', 'name-auf': 'Name A–Z', 'erstellt-neu': 'Neueste zuerst', 'geaendert-neu': 'Zuletzt geändert' };
@@ -928,6 +951,36 @@ async function setZg(pieces, zg, quiet) {
   } catch (e) { if (!quiet) unbusy(); fail(e, 'Speichern nicht möglich'); return null; }
 }
 
+/** Zuordnungsliste (JSON von Claude) einlesen, Übersicht zeigen, nach Bestätigung speichern */
+async function zgFromFile(file) {
+  let r;
+  try { r = ZG.parseFile(await file.text(), M().pieces); } catch (e) { fail(e, 'Datei nicht lesbar'); return false; }
+  const by = k => r.changes.filter(c => c.zg === k);
+  const skipped = r.missing.length + r.mismatch.length + r.invalid.length;
+  const ok = await sheet({
+    title: 'Zuordnung übernehmen?',
+    body: `<p><b>${r.changes.length} Pieces</b> aus „${esc(file.name)}“:</p>
+      <dl class="datalist">${ZG.LIST.map(([k, l]) => `<dt>${l}</dt><dd>${by(k).length}</dd>`).join('')}${by('').length ? `<dt>Offen</dt><dd>${by('').length}</dd>` : ''}</dl>
+      ${skipped ? `<p class="hint warn">${skipped} Einträge werden übersprungen:${r.mismatch.length ? `<br>Name passt nicht: ${r.mismatch.slice(0, 8).map(x => esc(pad3(x.p.nummer) + ' ' + x.p.name + ' ≠ ' + x.e.name)).join(', ')}${r.mismatch.length > 8 ? ' …' : ''}` : ''}${r.missing.length ? `<br>Nummer nicht gefunden: ${r.missing.slice(0, 12).map(x => pad3(x.nummer)).join(', ')}${r.missing.length > 12 ? ' …' : ''}` : ''}${r.invalid.length ? `<br>Ungültig: ${r.invalid.length}` : ''}</p>` : ''}
+      <p class="hint">Vorhandene Zuordnungen dieser Pieces werden überschrieben. Einzelne lassen sich danach wieder umstellen.</p>`,
+    buttons: [{ label: 'Abbrechen', value: false }, { label: 'Übernehmen', cls: 'primary', value: true }]
+  });
+  if (!ok || !r.changes.length) return false;
+  busy('Zuordnung wird gespeichert …');
+  let done = 0, conflicts = 0;
+  try {
+    for (const [k] of ZG.LIST.concat([['']])) {
+      const list = by(k); if (!list.length) continue;
+      const res = await Store.setZielgruppe(list.map(c => ({ key: c.piece.key, zg: k })), msg => busy(msg.replace('Wird gespeichert', (ZG.label(k) || 'Offen') + ' wird gespeichert')));
+      done += res.done; conflicts += res.conflicts;
+    }
+    unbusy();
+  } catch (e) { unbusy(); fail(e, 'Speichern nicht vollständig'); rerender(); return true; }
+  rerender();
+  toast(`${done} Pieces zugeordnet.${conflicts ? ` ${conflicts} wurden gerade an einem anderen Gerät geändert – bitte Datei erneut einspielen.` : ''}`, conflicts ? 'err' : 'ok');
+  return true;
+}
+
 /** Schnelles Zuordnen vieler Pieces: Liste mit Bild und drei Knöpfen je Piece */
 function openZgAssign() {
   const st = { only: M().pieces.some(p => !p.zielgruppe), cat: '', q: '' };
@@ -952,7 +1005,8 @@ function openZgAssign() {
   v.innerHTML = `
     <div class="view-head"><button class="btn ghost icon" id="zg-back" aria-label="Zurück">${icon('back')}</button><div class="title">Mann / Frau zuordnen</div><span style="width:44px"></span></div>
     <div class="view-body">
-      <p class="hint" style="margin-top:0">Je Piece auf <b>Mann</b>, <b>Frau</b> oder <b>Unisex</b> tippen – wird sofort gespeichert. Unisex-Pieces erscheinen bei Mann und bei Frau.</p>
+      <p class="hint" style="margin-top:0">Je Piece auf <b>Mann</b>, <b>Frau</b> oder <b>Unisex</b> tippen – wird sofort gespeichert. Unisex = Mockups mit Mann und Frau.</p>
+      <button class="btn gold block" id="zg-file" style="margin-bottom:12px">${icon('file')}Zuordnung aus Datei übernehmen …</button><input type="file" id="zg-filein" accept=".json,application/json,text/plain" class="hidden">
       <div class="search">${icon('search')}<input class="input" id="zg-q" type="search" placeholder="Name, Nummer …" autocomplete="off" enterkeyhint="search"></div>
       <div class="cats" id="zg-cats" style="margin-top:10px"></div>
       <label class="imp-check"><input type="checkbox" id="zg-only" ${st.only ? 'checked' : ''}><span>Nur Pieces ohne Zuordnung</span></label>
@@ -966,6 +1020,8 @@ function openZgAssign() {
   $('#zg-q', v).addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
   $('#zg-cats', v).onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; st.cat = b.dataset.c; cats(); draw(); };
   $('#zg-only', v).onchange = e => { st.only = e.target.checked; draw(); };
+  $('#zg-file', v).onclick = () => $('#zg-filein', v).click();
+  $('#zg-filein', v).onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f && await zgFromFile(f)) draw(); };
   $('#zg-bulk', v).onclick = async e => {
     const b = e.target.closest('[data-all]'); if (!b) return;
     const l = list();

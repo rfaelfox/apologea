@@ -308,6 +308,12 @@ Raster, Formensprache, Bewegungsregeln „Sacred Cinematic“, Komponenten, Logo
   versionen behalten das Feld (unbekannte Felder bleiben erhalten). Getestet: Handy-Demo (Playwright 390 px) und PC unter
   Mono/Xvfb inkl. Import einer „Damen_…zip“ und Katalog-PDF; mit echtem OneDrive/Windows ungetestet.
 
+- **Startseite + Zuordnungsdatei** (2026-10-30, Handy-App 1.7.0, PC 1.5.0): beim Start vier Knöpfe Alle/Mann/Frau/Unisex
+  (Klick auf APOLOGEA führt zurück). Filter jetzt exakt (Unisex = Mockups mit Mann und Frau, Wunsch des Nutzers).
+  „Zuordnung aus Datei übernehmen …“ liest `{"format":"APOLOGEA-Zielgruppen/1","zuordnung":[{nummer,name,zielgruppe}]}`
+  (Abgleich über Nummer + Name, Abweichungen werden übersprungen und angezeigt). Offen: Nutzer schickt Katalog-PDF (Mockups,
+  alle 218), Claude ordnet nach den Mockups zu und liefert die Datei.
+
 ## Nächste Schritte
 1. **Nutzer:** `APOLOGEA-Studio-Installer.zip` entpacken → `Installieren.cmd` → Desktop-Verknüpfung „APOLOGEA Studio“.
 2. Im Studio: Einstellungen → Shopify (Theme-Access-Passwort; optional Dev-Dashboard-App), MarketPrint („Über Claude Code“
