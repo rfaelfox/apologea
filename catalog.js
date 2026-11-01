@@ -192,6 +192,64 @@ const Catalog = (() => {
     }
   }
 
+  /** Platzhalter, wenn ein Bild fehlt */
+  function noImage(g, x, y, w, h) {
+    g.save(); g.globalAlpha = .08; drawLogo(g, assets.emblem, x + w / 2, y + h / 2 - 16, Math.min(w, h) * .42); g.restore();
+    setFont(g, 500, 19, F.mono); g.fillStyle = C.faint; tracked(g, 'BILD FOLGT', x + w / 2, y + h / 2 + Math.min(w, h) * .28, 6, 'center');
+  }
+  function badge(g, text, x, y, right, color) {
+    setFont(g, 500, 16, F.mono);
+    const bw = trackedWidth(g, text, 4) + 24, bx = right ? x - bw : x;
+    g.fillStyle = 'rgba(8,8,8,.78)'; g.fillRect(bx, y, bw, 34);
+    g.strokeStyle = 'rgba(179,150,89,.55)'; g.lineWidth = 1.5; g.strokeRect(bx, y, bw, 34);
+    g.fillStyle = color; tracked(g, text, bx + bw / 2, y + 23, 4, 'center');
+  }
+  const ROLE_NAME = { design: 'DESIGNMOTIV', kleidungsansicht: 'KLEIDUNGSANSICHT', mockup: 'MOCKUP' };
+
+  /** Nur ein Piece im Katalog: es bekommt eine ganze Seite mit großem Hauptbild statt einer Karte am linken Rand */
+  function feature(g, o, pg, main, others) {
+    const p = pg.piece;
+    section(g, CONTENT_Y, pg.s);
+    // Hauptbild über die volle Breite
+    const x = M, w = W - 2 * M, top = CONTENT_Y + SECTION_H + 10, ih = 1100;
+    g.fillStyle = C.panel; g.fillRect(x, top, w, ih);
+    g.strokeStyle = C.lineF; g.lineWidth = 1.5; g.strokeRect(x + .75, top + .75, w - 1.5, ih - 1.5);
+    if (main && main.img) contain(g, main.img, x, top, w, ih, 40); else noImage(g, x, top, w, ih);
+    brackets(g, x + 14, top + 14, w - 28, ih - 28, 36, 'rgba(179,150,89,.6)', 2);
+    if (p.zielgruppe) badge(g, ZG.label(p.zielgruppe).toUpperCase(), x + 30, top + 30, false, C.gold);
+    if (p.entwurf) badge(g, 'ENTWURF', x + w - 30, top + 30, true, C.muted);
+    // Angaben links
+    const ty0 = top + ih + 70, colW = 820;
+    let ty = ty0;
+    g.textBaseline = 'alphabetic';
+    setFont(g, 500, 22, F.mono); g.fillStyle = C.gold;
+    tracked(g, 'N° ' + String(p.nummer).padStart(3, '0'), x, ty, 5, 'left');
+    ty += 74;
+    const f = fit(g, (p.name || '').toUpperCase(), colW, 76, 40, 600, F.serif, 5);
+    g.fillStyle = C.ivory; tracked(g, f.text, x, ty, f.track, 'left');
+    note(`N° ${String(p.nummer).padStart(3, '0')} ${p.name}${p.motivtitel ? ' – ' + p.motivtitel : ''} · ${p.kategorie}${p.zielgruppe ? ' · ' + ZG.label(p.zielgruppe) : ''}${p.serie ? ' · ' + p.serie : ''}${p.entwurf ? ' · Entwurf' : ''}`, x, ty, f.size, colW);
+    if (p.motivtitel) { ty += 52; setFont(g, 400, 29, F.sans); g.fillStyle = C.muted; g.fillText(ellipsize(g, p.motivtitel, colW), x, ty); }
+    ty += 46;
+    setFont(g, 400, 18, F.mono); g.fillStyle = C.faint;
+    tracked(g, ellipsize(g, [p.kategorie, p.zielgruppe ? ZG.label(p.zielgruppe) : '', p.serie].filter(Boolean).join('  ·  ').toUpperCase(), colW - 40), x, ty, 3, 'left');
+    if (p.beschreibung) {
+      ty += 34; line(g, x, ty, x + 80, ty, C.line, 1.5);
+      setFont(g, 400, 23, F.sans); g.fillStyle = 'rgba(230,213,184,.86)';
+      const max = Math.max(1, Math.floor((CONTENT_BOTTOM - ty - 10) / 33));
+      wrap(g, p.beschreibung, colW, max).forEach(l => { ty += 33; g.fillText(l, x, ty); note(l, x, ty, 23, colW); });
+    }
+    // Die beiden weiteren Ansichten rechts
+    const rx = x + colW + 60, gap = 30, tw = (W - M - rx - gap) / 2, th = Math.round(tw * 4 / 3), by = ty0 - 40;
+    others.forEach((o2, i) => {
+      const bx = rx + i * (tw + gap);
+      g.fillStyle = C.panel; g.fillRect(bx, by, tw, th);
+      g.strokeStyle = C.lineF; g.lineWidth = 1.5; g.strokeRect(bx + .75, by + .75, tw - 1.5, th - 1.5);
+      if (o2.it && o2.it.img) contain(g, o2.it.img, bx, by, tw, th, 14); else noImage(g, bx, by, tw, th);
+      brackets(g, bx + 8, by + 8, tw - 16, th - 16, 16, 'rgba(179,150,89,.5)', 1.5);
+      setFont(g, 500, 15, F.mono); g.fillStyle = C.muted; tracked(g, ROLE_NAME[o2.role] || '', bx, by + th + 32, 3, 'left');
+    });
+  }
+
   function cover(g, o, stats) {
     background(g);
     const cx = W / 2, cy = 860;
@@ -293,6 +351,11 @@ const Catalog = (() => {
       cats.sort((a, b) => o.group === 'zg' ? a.zo - b.zo || a.kat.localeCompare(b.kat, 'de') : a.name.localeCompare(b.name, 'de'));
       cats.forEach(c => c.list.sort((a, b) => a.nummer - b.nummer));
     }
+    if (pieces.length === 1) {
+      // Ein einzelnes Piece füllt eine ganze Seite
+      const c = cats[0];
+      return { pages: [{ type: 'cover' }, { type: 'feature', piece: c.list[0], s: { label: c.label || 'KLEIDUNGSTYP', name: c.name, count: 1 } }, { type: 'back' }], cats, L };
+    }
     const pages = [{ type: 'cover' }];
     let cur = null, y = 0;
     const newPage = () => { cur = { type: 'grid', blocks: [] }; pages.push(cur); y = CONTENT_Y; };
@@ -331,11 +394,11 @@ const Catalog = (() => {
     try { return await createImageBitmap(blob); }
     catch (e) { return await new Promise(res => { const u = URL.createObjectURL(blob), i = new Image(); i.onload = () => { res(i); setTimeout(() => URL.revokeObjectURL(u), 1000); }; i.onerror = () => { URL.revokeObjectURL(u); res(null); }; i.src = u; }); }
   }
-  async function loadImages(items, role) {
+  async function loadImages(items, role, big) {
     const list = items.map(p => ({ piece: p, item: pickImage(p, role), img: null }));
     const ids = list.filter(x => x.item).map(x => x.item.id);
     let thumbs = {};
-    try { if (ids.length) thumbs = await Store.drive.thumbUrls(ids, 'large'); } catch (e) { thumbs = {}; }
+    try { if (ids.length && !big) thumbs = await Store.drive.thumbUrls(ids, 'large'); } catch (e) { thumbs = {}; }
     let k = 0;
     const worker = async () => {
       while (k < list.length) {
@@ -437,7 +500,19 @@ const Catalog = (() => {
       else if (pg.type === 'back') { progress(`Seite ${n + 1} von ${pages.length}: Rückseite …`); backCover(g, o); }
       else {
         background(g); header(g, o, n + 1, pages.length); footer(g, o);
-        if (pg.type === 'grid') {
+        if (pg.type === 'feature') {
+          progress(`Seite ${n + 1} von ${pages.length}: Bilder werden geladen …`);
+          const p = pg.piece, has = r => { const b = p.bilder[r]; return !!(b && (b.vorhanden || b.item)); };
+          const only = r => Object.assign({}, p, { bilder: { [r]: p.bilder[r] } });
+          const mainRole = ORDER(o.role).find(has) || null;
+          const main = mainRole ? (await loadImages([only(mainRole)], mainRole, true))[0] : null;
+          const others = [];
+          for (const r of ['mockup', 'design', 'kleidungsansicht'].filter(r => r !== mainRole).slice(0, 2))
+            others.push({ role: r, it: has(r) ? (await loadImages([only(r)], r))[0] : null });
+          progress(`Seite ${n + 1} von ${pages.length} wird gestaltet …`);
+          feature(g, o, pg, main, others);
+          [main].concat(others.map(x => x.it)).forEach(x => { if (x && x.img && x.img.close) x.img.close(); });
+        } else if (pg.type === 'grid') {
           progress(`Seite ${n + 1} von ${pages.length}: Bilder werden geladen …`);
           const rows = pg.blocks.filter(b => b.kind === 'row');
           const loaded = await loadImages(rows.flatMap(r => r.items), o.role);
